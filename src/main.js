@@ -3,6 +3,7 @@ import { completeOAuthCallback, currentSession, onAuthChange, signIn, signInWith
 import { createStudyProfile, deleteStudyProfile, getProfiles, updateStudyProfile } from "./services/profiles.js";
 import { createTeacher, deleteTeacher, getTeachers, updateTeacher } from "./services/teachers.js";
 import { createDiscipline, deleteDiscipline, getDisciplines, updateDiscipline } from "./services/disciplines.js";
+import { createSchedule, deleteSchedule, getNextClass, getSchedules, updateSchedule } from "./services/schedules.js";
 import { applyPendingAvatar, ensureUserRecord, getUserRecord, profilePhotoUrl, provisionUserStorage, updatePersonalInfo } from "./services/users.js";
 import { dashboardView } from "./ui/dashboard-view.js";
 import { renderAuth } from "./ui/auth-view.js";
@@ -12,12 +13,14 @@ import { bindPersonal, personalView } from "./ui/personal-view.js";
 import { bindProfiles, profilesView } from "./ui/profiles-view.js";
 import { bindTeachers, openTeacherSetup, teachersView } from "./ui/teachers-view.js";
 import { bindDisciplines, disciplinesView, openDisciplineSetup } from "./ui/disciplines-view.js";
+import { bindSchedules, schedulesView } from "./ui/schedules-view.js";
 import { showToast } from "./ui/components.js";
 import { getStoredProfile, removeStoredProfile, storeProfile } from "./utils/formatters.js";
 
 const root = document.querySelector("#app");
 const state = {
-  user: null, record: null, photoUrl: null, profiles: [], currentProfile: null, teachers: [], disciplines: [],
+  user: null, record: null, photoUrl: null, profiles: [], currentProfile: null, teachers: [], disciplines: [], schedules: [],
+  scheduleEditing: false, dashboardLoadedProfileId: null,
   view: "dashboard", returnView: "dashboard", collapsed: localStorage.getItem("akademo.sidebar.collapsed") === "true",
   theme: localStorage.getItem(APP_STORAGE_KEYS.theme) || "light",
 };
@@ -55,6 +58,9 @@ async function hydrate(user) {
     state.profiles = await getProfiles(user.id);
     state.teachers = [];
     state.disciplines = [];
+    state.schedules = [];
+    state.scheduleEditing = false;
+    state.dashboardLoadedProfileId = null;
     selectStoredProfile();
     if (!state.profiles.length) showOnboarding();
     else renderCurrent();
@@ -96,7 +102,7 @@ function selectStoredProfile() {
 }
 
 function renderAuthScreen() {
-  state.user = null; state.record = null; state.photoUrl = null; state.profiles = []; state.currentProfile = null; state.teachers = []; state.disciplines = [];
+  state.user = null; state.record = null; state.photoUrl = null; state.profiles = []; state.currentProfile = null; state.teachers = []; state.disciplines = []; state.schedules = []; state.scheduleEditing = false; state.dashboardLoadedProfileId = null;
   renderAuth(root, { onLogin: handleLogin, onRegister: handleRegister, onGoogle: handleGoogleLogin });
 }
 
@@ -118,12 +124,22 @@ function renderCurrent() {
   if (state.view === "profiles") return renderProfiles();
   if (state.view === "teachers") return renderTeachers();
   if (state.view === "disciplines") return renderDisciplines();
+  if (state.view === "schedules") return renderSchedules();
   renderDashboard();
 }
 
 function renderDashboard() {
   state.view = "dashboard";
-  renderWithinLayout(dashboardView({ record: state.record, profile: state.currentProfile, profiles: state.profiles }));
+  mountDashboard();
+  if (state.currentProfile && state.dashboardLoadedProfileId !== state.currentProfile.id) loadDashboardData(state.currentProfile);
+}
+
+function mountDashboard() {
+  const nextClass = getNextClass(state.schedules, state.disciplines, state.teachers);
+  renderWithinLayout(dashboardView({
+    record: state.record, profile: state.currentProfile, profiles: state.profiles, nextClass,
+    isNextClassLoading: state.currentProfile && state.dashboardLoadedProfileId !== state.currentProfile.id,
+  }));
   root.querySelector("[data-open-teachers]")?.addEventListener("click", () => {
     state.returnView = "dashboard";
     renderTeachers();
@@ -132,6 +148,28 @@ function renderDashboard() {
     state.returnView = "dashboard";
     renderDisciplines();
   });
+  root.querySelector("[data-open-schedules]")?.addEventListener("click", () => {
+    state.returnView = "dashboard";
+    renderSchedules();
+  });
+}
+
+async function loadDashboardData(profile) {
+  try {
+    const [teachers, disciplines, schedules] = await Promise.all([getTeachers(profile.id), getDisciplines(profile.id), getSchedules(profile.id)]);
+    if (state.view !== "dashboard" || state.currentProfile?.id !== profile.id) return;
+    state.teachers = teachers;
+    state.disciplines = disciplines;
+    state.schedules = schedules;
+    state.dashboardLoadedProfileId = profile.id;
+    mountDashboard();
+  } catch (error) {
+    if (state.view === "dashboard" && state.currentProfile?.id === profile.id) {
+      state.dashboardLoadedProfileId = profile.id;
+      mountDashboard();
+      showToast(error.message || "Não foi possível carregar a próxima aula.", "error");
+    }
+  }
 }
 
 function renderPersonal() {
@@ -157,7 +195,7 @@ function renderProfiles() {
     onCreate: async (values) => {
       const profile = await createStudyProfile(state.user, values);
       state.profiles = [...state.profiles, profile];
-      state.currentProfile = profile; storeProfile(profile); state.teachers = []; state.disciplines = [];
+      state.currentProfile = profile; storeProfile(profile); state.teachers = []; state.disciplines = []; state.schedules = []; state.scheduleEditing = false; state.dashboardLoadedProfileId = null;
       renderProfiles(); showToast("Novo perfil criado.");
       return profile;
     },
@@ -173,7 +211,7 @@ function renderProfiles() {
         await deleteStudyProfile(profile.id);
         state.profiles = state.profiles.filter((item) => item.id !== profile.id);
         if (!state.profiles.length) { state.currentProfile = null; removeStoredProfile(); showToast("Perfil removido."); return showOnboarding(); }
-        if (state.currentProfile?.id === profile.id) { state.currentProfile = state.profiles[0]; state.teachers = []; state.disciplines = []; storeProfile(state.currentProfile); }
+        if (state.currentProfile?.id === profile.id) { state.currentProfile = state.profiles[0]; state.teachers = []; state.disciplines = []; state.schedules = []; state.scheduleEditing = false; state.dashboardLoadedProfileId = null; storeProfile(state.currentProfile); }
         renderProfiles(); showToast("Perfil removido.");
       } catch (error) { showToast(error.message || "Não foi possível excluir o perfil.", "error"); }
     },
@@ -195,8 +233,12 @@ function showTeacherSetup(profile) {
     },
     onDelete: async (id) => {
       await deleteTeacher(id, profile.id);
-      if (state.currentProfile?.id === profile.id) state.teachers = state.teachers.filter((teacher) => teacher.id !== id);
-      if (state.currentProfile?.id === profile.id) state.disciplines = state.disciplines.filter((discipline) => discipline.professor_id !== id);
+      if (state.currentProfile?.id === profile.id) {
+        const removedDisciplineIds = state.disciplines.filter((discipline) => discipline.professor_id === id).map((discipline) => discipline.id);
+        state.teachers = state.teachers.filter((teacher) => teacher.id !== id);
+        state.disciplines = state.disciplines.filter((discipline) => discipline.professor_id !== id);
+        state.schedules = state.schedules.filter((schedule) => !removedDisciplineIds.includes(schedule.disciplina));
+      }
     },
     onFinish: (count) => {
       showToast(count ? "Professores cadastrados com sucesso." : "Você poderá cadastrar professores mais tarde.");
@@ -241,8 +283,10 @@ function mountTeachers() {
     },
     onDelete: async (teacher) => {
       await deleteTeacher(teacher.id, state.currentProfile.id);
+      const removedDisciplineIds = state.disciplines.filter((discipline) => discipline.professor_id === teacher.id).map((discipline) => discipline.id);
       state.teachers = state.teachers.filter((item) => item.id !== teacher.id);
       state.disciplines = state.disciplines.filter((discipline) => discipline.professor_id !== teacher.id);
+      state.schedules = state.schedules.filter((schedule) => !removedDisciplineIds.includes(schedule.disciplina));
       mountTeachers(); showToast("Professor removido.");
     },
   });
@@ -264,7 +308,10 @@ function showDisciplineSetup(profile) {
     },
     onDelete: async (id) => {
       await deleteDiscipline(id, profile.id);
-      if (state.currentProfile?.id === profile.id) state.disciplines = state.disciplines.filter((discipline) => discipline.id !== id);
+      if (state.currentProfile?.id === profile.id) {
+        state.disciplines = state.disciplines.filter((discipline) => discipline.id !== id);
+        state.schedules = state.schedules.filter((schedule) => schedule.disciplina !== id);
+      }
     },
     onFinish: (count) => showToast(count ? "Disciplinas cadastradas com sucesso." : "Você poderá cadastrar disciplinas mais tarde."),
   });
@@ -308,7 +355,60 @@ function mountDisciplines() {
     onDelete: async (discipline) => {
       await deleteDiscipline(discipline.id, state.currentProfile.id);
       state.disciplines = state.disciplines.filter((item) => item.id !== discipline.id);
+      state.schedules = state.schedules.filter((schedule) => schedule.disciplina !== discipline.id);
       mountDisciplines(); showToast("Disciplina removida.");
+    },
+  });
+}
+
+async function renderSchedules() {
+  const profile = state.currentProfile;
+  if (!profile) return showOnboarding();
+  state.view = "schedules";
+  try {
+    const [teachers, disciplines, schedules] = await Promise.all([getTeachers(profile.id), getDisciplines(profile.id), getSchedules(profile.id)]);
+    if (state.view !== "schedules" || state.currentProfile?.id !== profile.id) return;
+    state.teachers = teachers;
+    state.disciplines = disciplines;
+    state.schedules = schedules;
+    state.dashboardLoadedProfileId = profile.id;
+    mountSchedules();
+  } catch (error) {
+    showToast(error.message || "Não foi possível carregar os horários.", "error");
+    state.view = state.returnView;
+    renderCurrent();
+  }
+}
+
+function mountSchedules() {
+  renderWithinLayout(schedulesView({
+    profile: state.currentProfile,
+    disciplines: state.disciplines,
+    teachers: state.teachers,
+    schedules: state.schedules,
+    editing: state.scheduleEditing,
+  }));
+  bindSchedules(root, {
+    disciplines: state.disciplines,
+    schedules: state.schedules,
+    editing: state.scheduleEditing,
+    onToggleEdit: () => { state.scheduleEditing = !state.scheduleEditing; mountSchedules(); },
+    onCreate: async (values) => {
+      const schedule = await createSchedule(state.user, state.currentProfile, values);
+      state.schedules = [...state.schedules, schedule];
+      mountSchedules(); showToast("Aula adicionada à grade.");
+      return schedule;
+    },
+    onUpdate: async (id, values) => {
+      const updated = await updateSchedule(id, state.currentProfile, values);
+      state.schedules = state.schedules.map((schedule) => schedule.id === id ? updated : schedule);
+      mountSchedules(); showToast("Horário atualizado.");
+      return updated;
+    },
+    onDelete: async (schedule) => {
+      await deleteSchedule(schedule.id, state.currentProfile.id);
+      state.schedules = state.schedules.filter((item) => item.id !== schedule.id);
+      mountSchedules(); showToast("Horário removido.");
     },
   });
 }
@@ -317,12 +417,12 @@ function renderWithinLayout(content) {
   renderLayout(root, { ...state, content });
   bindLayout(root, {
     onCollapse: () => { state.collapsed = !state.collapsed; localStorage.setItem("akademo.sidebar.collapsed", state.collapsed); renderCurrent(); },
-    onNavigate: (view) => { state.view = view; renderCurrent(); },
+    onNavigate: (view) => { if (view === "schedules") { state.returnView = state.view; state.scheduleEditing = false; } state.view = view; renderCurrent(); },
     onPersonal: () => { state.returnView = state.view; renderPersonal(); },
     onProfiles: () => { state.returnView = state.view; renderProfiles(); },
     onTeachers: () => { state.returnView = state.view; renderTeachers(); },
     onDisciplines: () => { state.returnView = state.view; renderDisciplines(); },
-    onProfileChange: (id) => { state.currentProfile = state.profiles.find((profile) => profile.id === id); state.teachers = []; state.disciplines = []; storeProfile(state.currentProfile); renderCurrent(); showToast("Perfil ativo alterado."); },
+    onProfileChange: (id) => { state.currentProfile = state.profiles.find((profile) => profile.id === id); state.teachers = []; state.disciplines = []; state.schedules = []; state.scheduleEditing = false; state.dashboardLoadedProfileId = null; storeProfile(state.currentProfile); renderCurrent(); showToast("Perfil ativo alterado."); },
     onTheme: (event) => { applyTheme(event.target.checked ? "dark" : "light"); renderCurrent(); },
     onLogout: handleLogout,
   });

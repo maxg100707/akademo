@@ -613,3 +613,91 @@ for delete to authenticated using (
   email_user = (select auth.jwt() ->> 'email')
   and exists (select 1 from public.perfil_estudo as profile where profile.id = disciplinas.perfil and profile.user_id = (select auth.uid()))
 );
+
+-- Horários: aulas vinculadas a uma disciplina do mesmo perfil de estudo.
+create table if not exists public.horarios (
+  id uuid primary key default gen_random_uuid(),
+  email_user text not null,
+  perfil uuid not null references public.perfil_estudo(id) on delete cascade,
+  disciplina uuid not null references public.disciplinas(id) on delete cascade,
+  dia_semana integer not null check (dia_semana between 0 and 6),
+  hora_inicio timetz not null,
+  hora_fim timetz not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  check (hora_fim > hora_inicio)
+);
+
+create index if not exists horarios_perfil_dia_inicio_idx on public.horarios(perfil, dia_semana, hora_inicio);
+create index if not exists horarios_disciplina_idx on public.horarios(disciplina);
+
+drop trigger if exists horarios_set_updated_at on public.horarios;
+create trigger horarios_set_updated_at before update on public.horarios
+for each row execute procedure public.set_updated_at();
+
+-- Inclui horários na sincronização de e-mail feita pelo trigger do Auth.
+create or replace function public.sync_auth_user_email()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  if new.email is distinct from old.email then
+    update public.users set email = new.email, updated_at = now() where id = new.id;
+    update public.perfil_estudo set email = new.email, updated_at = now() where user_id = new.id;
+    update public.professores as professor set email_user = new.email, updated_at = now()
+      from public.perfil_estudo as profile where professor.perfil = profile.id and profile.user_id = new.id;
+    update public.disciplinas as disciplina set email_user = new.email, updated_at = now()
+      from public.perfil_estudo as profile where disciplina.perfil = profile.id and profile.user_id = new.id;
+    update public.horarios as horario set email_user = new.email, updated_at = now()
+      from public.perfil_estudo as profile where horario.perfil = profile.id and profile.user_id = new.id;
+  end if;
+  return new;
+end;
+$$;
+
+alter table public.horarios enable row level security;
+revoke all on table public.horarios from anon, authenticated;
+grant select, insert, update, delete on table public.horarios to authenticated;
+
+drop policy if exists "schedules read own profile" on public.horarios;
+create policy "schedules read own profile" on public.horarios
+for select to authenticated using (
+  email_user = (select auth.jwt() ->> 'email')
+  and exists (select 1 from public.perfil_estudo as profile where profile.id = horarios.perfil and profile.user_id = (select auth.uid()))
+  and exists (select 1 from public.disciplinas as disciplina where disciplina.id = horarios.disciplina and disciplina.perfil = horarios.perfil)
+);
+
+drop policy if exists "schedules create own profile" on public.horarios;
+create policy "schedules create own profile" on public.horarios
+for insert to authenticated with check (
+  email_user = (select auth.jwt() ->> 'email')
+  and exists (select 1 from public.perfil_estudo as profile where profile.id = horarios.perfil and profile.user_id = (select auth.uid()))
+  and exists (
+    select 1 from public.disciplinas as disciplina
+    where disciplina.id = horarios.disciplina and disciplina.perfil = horarios.perfil
+      and disciplina.email_user = (select auth.jwt() ->> 'email')
+  )
+);
+
+drop policy if exists "schedules update own profile" on public.horarios;
+create policy "schedules update own profile" on public.horarios
+for update to authenticated using (
+  email_user = (select auth.jwt() ->> 'email')
+  and exists (select 1 from public.perfil_estudo as profile where profile.id = horarios.perfil and profile.user_id = (select auth.uid()))
+) with check (
+  email_user = (select auth.jwt() ->> 'email')
+  and exists (select 1 from public.perfil_estudo as profile where profile.id = horarios.perfil and profile.user_id = (select auth.uid()))
+  and exists (
+    select 1 from public.disciplinas as disciplina
+    where disciplina.id = horarios.disciplina and disciplina.perfil = horarios.perfil
+      and disciplina.email_user = (select auth.jwt() ->> 'email')
+  )
+);
+
+drop policy if exists "schedules delete own profile" on public.horarios;
+create policy "schedules delete own profile" on public.horarios
+for delete to authenticated using (
+  email_user = (select auth.jwt() ->> 'email')
+  and exists (select 1 from public.perfil_estudo as profile where profile.id = horarios.perfil and profile.user_id = (select auth.uid()))
+);

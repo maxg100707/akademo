@@ -14,6 +14,7 @@ styles/                    CSS separado por responsabilidade
 supabase/schema.sql        tabelas, triggers e RLS completos (instalação nova)
 supabase/teachers-migration.sql    migração de professores (instalações existentes)
 supabase/disciplines-migration.sql migração de disciplinas (após professores)
+supabase/schedules-migration.sql   migração de horários (após disciplinas)
 supabase/functions/        Edge Function segura para buckets e avatar Google
 ```
 
@@ -33,7 +34,7 @@ supabase/functions/        Edge Function segura para buckets e avatar Google
 
 ### Atualização para instalações existentes
 
-Se o projeto já está em uso e a tabela `professores` já existe, execute somente `supabase/disciplines-migration.sql` no SQL Editor. Caso ainda não tenha aplicado a migração de professores, execute primeiro `supabase/teachers-migration.sql` e, em seguida, `supabase/disciplines-migration.sql`.
+Se o projeto já está em uso, execute as migrações que ainda não foram aplicadas nesta ordem: `supabase/teachers-migration.sql`, `supabase/disciplines-migration.sql` e `supabase/schedules-migration.sql`. A última também adapta uma tabela `horarios` existente cujo `id` ainda seja `int8`.
 
 ### Google OAuth: URLs que não podem ser confundidas
 

@@ -19,7 +19,7 @@ export function renderLayout(root, { record, photoUrl, profiles, currentProfile,
           <button class="profile-popover__logout" data-logout>${icon("logout", 18)}<span>Sair da conta</span></button>
         </div>
       </div>
-      <nav class="sidebar-nav"><span class="sidebar-nav__label">MENU</span><button class="nav-item ${view === "dashboard" ? "is-active" : ""}" data-nav="dashboard">${icon("dashboard", 20)}<span>Dashboard</span></button></nav>
+      <nav class="sidebar-nav"><span class="sidebar-nav__label">MENU</span><button class="nav-item ${view === "dashboard" ? "is-active" : ""}" data-nav="dashboard">${icon("dashboard", 20)}<span>Dashboard</span></button><button class="nav-item ${view === "schedules" ? "is-active" : ""}" data-nav="schedules">${icon("calendar", 20)}<span>Horários</span></button></nav>
       <div class="sidebar__bottom"><button class="mobile-close-menu" data-mobile-close>${icon("close", 18)}<span>Fechar menu</span></button><div class="sidebar__tip">${icon("sparkles", 18)}<span>Faça hoje valer a pena.</span></div></div>
     </aside>
     <div class="mobile-menu-overlay" data-mobile-close></div>

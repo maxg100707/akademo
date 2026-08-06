@@ -1,7 +1,19 @@
 import { icon } from "../utils/icons.js";
 import { escapeHtml, firstName } from "../utils/formatters.js";
+import { displayTime, weekdayName } from "../services/schedules.js";
 
-export function dashboardView({ record, profile, profiles }) {
+function nextClassCard(nextClass, isLoading) {
+  if (isLoading) return `<section class="next-class-card is-loading"><span class="next-class-card__icon"><span class="spinner"></span></span><div><small>PRÓXIMA AULA</small><strong>Organizando sua rotina...</strong><p>Estamos buscando os horários deste perfil.</p></div></section>`;
+  if (!nextClass) return `<button class="next-class-card" data-open-schedules><span class="next-class-card__icon">${icon("calendar", 22)}</span><div><small>PRÓXIMA AULA</small><strong>Nenhuma aula programada</strong><p>Monte sua grade semanal para acompanhar o próximo compromisso.</p></div><em>${icon("arrowRight", 18)}</em></button>`;
+  const date = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" }).format(nextClass.start).replace(".", "");
+  const discipline = escapeHtml(nextClass.discipline?.nome_disciplina || "Disciplina");
+  const teacher = escapeHtml(nextClass.teacher?.nome_professor || "Professor não informado");
+  const status = nextClass.isLive ? "Acontecendo agora" : "Próxima aula";
+  const statusClass = nextClass.isLive ? "is-live" : "is-upcoming";
+  return `<button class="next-class-card ${statusClass}" data-open-schedules><span class="next-class-card__icon">${icon("calendar", 22)}</span><div class="next-class-card__content"><span class="next-class-card__status"><i></i>${status}</span><strong>${discipline}</strong><p>${weekdayName(nextClass.schedule.dia_semana)}, ${date} · ${displayTime(nextClass.schedule.hora_inicio)}–${displayTime(nextClass.schedule.hora_fim)}</p><small>${icon("userRound", 13)} ${teacher}</small></div><em>${icon("arrowRight", 18)}</em></button>`;
+}
+
+export function dashboardView({ record, profile, profiles, nextClass, isNextClassLoading }) {
   const name = escapeHtml(firstName(record?.nome));
   const course = escapeHtml(profile?.curso || "seu curso");
   const institution = escapeHtml(profile?.instituicao || "sua instituição");
@@ -13,5 +25,6 @@ export function dashboardView({ record, profile, profiles }) {
     </div>
     <button class="dashboard-teachers-link" data-open-teachers><span class="dashboard-teachers-link__icon">${icon("users", 21)}</span><span><small>PROFESSORES</small><strong>Organize os contatos do seu perfil</strong><em>Acessar ${icon("arrowRight", 17)}</em></span></button>
     <button class="dashboard-teachers-link dashboard-disciplines-link" data-open-disciplines><span class="dashboard-teachers-link__icon">${icon("book", 21)}</span><span><small>DISCIPLINAS</small><strong>Monte a grade do seu perfil</strong><em>Acessar ${icon("arrowRight", 17)}</em></span></button>
+    ${nextClassCard(nextClass, isNextClassLoading)}
   </section>`;
 }
