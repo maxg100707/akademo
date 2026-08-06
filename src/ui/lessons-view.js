@@ -1,7 +1,12 @@
 import { displayTime } from "../services/schedules.js";
 import { escapeHtml } from "../utils/formatters.js";
 import { icon } from "../utils/icons.js";
-import { closeModal, confirmModal, setButtonLoading, showToast } from "./components.js";
+import {
+  closeModal,
+  confirmModal,
+  setButtonLoading,
+  showToast,
+} from "./components.js";
 
 const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "S\u00e1b"];
 const TYPE_META = {
@@ -11,8 +16,13 @@ const TYPE_META = {
   presentation: { label: "Apresenta\u00e7\u00e3o", icon: "graduation" },
 };
 
-function dateLabel(date, options = { weekday: "long", day: "2-digit", month: "long" }) {
-  return new Intl.DateTimeFormat("pt-BR", options).format(date).replace(".", "");
+function dateLabel(
+  date,
+  options = { weekday: "long", day: "2-digit", month: "long" },
+) {
+  return new Intl.DateTimeFormat("pt-BR", options)
+    .format(date)
+    .replace(".", "");
 }
 
 function occurrenceLabel(occurrence) {
@@ -20,36 +30,82 @@ function occurrenceLabel(occurrence) {
 }
 
 function typeSwitches(selected = "normal") {
-  return `<div class="lesson-type-switches" role="radiogroup" aria-label="Tipo de aula">${Object.entries(TYPE_META).map(([type, meta]) => `<label class="lesson-type-switch lesson-type-switch--${type}"><input type="radio" name="kind" value="${type}" ${selected === type ? "checked" : ""}/><span>${icon(meta.icon, 16)}</span><strong>${meta.label}</strong></label>`).join("")}</div>`;
+  return `<div class="lesson-type-switches" role="radiogroup" aria-label="Tipo de aula">${Object.entries(
+    TYPE_META,
+  )
+    .map(
+      ([type, meta]) =>
+        `<label class="lesson-type-switch lesson-type-switch--${type}"><input type="radio" name="kind" value="${type}" ${selected === type ? "checked" : ""}/><span>${icon(meta.icon, 16)}</span><strong>${meta.label}</strong></label>`,
+    )
+    .join("")}</div>`;
 }
 
 function weekDay(date, occurrences, chronograms, lessons) {
   const isToday = date.toDateString() === new Date().toDateString();
-  const items = occurrences.filter((item) => item.startsAt.toDateString() === date.toDateString());
-  return `<section class="lessons-day ${isToday ? "is-today" : ""}"><header><span>${WEEKDAYS[date.getDay()]}</span><strong>${date.getDate()}</strong><small>${new Intl.DateTimeFormat("pt-BR", { month: "short" }).format(date).replace(".", "")}</small></header><div>${items.map((occurrence) => {
-    const chronogram = chronograms.find((item) => item.disciplina === occurrence.discipline.id && Math.abs(new Date(item.data_hora) - occurrence.startsAt) < 60000);
-    const lesson = chronogram ? lessons.find((item) => item.cronograma === chronogram.id) : null;
-    const isHoliday = Boolean(chronogram?.feriado) && !lesson;
-    const status = lesson ? "is-complete" : isHoliday ? "is-holiday" : chronogram ? "is-planned" : "is-pending";
-    const hint = lesson ? "Aula registrada" : isHoliday ? "Feriado - sem aula" : chronogram ? "Continuar aula" : "Registrar aula";
-    const action = isHoliday ? "disabled aria-label=\"Feriado - n\u00e3o \u00e9 poss\u00edvel registrar aula\"" : `data-open-week-lesson="${escapeHtml(occurrence.key)}"`;
-    const actionIcon = lesson ? "check" : isHoliday ? "calendar" : "arrowRight";
-    return `<button class="week-lesson ${status}" ${action}><span>${displayTime(occurrence.schedule.hora_inicio)}</span><div><strong>${escapeHtml(occurrence.discipline.nome_disciplina)}</strong><small>${chronogram && !isHoliday ? escapeHtml(chronogram.tema) : hint}</small></div>${icon(actionIcon, 16)}</button>`;
-  }).join("")}</div></section>`;
+  const items = occurrences.filter(
+    (item) => item.startsAt.toDateString() === date.toDateString(),
+  );
+  return `<section class="lessons-day ${isToday ? "is-today" : ""}"><header><span>${WEEKDAYS[date.getDay()]}</span><strong>${date.getDate()}</strong><small>${new Intl.DateTimeFormat("pt-BR", { month: "short" }).format(date).replace(".", "")}</small></header><div>${items
+    .map((occurrence) => {
+      const chronogram = chronograms.find(
+        (item) =>
+          item.disciplina === occurrence.discipline.id &&
+          Math.abs(new Date(item.data_hora) - occurrence.startsAt) < 60000,
+      );
+      const lesson = chronogram
+        ? lessons.find((item) => item.cronograma === chronogram.id)
+        : null;
+      const isHoliday = Boolean(chronogram?.feriado) && !lesson;
+      const status = lesson
+        ? "is-complete"
+        : isHoliday
+          ? "is-holiday"
+          : chronogram
+            ? "is-planned"
+            : "is-pending";
+      const hint = lesson
+        ? "Aula registrada"
+        : isHoliday
+          ? "Feriado - sem aula"
+          : chronogram
+            ? "Continuar aula"
+            : "Registrar aula";
+      const action = isHoliday
+        ? 'disabled aria-label="Feriado - n\u00e3o \u00e9 poss\u00edvel registrar aula"'
+        : `data-open-week-lesson="${escapeHtml(occurrence.key)}"`;
+      const actionIcon = lesson
+        ? "check"
+        : isHoliday
+          ? "calendar"
+          : "arrowRight";
+      return `<button class="week-lesson ${status}" ${action}><span>${displayTime(occurrence.schedule.hora_inicio)}</span><div><strong>${escapeHtml(occurrence.discipline.nome_disciplina)}</strong><small>${chronogram && !isHoliday ? escapeHtml(chronogram.tema) : hint}</small></div>${icon(actionIcon, 16)}</button>`;
+    })
+    .join("")}</div></section>`;
 }
 
-export function lessonsWeekView({ weekStart, occurrences, chronograms, lessons }) {
+export function lessonsWeekView({
+  weekStart,
+  occurrences,
+  chronograms,
+  lessons,
+}) {
   const days = Array.from({ length: 7 }, (_, index) => {
     const date = new Date(weekStart);
     date.setDate(date.getDate() + index);
     return date;
   });
-  const activeDays = days.filter((date) => occurrences.some((item) => item.startsAt.toDateString() === date.toDateString()));
+  const activeDays = days.filter((date) =>
+    occurrences.some(
+      (item) => item.startsAt.toDateString() === date.toDateString(),
+    ),
+  );
   const weekEnd = days[6];
   const currentWeek = new Date();
   currentWeek.setHours(0, 0, 0, 0);
   currentWeek.setDate(currentWeek.getDate() - currentWeek.getDay());
-  const weekGrid = activeDays.length ? `<section class="lessons-week" style="--lesson-day-count: ${activeDays.length}">${activeDays.map((date) => weekDay(date, occurrences, chronograms, lessons)).join("")}</section>` : "";
+  const weekGrid = activeDays.length
+    ? `<section class="lessons-week" style="--lesson-day-count: ${activeDays.length}">${activeDays.map((date) => weekDay(date, occurrences, chronograms, lessons)).join("")}</section>`
+    : "";
   return `<section class="page lessons-page"><div class="page-heading page-heading--row lessons-page__heading"><div><span class="eyebrow">ROTINA DE ESTUDOS</span><h1>Aulas</h1><p>Selecione uma aula para registrar o que foi estudado e guardar seus conte\u00fados.</p></div><div class="lessons-week-navigation"><button class="icon-button" data-week-previous aria-label="Semana anterior">${icon("arrowLeft", 18)}</button><div><strong>${dateLabel(weekStart, { day: "2-digit", month: "short" })} - ${dateLabel(weekEnd, { day: "2-digit", month: "short", year: "numeric" })}</strong><small>${weekStart.toDateString() === currentWeek.toDateString() ? "Semana atual" : "Navegue pela sua agenda"}</small></div><button class="icon-button" data-week-next aria-label="Pr\u00f3xima semana">${icon("arrowRight", 18)}</button></div></div>${weekGrid}${occurrences.length ? "" : `<div class="lessons-empty"><span>${icon("calendar", 28)}</span><h3>Nenhuma aula nesta semana</h3><p>Confira os hor\u00e1rios cadastrados ou navegue para outra semana dentro do per\u00edodo do perfil.</p></div>`}</section>`;
 }
 
@@ -72,7 +128,7 @@ export function lessonDetailView({ lesson, occurrence }) {
 }
 
 function contentCard(content) {
-  return `<article class="lesson-content-card"><span class="lesson-content-card__icon">${icon("file", 20)}</span><div><strong>${escapeHtml(content.titulo)}</strong><small>Arquivo privado desta aula</small></div><div class="lesson-content-card__actions"><button class="icon-button" data-open-content="${escapeHtml(content.id)}" aria-label="Abrir ${escapeHtml(content.titulo)}">${icon("file", 17)}</button><button class="icon-button" data-download-content="${escapeHtml(content.id)}" aria-label="Baixar ${escapeHtml(content.titulo)}">${icon("download", 17)}</button><button class="icon-button icon-button--danger" data-delete-content="${escapeHtml(content.id)}" aria-label="Excluir ${escapeHtml(content.titulo)}">${icon("trash", 17)}</button></div></article>`;
+  return `<article class="lesson-content-card" data-open-content="${escapeHtml(content.id)}" role="button" tabindex="0" aria-label="Abrir ${escapeHtml(content.titulo)}"><span class="lesson-content-card__icon">${icon("file", 20)}</span><div><strong>${escapeHtml(content.titulo)}</strong><small>Arquivo privado desta aula</small></div><div class="lesson-content-card__actions"><button class="icon-button" data-download-content="${escapeHtml(content.id)}" aria-label="Baixar ${escapeHtml(content.titulo)}">${icon("download", 17)}</button><button class="icon-button icon-button--danger" data-delete-content="${escapeHtml(content.id)}" aria-label="Excluir ${escapeHtml(content.titulo)}">${icon("trash", 17)}</button></div></article>`;
 }
 
 export function lessonMaterialsView({ lesson, occurrence, contents }) {
@@ -87,86 +143,211 @@ function openContentUpload(onUpload) {
   const modalRoot = document.querySelector("#modal-root");
   let selectedFile = null;
   modalRoot.innerHTML = contentUploadModal();
-  const close = () => { document.removeEventListener("keydown", onKeydown); closeModal(); };
-  const onKeydown = (event) => { if (event.key === "Escape") close(); };
+  const close = () => {
+    document.removeEventListener("keydown", onKeydown);
+    closeModal();
+  };
+  const onKeydown = (event) => {
+    if (event.key === "Escape") close();
+  };
   const setFile = (file) => {
     if (!file) return;
     selectedFile = file;
-    modalRoot.querySelector("[data-content-file-name]").textContent = `${file.name} (${Math.ceil(file.size / 1024)} KB)`;
-    modalRoot.querySelector("[data-content-dropzone]").classList.add("has-file");
+    modalRoot.querySelector("[data-content-file-name]").textContent =
+      `${file.name} (${Math.ceil(file.size / 1024)} KB)`;
+    modalRoot
+      .querySelector("[data-content-dropzone]")
+      .classList.add("has-file");
   };
   document.addEventListener("keydown", onKeydown);
-  modalRoot.querySelectorAll("[data-close-content-upload]").forEach((button) => button.addEventListener("click", close));
-  modalRoot.querySelector("[data-content-upload-backdrop]").addEventListener("click", (event) => { if (event.target === event.currentTarget) close(); });
+  modalRoot
+    .querySelectorAll("[data-close-content-upload]")
+    .forEach((button) => button.addEventListener("click", close));
+  modalRoot
+    .querySelector("[data-content-upload-backdrop]")
+    .addEventListener("click", (event) => {
+      if (event.target === event.currentTarget) close();
+    });
   const input = modalRoot.querySelector("[data-content-file]");
   const dropzone = modalRoot.querySelector("[data-content-dropzone]");
   dropzone.addEventListener("click", () => input.click());
   input.addEventListener("change", () => setFile(input.files?.[0]));
-  ["dragenter", "dragover"].forEach((eventName) => dropzone.addEventListener(eventName, (event) => { event.preventDefault(); dropzone.classList.add("is-dragging"); }));
-  ["dragleave", "drop"].forEach((eventName) => dropzone.addEventListener(eventName, (event) => { event.preventDefault(); dropzone.classList.remove("is-dragging"); }));
-  dropzone.addEventListener("drop", (event) => setFile(event.dataTransfer?.files?.[0]));
-  modalRoot.querySelector("[data-content-upload-form]").addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const form = event.currentTarget;
-    if (!form.reportValidity()) return;
-    if (!selectedFile) { showToast("Selecione um arquivo para continuar.", "error"); return; }
-    const button = form.querySelector("[type=submit]");
-    try { setButtonLoading(button, true); await onUpload({ title: new FormData(form).get("title"), file: selectedFile }); close(); }
-    catch (error) { setButtonLoading(button, false); showToast(error.message || "N\u00e3o foi poss\u00edvel enviar o arquivo.", "error"); }
-  });
+  ["dragenter", "dragover"].forEach((eventName) =>
+    dropzone.addEventListener(eventName, (event) => {
+      event.preventDefault();
+      dropzone.classList.add("is-dragging");
+    }),
+  );
+  ["dragleave", "drop"].forEach((eventName) =>
+    dropzone.addEventListener(eventName, (event) => {
+      event.preventDefault();
+      dropzone.classList.remove("is-dragging");
+    }),
+  );
+  dropzone.addEventListener("drop", (event) =>
+    setFile(event.dataTransfer?.files?.[0]),
+  );
+  modalRoot
+    .querySelector("[data-content-upload-form]")
+    .addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      if (!form.reportValidity()) return;
+      if (!selectedFile) {
+        showToast("Selecione um arquivo para continuar.", "error");
+        return;
+      }
+      const button = form.querySelector("[type=submit]");
+      try {
+        setButtonLoading(button, true);
+        await onUpload({
+          title: new FormData(form).get("title"),
+          file: selectedFile,
+        });
+        close();
+      } catch (error) {
+        setButtonLoading(button, false);
+        showToast(
+          error.message || "N\u00e3o foi poss\u00edvel enviar o arquivo.",
+          "error",
+        );
+      }
+    });
 }
 
-export function bindLessonsWeek(root, { occurrences, onPrevious, onNext, onOpen }) {
-  root.querySelector("[data-week-previous]").addEventListener("click", onPrevious);
+export function bindLessonsWeek(
+  root,
+  { occurrences, onPrevious, onNext, onOpen },
+) {
+  root
+    .querySelector("[data-week-previous]")
+    .addEventListener("click", onPrevious);
   root.querySelector("[data-week-next]").addEventListener("click", onNext);
-  root.querySelectorAll("[data-open-week-lesson]").forEach((button) => button.addEventListener("click", () => {
-    const occurrence = occurrences.find((item) => item.key === button.dataset.openWeekLesson);
-    if (occurrence) onOpen(occurrence);
-  }));
+  root.querySelectorAll("[data-open-week-lesson]").forEach((button) =>
+    button.addEventListener("click", () => {
+      const occurrence = occurrences.find(
+        (item) => item.key === button.dataset.openWeekLesson,
+      );
+      if (occurrence) onOpen(occurrence);
+    }),
+  );
 }
 
 export function bindLessonChronogram(root, { onBack, onSave }) {
-  root.querySelectorAll("[data-lesson-back]").forEach((button) => button.addEventListener("click", onBack));
-  root.querySelector("[data-lesson-chronogram-form]").addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const form = event.currentTarget;
-    if (!form.reportValidity()) return;
-    const button = form.querySelector("[type=submit]");
-    try { setButtonLoading(button, true); await onSave(Object.fromEntries(new FormData(form))); }
-    catch (error) { setButtonLoading(button, false); showToast(error.message || "N\u00e3o foi poss\u00edvel registrar o cronograma.", "error"); }
-  });
+  root
+    .querySelectorAll("[data-lesson-back]")
+    .forEach((button) => button.addEventListener("click", onBack));
+  root
+    .querySelector("[data-lesson-chronogram-form]")
+    .addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      if (!form.reportValidity()) return;
+      const button = form.querySelector("[type=submit]");
+      try {
+        setButtonLoading(button, true);
+        await onSave(Object.fromEntries(new FormData(form)));
+      } catch (error) {
+        setButtonLoading(button, false);
+        showToast(
+          error.message || "N\u00e3o foi poss\u00edvel registrar o cronograma.",
+          "error",
+        );
+      }
+    });
 }
 
 export function bindLessonForm(root, { onBack, onSave }) {
-  root.querySelectorAll("[data-lesson-back]").forEach((button) => button.addEventListener("click", onBack));
-  root.querySelector("[data-lesson-form]").addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const button = form.querySelector("[type=submit]");
-    try { setButtonLoading(button, true); await onSave(new FormData(form).get("summary")); }
-    catch (error) { setButtonLoading(button, false); showToast(error.message || "N\u00e3o foi poss\u00edvel salvar a aula.", "error"); }
-  });
+  root
+    .querySelectorAll("[data-lesson-back]")
+    .forEach((button) => button.addEventListener("click", onBack));
+  root
+    .querySelector("[data-lesson-form]")
+    .addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const button = form.querySelector("[type=submit]");
+      try {
+        setButtonLoading(button, true);
+        await onSave(new FormData(form).get("summary"));
+      } catch (error) {
+        setButtonLoading(button, false);
+        showToast(
+          error.message || "N\u00e3o foi poss\u00edvel salvar a aula.",
+          "error",
+        );
+      }
+    });
 }
 
 export function bindLessonDetail(root, { onBack, onOpenMaterials }) {
-  root.querySelectorAll("[data-lesson-back]").forEach((button) => button.addEventListener("click", onBack));
-  root.querySelector("[data-open-lesson-materials]").addEventListener("click", onOpenMaterials);
+  root
+    .querySelectorAll("[data-lesson-back]")
+    .forEach((button) => button.addEventListener("click", onBack));
+  root
+    .querySelector("[data-open-lesson-materials]")
+    .addEventListener("click", onOpenMaterials);
 }
 
-export function bindLessonMaterials(root, { contents, onBack, onUpload, onOpenContent, onDownloadContent, onDeleteContent }) {
-  root.querySelector("[data-lesson-tools-back]").addEventListener("click", onBack);
-  root.querySelector("[data-upload-content]").addEventListener("click", () => openContentUpload(onUpload));
-  root.querySelectorAll("[data-open-content]").forEach((button) => button.addEventListener("click", () => {
-    const content = contents.find((item) => item.id === button.dataset.openContent);
-    if (content) onOpenContent(content);
-  }));
-  root.querySelectorAll("[data-download-content]").forEach((button) => button.addEventListener("click", () => {
-    const content = contents.find((item) => item.id === button.dataset.downloadContent);
-    if (content) onDownloadContent(content);
-  }));
-  root.querySelectorAll("[data-delete-content]").forEach((button) => button.addEventListener("click", async () => {
-    const content = contents.find((item) => item.id === button.dataset.deleteContent);
-    if (!content) return;
-    if (await confirmModal({ title: "Excluir este arquivo?", message: `\u201c${content.titulo}\u201d ser\u00e1 removido do armazenamento privado.`, confirmLabel: "Excluir arquivo", tone: "danger" })) await onDeleteContent(content);
-  }));
+export function bindLessonMaterials(
+  root,
+  {
+    contents,
+    onBack,
+    onUpload,
+    onOpenContent,
+    onDownloadContent,
+    onDeleteContent,
+  },
+) {
+  root
+    .querySelector("[data-lesson-tools-back]")
+    .addEventListener("click", onBack);
+  root
+    .querySelector("[data-upload-content]")
+    .addEventListener("click", () => openContentUpload(onUpload));
+  root.querySelectorAll("[data-open-content]").forEach((card) => {
+    const open = (event) => {
+      if (
+        event?.target?.closest("[data-download-content], [data-delete-content]")
+      )
+        return;
+      const content = contents.find(
+        (item) => item.id === card.dataset.openContent,
+      );
+      if (content) onOpenContent(content);
+    };
+    card.addEventListener("click", open);
+    card.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        open(event);
+      }
+    });
+  });
+  root.querySelectorAll("[data-download-content]").forEach((button) =>
+    button.addEventListener("click", () => {
+      const content = contents.find(
+        (item) => item.id === button.dataset.downloadContent,
+      );
+      if (content) onDownloadContent(content);
+    }),
+  );
+  root.querySelectorAll("[data-delete-content]").forEach((button) =>
+    button.addEventListener("click", async () => {
+      const content = contents.find(
+        (item) => item.id === button.dataset.deleteContent,
+      );
+      if (!content) return;
+      if (
+        await confirmModal({
+          title: "Excluir este arquivo?",
+          message: `\u201c${content.titulo}\u201d ser\u00e1 removido do armazenamento privado.`,
+          confirmLabel: "Excluir arquivo",
+          tone: "danger",
+        })
+      )
+        await onDeleteContent(content);
+    }),
+  );
 }
