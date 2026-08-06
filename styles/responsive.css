@@ -5,3 +5,18 @@
 @media (max-width: 760px) { .modal--editor { max-height: calc(100dvh - 28px); padding: 0; }.modal--editor .study-editor { padding: 23px; } }
 
 .active-profile-summary select option, .mobile-profile-indicator select option { color: var(--text); background: var(--surface); }
+
+@media (max-width: 760px) {
+  .mobile-topbar { border-bottom-color: color-mix(in srgb, var(--green-mint) 25%, var(--line)); background: linear-gradient(90deg, var(--surface), var(--green-mint-pale)); }
+  .mobile-profile-indicator { border-color: color-mix(in srgb, var(--green-teal) 35%, var(--line)); background: var(--green-teal-pale); }
+  .mobile-profile-indicator > span { color: var(--green-teal); background: color-mix(in srgb, var(--surface) 80%, var(--green-mint-pale)); }
+  .mobile-profile-indicator strong, .mobile-profile-indicator select { color: var(--green-teal); }.mobile-profile-indicator div:has(select)::after { color: var(--green-teal); }
+  .floating-menu-button { background: linear-gradient(145deg, var(--green-jade), var(--green-teal)); box-shadow: 0 9px 22px color-mix(in srgb, var(--green-teal) 35%, transparent); }
+  .mobile-close-menu { color: var(--green-jade); border-color: color-mix(in srgb, var(--green-jade) 32%, var(--line)); background: var(--green-mint-pale); }
+}
+
+@media (max-width: 760px) {
+  .sidebar .mobile-close-menu { color: var(--green-deep); border-color: rgba(255, 255, 255, .72); background: #f4fff8; }
+  .mobile-profile-indicator { border-color: transparent; background: linear-gradient(125deg, var(--green-jade), var(--green-teal)); box-shadow: 0 5px 12px color-mix(in srgb, var(--green-teal) 22%, transparent); }
+  .mobile-profile-indicator > span { color: #fff; background: rgba(255, 255, 255, .16); }.mobile-profile-indicator strong, .mobile-profile-indicator select { color: #fff; }.mobile-profile-indicator small { color: rgba(244, 255, 248, .72); }.mobile-profile-indicator div:has(select)::after { color: #fff; }
+}

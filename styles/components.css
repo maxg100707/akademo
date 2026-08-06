@@ -58,3 +58,21 @@ body[data-theme="dark"] select { color-scheme: dark; }
 /* Formulários de perfil ficam destacados e independentes da listagem. */
 .modal--editor { width: min(650px, 100%); max-height: calc(100dvh - 40px); padding: 0; overflow: auto; }
 .modal--editor .study-editor { padding: clamp(22px, 4vw, 32px); border: 0; border-radius: inherit; background: transparent; box-shadow: none; }
+
+/* Variações de verde para ações e controles reutilizáveis. */
+.button--primary { background: linear-gradient(118deg, var(--green), var(--green-jade), var(--green-teal)); box-shadow: 0 9px 19px color-mix(in srgb, var(--green-jade) 27%, transparent); }
+.button--primary:hover:not(:disabled) { box-shadow: 0 13px 25px color-mix(in srgb, var(--green-teal) 35%, transparent); }
+.button--secondary { color: var(--green-jade); border-color: color-mix(in srgb, var(--green-jade) 34%, var(--line)); background: var(--green-mint-pale); }
+.button--ghost:hover:not(:disabled) { color: var(--green-teal); border-color: color-mix(in srgb, var(--green-teal) 28%, var(--line)); background: var(--green-teal-pale); }
+.text-button { color: var(--green-jade); }.text-button:hover, .back-link:hover { color: var(--green-teal); }
+.field__control:focus-within { border-color: var(--green-jade); box-shadow: 0 0 0 3px color-mix(in srgb, var(--green-jade) 15%, transparent); }
+.field__control:has(select) { border-color: color-mix(in srgb, var(--green-jade) 30%, var(--line)); background: linear-gradient(100deg, var(--surface), var(--green-jade-pale)); }
+.field__control:has(select)::after { border-color: var(--green-jade); }.field__control select { color: var(--green-jade); }
+.icon-button:hover { color: var(--green-jade); border-color: var(--green-jade); background: var(--green-jade-pale); }
+.modal__symbol { color: var(--green-teal); background: var(--green-teal-pale); }.spinner--large { color: var(--green-jade); }
+
+/* No tema escuro, a ação principal recebe mais luz e os apoios permanecem profundos. */
+body[data-theme="dark"] .button--primary { color: #0b3426; background: linear-gradient(118deg, #8aeab3, var(--green), #50bf8e); }
+body[data-theme="dark"] .button--secondary { color: var(--green-deep); border-color: color-mix(in srgb, var(--green-mint) 50%, var(--line)); background: var(--green-mint-pale); }
+body[data-theme="dark"] .text-button, body[data-theme="dark"] .back-link:hover { color: var(--green-dark); }
+body[data-theme="dark"] .field__control:has(select)::after { border-color: var(--green-dark); } body[data-theme="dark"] .field__control select { color: var(--green-dark); }
