@@ -4,6 +4,7 @@ import { createStudyProfile, deleteStudyProfile, getProfiles, updateStudyProfile
 import { createTeacher, deleteTeacher, getTeachers, updateTeacher } from "./services/teachers.js";
 import { createDiscipline, deleteDiscipline, getDisciplines, updateDiscipline } from "./services/disciplines.js";
 import { createSchedule, deleteSchedule, getNextClass, getSchedules, updateSchedule } from "./services/schedules.js";
+import { createChronogramEntry, deleteChronogramEntry, findChronogramEntry, getChronogram, getLessonOccurrences, updateChronogramEntry } from "./services/chronogram.js";
 import { applyPendingAvatar, ensureUserRecord, getUserRecord, profilePhotoUrl, provisionUserStorage, updatePersonalInfo } from "./services/users.js";
 import { dashboardView } from "./ui/dashboard-view.js";
 import { renderAuth } from "./ui/auth-view.js";
@@ -14,13 +15,14 @@ import { bindProfiles, profilesView } from "./ui/profiles-view.js";
 import { bindTeachers, openTeacherSetup, teachersView } from "./ui/teachers-view.js";
 import { bindDisciplines, disciplinesView, openDisciplineSetup } from "./ui/disciplines-view.js";
 import { bindSchedules, schedulesView } from "./ui/schedules-view.js";
+import { bindChronogram, chronogramView } from "./ui/chronogram-view.js";
 import { showToast } from "./ui/components.js";
 import { getStoredProfile, removeStoredProfile, storeProfile } from "./utils/formatters.js";
 
 const root = document.querySelector("#app");
 const state = {
-  user: null, record: null, photoUrl: null, profiles: [], currentProfile: null, teachers: [], disciplines: [], schedules: [],
-  scheduleEditing: false, dashboardLoadedProfileId: null,
+  user: null, record: null, photoUrl: null, profiles: [], currentProfile: null, teachers: [], disciplines: [], schedules: [], chronograms: [],
+  scheduleEditing: false, chronogramDisciplineId: null, dashboardLoadedProfileId: null,
   view: "dashboard", returnView: "dashboard", collapsed: localStorage.getItem("akademo.sidebar.collapsed") === "true",
   theme: localStorage.getItem(APP_STORAGE_KEYS.theme) || "light",
 };
@@ -59,7 +61,9 @@ async function hydrate(user) {
     state.teachers = [];
     state.disciplines = [];
     state.schedules = [];
+    state.chronograms = [];
     state.scheduleEditing = false;
+    state.chronogramDisciplineId = null;
     state.dashboardLoadedProfileId = null;
     selectStoredProfile();
     if (!state.profiles.length) showOnboarding();
@@ -102,7 +106,7 @@ function selectStoredProfile() {
 }
 
 function renderAuthScreen() {
-  state.user = null; state.record = null; state.photoUrl = null; state.profiles = []; state.currentProfile = null; state.teachers = []; state.disciplines = []; state.schedules = []; state.scheduleEditing = false; state.dashboardLoadedProfileId = null;
+  state.user = null; state.record = null; state.photoUrl = null; state.profiles = []; state.currentProfile = null; state.teachers = []; state.disciplines = []; state.schedules = []; state.chronograms = []; state.scheduleEditing = false; state.chronogramDisciplineId = null; state.dashboardLoadedProfileId = null;
   renderAuth(root, { onLogin: handleLogin, onRegister: handleRegister, onGoogle: handleGoogleLogin });
 }
 
@@ -125,6 +129,7 @@ function renderCurrent() {
   if (state.view === "teachers") return renderTeachers();
   if (state.view === "disciplines") return renderDisciplines();
   if (state.view === "schedules") return renderSchedules();
+  if (state.view === "chronogram") return renderChronogram();
   renderDashboard();
 }
 
@@ -136,8 +141,11 @@ function renderDashboard() {
 
 function mountDashboard() {
   const nextClass = getNextClass(state.schedules, state.disciplines, state.teachers);
+  const nextClassChronogram = nextClass
+    ? findChronogramEntry(state.chronograms, nextClass.schedule.disciplina, nextClass.start)
+    : null;
   renderWithinLayout(dashboardView({
-    record: state.record, profile: state.currentProfile, profiles: state.profiles, nextClass,
+    record: state.record, profile: state.currentProfile, profiles: state.profiles, nextClass, nextClassChronogram,
     isNextClassLoading: state.currentProfile && state.dashboardLoadedProfileId !== state.currentProfile.id,
   }));
   root.querySelector("[data-open-teachers]")?.addEventListener("click", () => {
@@ -156,11 +164,12 @@ function mountDashboard() {
 
 async function loadDashboardData(profile) {
   try {
-    const [teachers, disciplines, schedules] = await Promise.all([getTeachers(profile.id), getDisciplines(profile.id), getSchedules(profile.id)]);
+    const [teachers, disciplines, schedules, chronograms] = await Promise.all([getTeachers(profile.id), getDisciplines(profile.id), getSchedules(profile.id), getChronogram(profile.id)]);
     if (state.view !== "dashboard" || state.currentProfile?.id !== profile.id) return;
     state.teachers = teachers;
     state.disciplines = disciplines;
     state.schedules = schedules;
+    state.chronograms = chronograms;
     state.dashboardLoadedProfileId = profile.id;
     mountDashboard();
   } catch (error) {
@@ -195,7 +204,7 @@ function renderProfiles() {
     onCreate: async (values) => {
       const profile = await createStudyProfile(state.user, values);
       state.profiles = [...state.profiles, profile];
-      state.currentProfile = profile; storeProfile(profile); state.teachers = []; state.disciplines = []; state.schedules = []; state.scheduleEditing = false; state.dashboardLoadedProfileId = null;
+      state.currentProfile = profile; storeProfile(profile); state.teachers = []; state.disciplines = []; state.schedules = []; state.chronograms = []; state.scheduleEditing = false; state.chronogramDisciplineId = null; state.dashboardLoadedProfileId = null;
       renderProfiles(); showToast("Novo perfil criado.");
       return profile;
     },
@@ -211,7 +220,7 @@ function renderProfiles() {
         await deleteStudyProfile(profile.id);
         state.profiles = state.profiles.filter((item) => item.id !== profile.id);
         if (!state.profiles.length) { state.currentProfile = null; removeStoredProfile(); showToast("Perfil removido."); return showOnboarding(); }
-        if (state.currentProfile?.id === profile.id) { state.currentProfile = state.profiles[0]; state.teachers = []; state.disciplines = []; state.schedules = []; state.scheduleEditing = false; state.dashboardLoadedProfileId = null; storeProfile(state.currentProfile); }
+        if (state.currentProfile?.id === profile.id) { state.currentProfile = state.profiles[0]; state.teachers = []; state.disciplines = []; state.schedules = []; state.chronograms = []; state.scheduleEditing = false; state.chronogramDisciplineId = null; state.dashboardLoadedProfileId = null; storeProfile(state.currentProfile); }
         renderProfiles(); showToast("Perfil removido.");
       } catch (error) { showToast(error.message || "Não foi possível excluir o perfil.", "error"); }
     },
@@ -238,6 +247,7 @@ function showTeacherSetup(profile) {
         state.teachers = state.teachers.filter((teacher) => teacher.id !== id);
         state.disciplines = state.disciplines.filter((discipline) => discipline.professor_id !== id);
         state.schedules = state.schedules.filter((schedule) => !removedDisciplineIds.includes(schedule.disciplina));
+        state.chronograms = state.chronograms.filter((entry) => !removedDisciplineIds.includes(entry.disciplina));
       }
     },
     onFinish: (count) => {
@@ -287,6 +297,7 @@ function mountTeachers() {
       state.teachers = state.teachers.filter((item) => item.id !== teacher.id);
       state.disciplines = state.disciplines.filter((discipline) => discipline.professor_id !== teacher.id);
       state.schedules = state.schedules.filter((schedule) => !removedDisciplineIds.includes(schedule.disciplina));
+      state.chronograms = state.chronograms.filter((entry) => !removedDisciplineIds.includes(entry.disciplina));
       mountTeachers(); showToast("Professor removido.");
     },
   });
@@ -311,6 +322,7 @@ function showDisciplineSetup(profile) {
       if (state.currentProfile?.id === profile.id) {
         state.disciplines = state.disciplines.filter((discipline) => discipline.id !== id);
         state.schedules = state.schedules.filter((schedule) => schedule.disciplina !== id);
+        state.chronograms = state.chronograms.filter((entry) => entry.disciplina !== id);
       }
     },
     onFinish: (count) => showToast(count ? "Disciplinas cadastradas com sucesso." : "Você poderá cadastrar disciplinas mais tarde."),
@@ -356,6 +368,7 @@ function mountDisciplines() {
       await deleteDiscipline(discipline.id, state.currentProfile.id);
       state.disciplines = state.disciplines.filter((item) => item.id !== discipline.id);
       state.schedules = state.schedules.filter((schedule) => schedule.disciplina !== discipline.id);
+      state.chronograms = state.chronograms.filter((entry) => entry.disciplina !== discipline.id);
       mountDisciplines(); showToast("Disciplina removida.");
     },
   });
@@ -413,16 +426,85 @@ function mountSchedules() {
   });
 }
 
+async function renderChronogram() {
+  const profile = state.currentProfile;
+  if (!profile) return showOnboarding();
+  state.view = "chronogram";
+  try {
+    const [disciplines, schedules, chronograms] = await Promise.all([
+      getDisciplines(profile.id), getSchedules(profile.id), getChronogram(profile.id),
+    ]);
+    if (state.view !== "chronogram" || state.currentProfile?.id !== profile.id) return;
+    state.disciplines = disciplines;
+    state.schedules = schedules;
+    state.chronograms = chronograms;
+    state.dashboardLoadedProfileId = profile.id;
+    if (state.chronogramDisciplineId && !disciplines.some((discipline) => discipline.id === state.chronogramDisciplineId)) state.chronogramDisciplineId = null;
+    mountChronogram();
+  } catch (error) {
+    showToast(error.message || "N\u00e3o foi poss\u00edvel carregar o cronograma.", "error");
+    state.view = state.returnView;
+    renderCurrent();
+  }
+}
+
+function mountChronogram() {
+  const selectedDiscipline = state.disciplines.find((discipline) => discipline.id === state.chronogramDisciplineId) || null;
+  const occurrences = selectedDiscipline
+    ? getLessonOccurrences(state.currentProfile, selectedDiscipline.id, state.schedules)
+    : [];
+  renderWithinLayout(chronogramView({
+    profile: state.currentProfile,
+    disciplines: state.disciplines,
+    entries: state.chronograms,
+    selectedDiscipline,
+    occurrences,
+  }));
+  bindChronogram(root, {
+    profile: state.currentProfile,
+    disciplines: state.disciplines,
+    entries: state.chronograms,
+    selectedDiscipline,
+    occurrences,
+    onOpenDiscipline: (id) => { state.chronogramDisciplineId = id; mountChronogram(); },
+    onBack: () => { state.chronogramDisciplineId = null; mountChronogram(); },
+    onCreate: async (values) => {
+      const entry = await createChronogramEntry(state.user, state.currentProfile, values);
+      state.chronograms = [...state.chronograms, entry].sort((first, second) => new Date(first.data_hora) - new Date(second.data_hora));
+      mountChronogram();
+      return entry;
+    },
+    onUpdate: async (id, values) => {
+      const updated = await updateChronogramEntry(id, state.currentProfile, values);
+      state.chronograms = state.chronograms.map((entry) => entry.id === id ? updated : entry).sort((first, second) => new Date(first.data_hora) - new Date(second.data_hora));
+      mountChronogram();
+      showToast("Aula atualizada.");
+      return updated;
+    },
+    onDelete: async (entry) => {
+      await deleteChronogramEntry(entry.id, state.currentProfile.id);
+      state.chronograms = state.chronograms.filter((item) => item.id !== entry.id);
+      mountChronogram();
+      showToast("Aula removida do cronograma.");
+    },
+  });
+}
+
 function renderWithinLayout(content) {
   renderLayout(root, { ...state, content });
   bindLayout(root, {
     onCollapse: () => { state.collapsed = !state.collapsed; localStorage.setItem("akademo.sidebar.collapsed", state.collapsed); renderCurrent(); },
-    onNavigate: (view) => { if (view === "schedules") { state.returnView = state.view; state.scheduleEditing = false; } state.view = view; renderCurrent(); },
+    onNavigate: (view) => {
+      if (view === "schedules") { state.returnView = state.view; state.scheduleEditing = false; }
+      if (view === "chronogram") { state.returnView = state.view; state.chronogramDisciplineId = null; }
+      state.view = view;
+      renderCurrent();
+    },
     onPersonal: () => { state.returnView = state.view; renderPersonal(); },
     onProfiles: () => { state.returnView = state.view; renderProfiles(); },
     onTeachers: () => { state.returnView = state.view; renderTeachers(); },
     onDisciplines: () => { state.returnView = state.view; renderDisciplines(); },
-    onProfileChange: (id) => { state.currentProfile = state.profiles.find((profile) => profile.id === id); state.teachers = []; state.disciplines = []; state.schedules = []; state.scheduleEditing = false; state.dashboardLoadedProfileId = null; storeProfile(state.currentProfile); renderCurrent(); showToast("Perfil ativo alterado."); },
+    onProfileChange: (id) => { state.currentProfile = state.profiles.find((profile) => profile.id === id); state.teachers = []; state.disciplines = []; state.schedules = []; state.chronograms = []; state.scheduleEditing = false; state.chronogramDisciplineId = null; state.dashboardLoadedProfileId = null; storeProfile(state.currentProfile); renderCurrent(); showToast("Perfil ativo alterado."); },
     onTheme: (event) => { applyTheme(event.target.checked ? "dark" : "light"); renderCurrent(); },
     onLogout: handleLogout,
   });

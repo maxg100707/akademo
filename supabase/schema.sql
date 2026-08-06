@@ -710,3 +710,123 @@ for delete to authenticated using (
   email_user = (select auth.jwt() ->> 'email')
   and exists (select 1 from public.perfil_estudo as profile where profile.id = horarios.perfil and profile.user_id = (select auth.uid()))
 );
+
+-- Cronograma: temas e situações especiais de cada ocorrência de aula.
+create table if not exists public.cronograma (
+  id uuid primary key default gen_random_uuid(),
+  email_user text not null,
+  perfil uuid not null references public.perfil_estudo(id) on delete cascade,
+  disciplina uuid not null references public.disciplinas(id) on delete cascade,
+  tema text not null check (char_length(btrim(tema)) between 1 and 180),
+  feriado boolean not null default false,
+  prova boolean not null default false,
+  apresentacao boolean not null default false,
+  data_hora timestamptz not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  check ((feriado::integer + prova::integer + apresentacao::integer) <= 1)
+);
+
+create index if not exists cronograma_perfil_disciplina_data_idx on public.cronograma(perfil, disciplina, data_hora);
+create index if not exists cronograma_disciplina_data_idx on public.cronograma(disciplina, data_hora);
+
+drop trigger if exists cronograma_set_updated_at on public.cronograma;
+create trigger cronograma_set_updated_at before update on public.cronograma
+for each row execute procedure public.set_updated_at();
+
+-- A mesma ocorrÃªncia de uma disciplina pode ter apenas um registro de cronograma.
+create or replace function public.prevent_duplicate_chronogram_entry()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  if exists (
+    select 1
+    from public.cronograma as existing_entry
+    where existing_entry.perfil = new.perfil
+      and existing_entry.disciplina = new.disciplina
+      and existing_entry.data_hora = new.data_hora
+      and existing_entry.id is distinct from new.id
+  ) then
+    raise exception using
+      errcode = '23505',
+      message = 'JÃ¡ existe um cronograma para esta aula.';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists cronograma_prevent_duplicate_entry on public.cronograma;
+create trigger cronograma_prevent_duplicate_entry
+before insert or update of perfil, disciplina, data_hora on public.cronograma
+for each row execute procedure public.prevent_duplicate_chronogram_entry();
+
+-- Inclui o cronograma na sincronização de e-mail feita pelo trigger do Auth.
+create or replace function public.sync_auth_user_email()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  if new.email is distinct from old.email then
+    update public.users set email = new.email, updated_at = now() where id = new.id;
+    update public.perfil_estudo set email = new.email, updated_at = now() where user_id = new.id;
+    update public.professores as professor set email_user = new.email, updated_at = now()
+      from public.perfil_estudo as profile where professor.perfil = profile.id and profile.user_id = new.id;
+    update public.disciplinas as discipline set email_user = new.email, updated_at = now()
+      from public.perfil_estudo as profile where discipline.perfil = profile.id and profile.user_id = new.id;
+    update public.horarios as schedule set email_user = new.email, updated_at = now()
+      from public.perfil_estudo as profile where schedule.perfil = profile.id and profile.user_id = new.id;
+    update public.cronograma as item set email_user = new.email, updated_at = now()
+      from public.perfil_estudo as profile where item.perfil = profile.id and profile.user_id = new.id;
+  end if;
+  return new;
+end;
+$$;
+
+alter table public.cronograma enable row level security;
+revoke all on table public.cronograma from anon, authenticated;
+grant select, insert, update, delete on table public.cronograma to authenticated;
+
+drop policy if exists "chronogram read own profile" on public.cronograma;
+create policy "chronogram read own profile" on public.cronograma
+for select to authenticated using (
+  email_user = (select auth.jwt() ->> 'email')
+  and exists (select 1 from public.perfil_estudo as profile where profile.id = cronograma.perfil and profile.user_id = (select auth.uid()))
+  and exists (select 1 from public.disciplinas as discipline where discipline.id = cronograma.disciplina and discipline.perfil = cronograma.perfil)
+);
+
+drop policy if exists "chronogram create own profile" on public.cronograma;
+create policy "chronogram create own profile" on public.cronograma
+for insert to authenticated with check (
+  email_user = (select auth.jwt() ->> 'email')
+  and exists (select 1 from public.perfil_estudo as profile where profile.id = cronograma.perfil and profile.user_id = (select auth.uid()))
+  and exists (
+    select 1 from public.disciplinas as discipline
+    where discipline.id = cronograma.disciplina and discipline.perfil = cronograma.perfil
+      and discipline.email_user = (select auth.jwt() ->> 'email')
+  )
+);
+
+drop policy if exists "chronogram update own profile" on public.cronograma;
+create policy "chronogram update own profile" on public.cronograma
+for update to authenticated using (
+  email_user = (select auth.jwt() ->> 'email')
+  and exists (select 1 from public.perfil_estudo as profile where profile.id = cronograma.perfil and profile.user_id = (select auth.uid()))
+) with check (
+  email_user = (select auth.jwt() ->> 'email')
+  and exists (select 1 from public.perfil_estudo as profile where profile.id = cronograma.perfil and profile.user_id = (select auth.uid()))
+  and exists (
+    select 1 from public.disciplinas as discipline
+    where discipline.id = cronograma.disciplina and discipline.perfil = cronograma.perfil
+      and discipline.email_user = (select auth.jwt() ->> 'email')
+  )
+);
+
+drop policy if exists "chronogram delete own profile" on public.cronograma;
+create policy "chronogram delete own profile" on public.cronograma
+for delete to authenticated using (
+  email_user = (select auth.jwt() ->> 'email')
+  and exists (select 1 from public.perfil_estudo as profile where profile.id = cronograma.perfil and profile.user_id = (select auth.uid()))
+);
