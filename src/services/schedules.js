@@ -1,6 +1,6 @@
 import { requireSupabase } from "./supabase.js";
 
-const WEEKDAY_NAMES = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
+const WEEKDAY_NAMES = ["Domingo", "Segunda-feira", "Ter\u00e7a-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "S\u00e1bado"];
 
 export const timeParts = (value = "00:00") => {
   const [hour = "00", minute = "00"] = String(value).slice(0, 5).split(":");
@@ -20,12 +20,7 @@ export const displayTime = (value) => {
 export const asTimetz = (value) => `${displayTime(value)}:00+00`;
 
 export async function getSchedules(profileId) {
-  const { data, error } = await requireSupabase()
-    .from("horarios")
-    .select("*")
-    .eq("perfil", profileId)
-    .order("dia_semana", { ascending: true })
-    .order("hora_inicio", { ascending: true });
+  const { data, error } = await requireSupabase().from("horarios").select("*").eq("perfil", profileId).order("dia_semana", { ascending: true }).order("hora_inicio", { ascending: true });
   if (error) throw error;
   return data;
 }
@@ -33,23 +28,12 @@ export async function getSchedules(profileId) {
 function schedulePayload(user, profile, values) {
   const start = asTimetz(values.startTime);
   const end = asTimetz(values.endTime);
-  if (timeToMinutes(end) <= timeToMinutes(start)) throw new Error("O horário de término deve ser posterior ao início.");
-  return {
-    email_user: user.email,
-    perfil: profile.id,
-    disciplina: values.disciplineId,
-    dia_semana: Number(values.weekday),
-    hora_inicio: start,
-    hora_fim: end,
-  };
+  if (timeToMinutes(end) <= timeToMinutes(start)) throw new Error("O hor\u00e1rio de t\u00e9rmino deve ser posterior ao in\u00edcio.");
+  return { email_user: user.email, perfil: profile.id, disciplina: values.disciplineId, dia_semana: Number(values.weekday), hora_inicio: start, hora_fim: end };
 }
 
 export async function createSchedule(user, profile, values) {
-  const { data, error } = await requireSupabase()
-    .from("horarios")
-    .insert(schedulePayload(user, profile, values))
-    .select()
-    .single();
+  const { data, error } = await requireSupabase().from("horarios").insert(schedulePayload(user, profile, values)).select().single();
   if (error) throw error;
   return data;
 }
@@ -58,13 +42,7 @@ export async function updateSchedule(id, profile, values) {
   const payload = schedulePayload({ email: "" }, profile, values);
   delete payload.email_user;
   delete payload.perfil;
-  const { data, error } = await requireSupabase()
-    .from("horarios")
-    .update(payload)
-    .eq("id", id)
-    .eq("perfil", profile.id)
-    .select()
-    .single();
+  const { data, error } = await requireSupabase().from("horarios").update(payload).eq("id", id).eq("perfil", profile.id).select().single();
   if (error) throw error;
   return data;
 }
@@ -97,7 +75,6 @@ export function getNextClass(schedules, disciplines, teachers, now = new Date())
     const teacher = teachers.find((item) => item.id === discipline?.professor_id) || null;
     return { schedule, start, end, isLive, discipline, teacher };
   }).filter(Boolean);
-
   return candidates.sort((first, second) => {
     if (first.isLive !== second.isLive) return first.isLive ? -1 : 1;
     return first.start - second.start;

@@ -49,9 +49,7 @@ export function lessonsWeekView({ weekStart, occurrences, chronograms, lessons }
   const currentWeek = new Date();
   currentWeek.setHours(0, 0, 0, 0);
   currentWeek.setDate(currentWeek.getDate() - currentWeek.getDay());
-  const weekGrid = activeDays.length
-    ? `<section class="lessons-week" style="--lesson-day-count: ${activeDays.length}">${activeDays.map((date) => weekDay(date, occurrences, chronograms, lessons)).join("")}</section>`
-    : "";
+  const weekGrid = activeDays.length ? `<section class="lessons-week" style="--lesson-day-count: ${activeDays.length}">${activeDays.map((date) => weekDay(date, occurrences, chronograms, lessons)).join("")}</section>` : "";
   return `<section class="page lessons-page"><div class="page-heading page-heading--row lessons-page__heading"><div><span class="eyebrow">ROTINA DE ESTUDOS</span><h1>Aulas</h1><p>Selecione uma aula para registrar o que foi estudado e guardar seus conte\u00fados.</p></div><div class="lessons-week-navigation"><button class="icon-button" data-week-previous aria-label="Semana anterior">${icon("arrowLeft", 18)}</button><div><strong>${dateLabel(weekStart, { day: "2-digit", month: "short" })} - ${dateLabel(weekEnd, { day: "2-digit", month: "short", year: "numeric" })}</strong><small>${weekStart.toDateString() === currentWeek.toDateString() ? "Semana atual" : "Navegue pela sua agenda"}</small></div><button class="icon-button" data-week-next aria-label="Pr\u00f3xima semana">${icon("arrowRight", 18)}</button></div></div>${weekGrid}${occurrences.length ? "" : `<div class="lessons-empty"><span>${icon("calendar", 28)}</span><h3>Nenhuma aula nesta semana</h3><p>Confira os hor\u00e1rios cadastrados ou navegue para outra semana dentro do per\u00edodo do perfil.</p></div>`}</section>`;
 }
 
@@ -63,13 +61,22 @@ export function lessonFormView(occurrence, chronogram) {
   return `<section class="page lesson-setup-page"><button class="back-link" data-lesson-back>${icon("arrowLeft", 18)} Aulas</button><div class="lesson-setup-card"><div class="lesson-setup-card__intro"><span>${icon("book", 22)}</span><div><small>REGISTRAR AULA</small><h1>${escapeHtml(occurrence.discipline.nome_disciplina)}</h1><p>${escapeHtml(chronogram.tema)} \u00b7 ${escapeHtml(occurrenceLabel(occurrence))}</p></div></div><form class="lesson-form" data-lesson-form novalidate><label class="field"><span>Resumo da aula <em>opcional</em></span><textarea class="field__textarea lesson-summary-input" name="summary" maxlength="5000" placeholder="Anote os conceitos, d\u00favidas e pontos importantes desta aula."></textarea></label><p class="lesson-form__tip">Depois de salvar, voc\u00ea poder\u00e1 guardar arquivos, slides, listas e outros conte\u00fados desta aula.</p><div class="lesson-form__actions"><button class="button button--ghost" type="button" data-lesson-back>Cancelar</button><button class="button button--primary" type="submit">${icon("save", 17)} Salvar aula</button></div></form></div></section>`;
 }
 
+function toolContext(lesson, occurrence) {
+  const discipline = occurrence?.discipline?.nome_disciplina || "Disciplina";
+  return `<header class="lesson-tool-context"><span>${icon("book", 15)}</span><div><small>FERRAMENTA DA AULA</small><strong>${escapeHtml(discipline)}</strong></div><p>${escapeHtml(lesson.tema || "Tema da aula")}</p></header>`;
+}
+
+export function lessonDetailView({ lesson, occurrence }) {
+  const date = occurrence?.startsAt || new Date(lesson.created_at);
+  return `<section class="page lesson-detail-page"><button class="back-link" data-lesson-back>${icon("arrowLeft", 18)} Aulas</button><section class="lesson-detail-hero"><div><span class="eyebrow">AULA REGISTRADA</span><h1>${escapeHtml(lesson.tema)}</h1><p>${escapeHtml(occurrence?.discipline?.nome_disciplina || "Disciplina")} \u00b7 ${escapeHtml(dateLabel(date))}</p></div><span>${icon("check", 23)}</span></section><section class="lesson-summary-card"><div><span>${icon("book", 18)}</span><div><small>RESUMO DA AULA</small><p>${lesson.resumo ? escapeHtml(lesson.resumo).replace(/\n/g, "<br/>") : "Nenhum resumo foi adicionado para esta aula."}</p></div></div></section><section class="lesson-tools"><div class="lesson-tools__heading"><div><span class="eyebrow">FERRAMENTAS</span><h2>Recursos desta aula</h2><p>Centralize materiais e os pr\u00f3ximos recursos no mesmo lugar.</p></div></div><div class="lesson-tools-grid"><button class="lesson-tool-card" data-open-lesson-materials><span>${icon("file", 24)}</span><div><small>ARQUIVOS</small><strong>Materiais</strong><p>Slides, listas, documentos e outros conte\u00fados.</p></div><em>Abrir ${icon("arrowRight", 17)}</em></button></div></section></section>`;
+}
+
 function contentCard(content) {
   return `<article class="lesson-content-card"><span class="lesson-content-card__icon">${icon("file", 20)}</span><div><strong>${escapeHtml(content.titulo)}</strong><small>Arquivo privado desta aula</small></div><div class="lesson-content-card__actions"><button class="icon-button" data-open-content="${escapeHtml(content.id)}" aria-label="Abrir ${escapeHtml(content.titulo)}">${icon("file", 17)}</button><button class="icon-button" data-download-content="${escapeHtml(content.id)}" aria-label="Baixar ${escapeHtml(content.titulo)}">${icon("download", 17)}</button><button class="icon-button icon-button--danger" data-delete-content="${escapeHtml(content.id)}" aria-label="Excluir ${escapeHtml(content.titulo)}">${icon("trash", 17)}</button></div></article>`;
 }
 
-export function lessonDetailView({ lesson, occurrence, contents }) {
-  const date = occurrence?.startsAt || new Date(lesson.created_at);
-  return `<section class="page lesson-detail-page"><button class="back-link" data-lesson-back>${icon("arrowLeft", 18)} Aulas</button><section class="lesson-detail-hero"><div><span class="eyebrow">AULA REGISTRADA</span><h1>${escapeHtml(lesson.tema)}</h1><p>${escapeHtml(occurrence?.discipline?.nome_disciplina || "Disciplina")} \u00b7 ${escapeHtml(dateLabel(date))}</p></div><span>${icon("check", 23)}</span></section><section class="lesson-summary-card"><div><span>${icon("book", 18)}</span><div><small>RESUMO DA AULA</small><p>${lesson.resumo ? escapeHtml(lesson.resumo).replace(/\n/g, "<br/>") : "Nenhum resumo foi adicionado para esta aula."}</p></div></div></section><section class="lesson-contents"><div class="lesson-contents__heading"><div><span class="eyebrow">MATERIAIS</span><h2>Conte\u00fados da aula</h2><p>Arquivos ficam privados no seu espa\u00e7o AKADEMO.</p></div><button class="button button--primary" data-upload-content>${icon("upload", 17)} Adicionar arquivo</button></div><div class="lesson-content-list">${contents.length ? contents.map(contentCard).join("") : `<div class="lesson-contents-empty"><span>${icon("file", 26)}</span><h3>Nenhum arquivo ainda</h3><p>Adicione materiais para manter tudo organizado nesta aula.</p></div>`}</div></section></section>`;
+export function lessonMaterialsView({ lesson, occurrence, contents }) {
+  return `<section class="page lesson-materials-page"><button class="back-link" data-lesson-tools-back>${icon("arrowLeft", 18)} Ferramentas</button>${toolContext(lesson, occurrence)}<section class="lesson-contents"><div class="lesson-contents__heading"><div><span class="eyebrow">MATERIAIS</span><h1>Conte\u00fados da aula</h1><p>Arquivos ficam privados no seu espa\u00e7o AKADEMO.</p></div><button class="button button--primary" data-upload-content>${icon("upload", 17)} Adicionar arquivo</button></div><div class="lesson-content-list">${contents.length ? contents.map(contentCard).join("") : `<div class="lesson-contents-empty"><span>${icon("file", 26)}</span><h3>Nenhum arquivo ainda</h3><p>Adicione materiais para manter tudo organizado nesta aula.</p></div>`}</div></section></section>`;
 }
 
 function contentUploadModal() {
@@ -141,8 +148,13 @@ export function bindLessonForm(root, { onBack, onSave }) {
   });
 }
 
-export function bindLessonDetail(root, { contents, onBack, onUpload, onOpenContent, onDownloadContent, onDeleteContent }) {
+export function bindLessonDetail(root, { onBack, onOpenMaterials }) {
   root.querySelectorAll("[data-lesson-back]").forEach((button) => button.addEventListener("click", onBack));
+  root.querySelector("[data-open-lesson-materials]").addEventListener("click", onOpenMaterials);
+}
+
+export function bindLessonMaterials(root, { contents, onBack, onUpload, onOpenContent, onDownloadContent, onDeleteContent }) {
+  root.querySelector("[data-lesson-tools-back]").addEventListener("click", onBack);
   root.querySelector("[data-upload-content]").addEventListener("click", () => openContentUpload(onUpload));
   root.querySelectorAll("[data-open-content]").forEach((button) => button.addEventListener("click", () => {
     const content = contents.find((item) => item.id === button.dataset.openContent);

@@ -17,7 +17,7 @@ import { bindTeachers, openTeacherSetup, teachersView } from "./ui/teachers-view
 import { bindDisciplines, disciplinesView, openDisciplineSetup } from "./ui/disciplines-view.js";
 import { bindSchedules, schedulesView } from "./ui/schedules-view.js";
 import { bindChronogram, chronogramView } from "./ui/chronogram-view.js";
-import { bindLessonChronogram, bindLessonDetail, bindLessonForm, bindLessonsWeek, lessonChronogramView, lessonDetailView, lessonFormView, lessonsWeekView } from "./ui/lessons-view.js";
+import { bindLessonChronogram, bindLessonDetail, bindLessonForm, bindLessonMaterials, bindLessonsWeek, lessonChronogramView, lessonDetailView, lessonFormView, lessonMaterialsView, lessonsWeekView } from "./ui/lessons-view.js";
 import { showToast } from "./ui/components.js";
 import { getStoredProfile, removeStoredProfile, storeProfile } from "./utils/formatters.js";
 
@@ -142,6 +142,7 @@ function renderCurrent() {
   if (state.view === "lesson-chronogram") return renderLessonChronogram();
   if (state.view === "lesson-form") return renderLessonForm();
   if (state.view === "lesson-detail") return renderLessonDetail();
+  if (state.view === "lesson-materials") return renderLessonMaterials();
   renderDashboard();
 }
 
@@ -167,6 +168,10 @@ function mountDashboard() {
   root.querySelector("[data-open-disciplines]")?.addEventListener("click", () => {
     state.returnView = "dashboard";
     renderDisciplines();
+  });
+  root.querySelector("[data-open-profiles]")?.addEventListener("click", () => {
+    state.returnView = "dashboard";
+    renderProfiles();
   });
   root.querySelector("[data-open-schedules]")?.addEventListener("click", () => {
     state.returnView = "dashboard";
@@ -647,7 +652,7 @@ function renderLessonForm() {
 async function showLessonDetail(lesson, occurrence = state.lessonOccurrence) {
   state.activeLesson = lesson;
   state.lessonOccurrence = occurrence;
-  state.activeLessonContents = await getContents(lesson.id);
+  state.activeLessonContents = [];
   state.view = "lesson-detail";
   renderLessonDetail();
 }
@@ -655,18 +660,34 @@ async function showLessonDetail(lesson, occurrence = state.lessonOccurrence) {
 function renderLessonDetail() {
   const lesson = state.activeLesson;
   if (!lesson) return lessonBack();
+  state.view = "lesson-detail";
   renderWithinLayout(lessonDetailView({
+    lesson,
+    occurrence: state.lessonOccurrence,
+  }));
+  bindLessonDetail(root, {
+    onBack: lessonBack,
+    onOpenMaterials: () => renderLessonMaterials().catch((error) => showToast(error.message || "N\u00e3o foi poss\u00edvel abrir os materiais.", "error")),
+  });
+}
+
+async function renderLessonMaterials() {
+  const lesson = state.activeLesson;
+  if (!lesson) return lessonBack();
+  state.activeLessonContents = await getContents(lesson.id);
+  state.view = "lesson-materials";
+  renderWithinLayout(lessonMaterialsView({
     lesson,
     occurrence: state.lessonOccurrence,
     contents: state.activeLessonContents,
   }));
-  bindLessonDetail(root, {
+  bindLessonMaterials(root, {
     contents: state.activeLessonContents,
-    onBack: lessonBack,
+    onBack: renderLessonDetail,
     onUpload: async (values) => {
       const content = await uploadContent(state.user, state.currentProfile, lesson, values);
       state.activeLessonContents = [content, ...state.activeLessonContents];
-      renderLessonDetail();
+      await renderLessonMaterials();
       showToast("Arquivo adicionado \u00e0 aula.");
     },
     onOpenContent: async (content) => {
@@ -681,7 +702,7 @@ function renderLessonDetail() {
       try {
         await deleteContent(state.user, content);
         state.activeLessonContents = state.activeLessonContents.filter((item) => item.id !== content.id);
-        renderLessonDetail();
+        await renderLessonMaterials();
         showToast("Arquivo exclu\u00eddo.");
       } catch (error) { showToast(error.message || "N\u00e3o foi poss\u00edvel excluir o arquivo.", "error"); }
     },

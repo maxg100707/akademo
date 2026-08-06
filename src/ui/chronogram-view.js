@@ -7,7 +7,7 @@ const KIND_META = {
   normal: { label: "Aula normal", short: "AULA", icon: "book" },
   holiday: { label: "Feriado", short: "FERIADO", icon: "calendar" },
   exam: { label: "Prova", short: "PROVA", icon: "check" },
-  presentation: { label: "Apresentação", short: "APRESENTAÇÃO", icon: "graduation" },
+  presentation: { label: "Apresenta\u00e7\u00e3o", short: "APRESENTA\u00c7\u00c3O", icon: "graduation" },
 };
 
 function entryValues(entry) {
@@ -30,23 +30,18 @@ function isUsedByAnotherEntry(values, usedDates, occurrence) {
 function occurrencesSelect(values, occurrences, usedDates) {
   const available = occurrences.filter((occurrence) => !isUsedByAnotherEntry(values, usedDates, occurrence));
   const selectedValue = values.dateTime || available[0]?.value || occurrences[0]?.value || "";
-  return `<label class="field"><span>Data e horário da aula</span><span class="field__control">${icon("calendar", 17)}<select name="dateTime" required ${available.length ? "" : "disabled"}><option value="" disabled ${selectedValue ? "" : "selected"}>Selecione uma aula do horário</option>${occurrences.map((occurrence) => {
+  return `<label class="field"><span>Data e hor\u00e1rio da aula</span><span class="field__control">${icon("calendar", 17)}<select name="dateTime" required ${available.length ? "" : "disabled"}><option value="" disabled ${selectedValue ? "" : "selected"}>Selecione uma aula do hor\u00e1rio</option>${occurrences.map((occurrence) => {
     const selected = sameDateTime(occurrence.value, selectedValue);
     const unavailable = isUsedByAnotherEntry(values, usedDates, occurrence);
-    return `<option value="${occurrence.value}" ${selected ? "selected" : ""} ${unavailable ? "disabled" : ""}>${escapeHtml(occurrence.label)}${unavailable ? " · já registrada" : ""}</option>`;
-  }).join("")}</select></span>${available.length ? "" : "<small>Não há mais aulas disponíveis para registrar neste período.</small>"}</label>`;
+    return `<option value="${occurrence.value}" ${selected ? "selected" : ""} ${unavailable ? "disabled" : ""}>${escapeHtml(occurrence.label)}${unavailable ? " \u00b7 j\u00e1 registrada" : ""}</option>`;
+  }).join("")}</select></span>${available.length ? "" : "<small>N\u00e3o h\u00e1 mais aulas dispon\u00edveis para registrar neste per\u00edodo.</small>"}</label>`;
 }
 
 function editorModal(entry, discipline, occurrences, usedDates) {
   const editing = Boolean(entry);
   const values = entryValues(entry);
   const available = occurrences.some((occurrence) => !isUsedByAnotherEntry(values, usedDates, occurrence));
-  return `<div class="modal-backdrop" data-chronogram-editor-backdrop><section class="modal modal--chronogram-editor" role="dialog" aria-modal="true" aria-labelledby="chronogram-editor-title"><form class="chronogram-editor" data-chronogram-editor novalidate>
-    <div class="chronogram-editor__head"><div><span class="eyebrow">${editing ? "EDITAR AULA" : "CADASTRAR AULA"}</span><h2 id="chronogram-editor-title">${escapeHtml(discipline.nome_disciplina)}</h2><p>${editing ? "Atualize os detalhes desta aula." : "Você pode registrar várias aulas sem fechar este formulário."}</p></div><button class="icon-button" type="button" data-close-chronogram-editor aria-label="Fechar">${icon("close", 19)}</button></div>
-    <input type="hidden" name="disciplineId" value="${escapeHtml(discipline.id)}"/>
-    <div class="chronogram-editor__fields">${occurrencesSelect(values, occurrences, usedDates)}<label class="field"><span>Tema da aula</span><span class="field__control">${icon("book", 17)}<input name="topic" maxlength="180" value="${escapeHtml(values.topic)}" placeholder="Ex.: Derivadas e aplicações" required /></span></label><div class="field"><span>Tipo de aula</span>${kindSwitches(values.kind)}</div></div>
-    <div class="chronogram-editor__actions">${editing ? `<button class="button button--danger" type="button" data-delete-chronogram>${icon("trash", 16)} Excluir</button>` : ""}<span></span><button class="button button--ghost" type="button" data-close-chronogram-editor>Cancelar</button><button class="button button--primary" type="submit" ${available ? "" : "disabled"}>${icon(editing ? "save" : "plus", 16)} ${editing ? "Salvar aula" : "Salvar e adicionar outra"}</button></div>
-  </form></section></div>`;
+  return `<div class="modal-backdrop" data-chronogram-editor-backdrop><section class="modal modal--chronogram-editor" role="dialog" aria-modal="true" aria-labelledby="chronogram-editor-title"><form class="chronogram-editor" data-chronogram-editor novalidate><div class="chronogram-editor__head"><div><span class="eyebrow">${editing ? "EDITAR AULA" : "CADASTRAR AULA"}</span><h2 id="chronogram-editor-title">${escapeHtml(discipline.nome_disciplina)}</h2><p>${editing ? "Atualize os detalhes desta aula." : "Voc\u00ea pode registrar v\u00e1rias aulas sem fechar este formul\u00e1rio."}</p></div><button class="icon-button" type="button" data-close-chronogram-editor aria-label="Fechar">${icon("close", 19)}</button></div><input type="hidden" name="disciplineId" value="${escapeHtml(discipline.id)}"/><div class="chronogram-editor__fields">${occurrencesSelect(values, occurrences, usedDates)}<label class="field"><span>Tema da aula</span><span class="field__control">${icon("book", 17)}<input name="topic" maxlength="180" value="${escapeHtml(values.topic)}" placeholder="Ex.: Derivadas e aplica\u00e7\u00f5es" required /></span></label><div class="field"><span>Tipo de aula</span>${kindSwitches(values.kind)}</div></div><div class="chronogram-editor__actions">${editing ? `<button class="button button--danger" type="button" data-delete-chronogram>${icon("trash", 16)} Excluir</button>` : ""}<span></span><button class="button button--ghost" type="button" data-close-chronogram-editor>Cancelar</button><button class="button button--primary" type="submit" ${available ? "" : "disabled"}>${icon(editing ? "save" : "plus", 16)} ${editing ? "Salvar aula" : "Salvar e adicionar outra"}</button></div></form></section></div>`;
 }
 
 function openChronogramEditor(entry, discipline, occurrences, initialUsedDates, onCreate, onUpdate, onDelete) {
@@ -60,10 +55,10 @@ function openChronogramEditor(entry, discipline, occurrences, initialUsedDates, 
   modalRoot.querySelector("[data-chronogram-editor-backdrop]").addEventListener("click", (event) => { if (event.target === event.currentTarget) close(); });
   modalRoot.querySelector("[data-delete-chronogram]")?.addEventListener("click", async (event) => {
     const button = event.currentTarget;
-    const confirmed = await confirmModal({ title: "Excluir esta aula?", message: "O registro será removido do cronograma.", confirmLabel: "Excluir aula", tone: "danger" });
+    const confirmed = await confirmModal({ title: "Excluir esta aula?", message: "O registro ser\u00e1 removido do cronograma.", confirmLabel: "Excluir aula", tone: "danger" });
     if (!confirmed) return;
     try { setButtonLoading(button, true); await onDelete(entry); close(); }
-    catch (error) { setButtonLoading(button, false); showToast(error.message || "Não foi possível excluir a aula.", "error"); }
+    catch (error) { setButtonLoading(button, false); showToast(error.message || "N\u00e3o foi poss\u00edvel excluir a aula.", "error"); }
   });
   modalRoot.querySelector("[data-chronogram-editor]").addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -85,8 +80,8 @@ function openChronogramEditor(entry, discipline, occurrences, initialUsedDates, 
       if (next) dateSelect.value = next.value;
       else button.disabled = true;
       setButtonLoading(button, false);
-      showToast("Aula adicionada. Você pode registrar outra agora.");
-    } catch (error) { setButtonLoading(button, false); showToast(error.message || "Não foi possível salvar a aula.", "error"); }
+      showToast("Aula adicionada. Voc\u00ea pode registrar outra agora.");
+    } catch (error) { setButtonLoading(button, false); showToast(error.message || "N\u00e3o foi poss\u00edvel salvar a aula.", "error"); }
   });
   modalRoot.querySelector("input[name=topic]")?.focus();
 }
@@ -99,25 +94,40 @@ function disciplineCards(disciplines, entries) {
   }).join("")}</div>`;
 }
 
-function entryCard(entry) {
+function entryProgress(entry, occurrences) {
+  const start = new Date(entry.data_hora);
+  const matchingOccurrence = occurrences.find((occurrence) => sameDateTime(occurrence.value, entry.data_hora));
+  const end = new Date(start);
+  const [endHour = 0, endMinute = 0] = String(matchingOccurrence?.schedule?.hora_fim || "").slice(0, 5).split(":").map(Number);
+  if (matchingOccurrence?.schedule?.hora_fim) end.setHours(endHour, endMinute, 0, 0);
+  else end.setHours(end.getHours() + 1);
+  const now = new Date();
+  if (now < start) return { key: "upcoming", label: "Vai acontecer" };
+  if (now < end) return { key: "live", label: "Acontecendo" };
+  return { key: "past", label: "J\u00e1 aconteceu" };
+}
+
+function entryCard(entry, occurrences) {
   const kind = chronogramKind(entry);
   const meta = KIND_META[kind];
   const date = new Date(entry.data_hora);
   const day = new Intl.DateTimeFormat("pt-BR", { weekday: "short", day: "2-digit", month: "short" }).format(date).replace(".", "");
   const time = new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" }).format(date);
-  return `<article class="chronogram-entry chronogram-entry--${kind}"><span class="chronogram-entry__date"><strong>${date.getDate()}</strong><small>${new Intl.DateTimeFormat("pt-BR", { month: "short" }).format(date).replace(".", "")}</small></span><div class="chronogram-entry__main"><span class="chronogram-entry__kind">${icon(meta.icon, 13)} ${meta.short}</span><h2>${escapeHtml(entry.tema)}</h2><p>${escapeHtml(day)} · ${time}</p></div><button class="icon-button" data-edit-chronogram="${escapeHtml(entry.id)}" aria-label="Editar ${escapeHtml(entry.tema)}">${icon("edit", 17)}</button></article>`;
+  const progress = entryProgress(entry, occurrences);
+  return `<article class="chronogram-entry chronogram-entry--${kind} chronogram-entry--${progress.key}"><span class="chronogram-entry__date"><strong>${date.getDate()}</strong><small>${new Intl.DateTimeFormat("pt-BR", { month: "short" }).format(date).replace(".", "")}</small></span><div class="chronogram-entry__main"><div class="chronogram-entry__meta"><span class="chronogram-entry__kind">${icon(meta.icon, 13)} ${meta.short}</span><span class="chronogram-entry__progress chronogram-entry__progress--${progress.key}"><i></i>${progress.label}</span></div><h2>${escapeHtml(entry.tema)}</h2><p>${escapeHtml(day)} \u00b7 ${time}</p></div><button class="icon-button" data-edit-chronogram="${escapeHtml(entry.id)}" aria-label="Editar ${escapeHtml(entry.tema)}">${icon("edit", 17)}</button></article>`;
 }
 
-function disciplineTimeline(discipline, entries, hasOccurrences) {
-  return `<section class="page chronogram-detail-page"><button class="back-link" data-chronogram-back>${icon("arrowLeft", 18)} Disciplinas</button><div class="page-heading page-heading--row"><div><span class="eyebrow">PLANEJAMENTO DE AULAS</span><h1>${escapeHtml(discipline.nome_disciplina)}</h1><p>Registre temas e situações especiais de cada aula.</p></div><button class="button button--primary" data-add-chronogram ${hasOccurrences ? "" : "disabled"}>${icon("plus", 18)} Cadastrar aula</button></div>${hasOccurrences ? "" : `<div class="chronogram-needs-schedule">${icon("calendar", 18)} <span>Cadastre horários para esta disciplina e defina o período do perfil antes de criar aulas.</span></div>`}<section class="chronogram-timeline">${entries.length ? entries.map(entryCard).join("") : `<div class="chronogram-empty"><span>${icon("calendar", 28)}</span><h3>Nenhuma aula registrada</h3><p>Use o botão para criar o primeiro registro deste cronograma.</p></div>`}</section></section>`;
+function disciplineTimeline(discipline, entries, occurrences) {
+  const hasOccurrences = occurrences.length > 0;
+  return `<section class="page chronogram-detail-page"><button class="back-link" data-chronogram-back>${icon("arrowLeft", 18)} Disciplinas</button><div class="page-heading page-heading--row"><div><span class="eyebrow">PLANEJAMENTO DE AULAS</span><h1>${escapeHtml(discipline.nome_disciplina)}</h1><p>Registre temas e situa\u00e7\u00f5es especiais de cada aula.</p></div><button class="button button--primary" data-add-chronogram ${hasOccurrences ? "" : "disabled"}>${icon("plus", 18)} Cadastrar aula</button></div>${hasOccurrences ? "" : `<div class="chronogram-needs-schedule">${icon("calendar", 18)} <span>Cadastre hor\u00e1rios para esta disciplina e defina o per\u00edodo do perfil antes de criar aulas.</span></div>`}<section class="chronogram-timeline">${entries.length ? entries.map((entry) => entryCard(entry, occurrences)).join("") : `<div class="chronogram-empty"><span>${icon("calendar", 28)}</span><h3>Nenhuma aula registrada</h3><p>Use o bot\u00e3o para criar o primeiro registro deste cronograma.</p></div>`}</section></section>`;
 }
 
-export function chronogramView({ profile, disciplines, entries, selectedDiscipline, occurrences }) {
-  if (selectedDiscipline) return disciplineTimeline(selectedDiscipline, entries.filter((entry) => entry.disciplina === selectedDiscipline.id), occurrences.length > 0);
+export function chronogramView({ disciplines, entries, selectedDiscipline, occurrences }) {
+  if (selectedDiscipline) return disciplineTimeline(selectedDiscipline, entries.filter((entry) => entry.disciplina === selectedDiscipline.id), occurrences);
   return `<section class="page chronogram-page"><div class="page-heading"><span class="eyebrow">PLANEJAMENTO</span><h1>Cronograma</h1><p>Escolha uma disciplina para acompanhar e planejar suas aulas.</p></div>${disciplineCards(disciplines, entries)}</section>`;
 }
 
-export function bindChronogram(root, { profile, disciplines, entries, selectedDiscipline, occurrences, onOpenDiscipline, onBack, onCreate, onUpdate, onDelete }) {
+export function bindChronogram(root, { entries, selectedDiscipline, occurrences, onOpenDiscipline, onBack, onCreate, onUpdate, onDelete }) {
   root.querySelectorAll("[data-open-chronogram-discipline]").forEach((button) => button.addEventListener("click", () => onOpenDiscipline(button.dataset.openChronogramDiscipline)));
   if (!selectedDiscipline) return;
   const disciplineEntries = entries.filter((entry) => entry.disciplina === selectedDiscipline.id);
