@@ -14,6 +14,7 @@ export function renderOnboarding(root, { name, onSubmit, onSignOut }) {
         <label class="field"><span>Instituição de ensino</span><span class="field__control">${icon("book", 18)}<input name="institution" placeholder="Ex.: Universidade Federal..." maxlength="120" required /></span></label>
         <label class="field"><span>Curso</span><span class="field__control">${icon("graduation", 18)}<input name="course" placeholder="Ex.: Engenharia de Software" maxlength="120" required /></span></label>
         <label class="field"><span>Semestre atual</span><span class="field__control">${icon("calendar", 18)}<select name="semester" required><option value="" disabled selected>Selecione o semestre</option>${Array.from({ length: 20 }, (_, i) => `<option value="${i + 1}">${i + 1}º semestre</option>`).join("")}</select></span></label>
+        <div class="profile-date-fields"><label class="field"><span>Data de início</span><span class="field__control">${icon("calendar", 18)}<input name="startDate" type="date" required /></span></label><label class="field"><span>Data de fim</span><span class="field__control">${icon("calendar", 18)}<input name="endDate" type="date" required /></span></label></div>
         <button class="button button--primary button--wide onboarding-card__submit" type="submit">Começar a organizar ${icon("arrowRight", 18)}</button>
       </form>
     </section>

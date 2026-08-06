@@ -2,12 +2,19 @@ import { icon } from "../utils/icons.js";
 import { closeModal, confirmModal, setButtonLoading, showToast } from "./components.js";
 import { escapeHtml } from "../utils/formatters.js";
 
-const emptyForm = () => ({ institution: "", course: "", semester: "" });
+const emptyForm = () => ({ institution: "", course: "", semester: "", startDate: "", endDate: "" });
+
+function dateInputValue(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.valueOf())) return "";
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
 
 function editorForm(values, editing) {
   return `<form class="study-editor" id="study-editor" novalidate>
     <div class="study-editor__head"><div><span class="eyebrow">${editing ? "EDITAR PERFIL" : "NOVO PERFIL"}</span><h2 id="study-editor-title">${editing ? "Ajuste este perfil" : "Onde você está estudando?"}</h2></div><button type="button" class="icon-button" data-cancel-editor aria-label="Cancelar">${icon("close", 19)}</button></div>
-    <div class="form-grid form-grid--compact"><label class="field"><span>Instituição</span><span class="field__control">${icon("book", 17)}<input name="institution" maxlength="120" value="${escapeHtml(values.institution)}" placeholder="Sua instituição" required /></span></label><label class="field"><span>Curso</span><span class="field__control">${icon("graduation", 17)}<input name="course" maxlength="120" value="${escapeHtml(values.course)}" placeholder="Seu curso" required /></span></label><label class="field"><span>Semestre</span><span class="field__control">${icon("calendar", 17)}<select name="semester" required><option value="" disabled ${!values.semester ? "selected" : ""}>Selecione</option>${Array.from({ length: 20 }, (_, i) => `<option value="${i + 1}" ${Number(values.semester) === i + 1 ? "selected" : ""}>${i + 1}º semestre</option>`).join("")}</select></span></label></div>
+    <div class="form-grid form-grid--compact"><label class="field"><span>Instituição</span><span class="field__control">${icon("book", 17)}<input name="institution" maxlength="120" value="${escapeHtml(values.institution)}" placeholder="Sua instituição" required /></span></label><label class="field"><span>Curso</span><span class="field__control">${icon("graduation", 17)}<input name="course" maxlength="120" value="${escapeHtml(values.course)}" placeholder="Seu curso" required /></span></label><label class="field"><span>Semestre</span><span class="field__control">${icon("calendar", 17)}<select name="semester" required><option value="" disabled ${!values.semester ? "selected" : ""}>Selecione</option>${Array.from({ length: 20 }, (_, i) => `<option value="${i + 1}" ${Number(values.semester) === i + 1 ? "selected" : ""}>${i + 1}º semestre</option>`).join("")}</select></span></label><div class="profile-date-fields"><label class="field"><span>Data de início</span><span class="field__control">${icon("calendar", 17)}<input name="startDate" type="date" value="${escapeHtml(values.startDate)}" required /></span></label><label class="field"><span>Data de fim</span><span class="field__control">${icon("calendar", 17)}<input name="endDate" type="date" value="${escapeHtml(values.endDate)}" required /></span></label></div></div>
     <div class="study-editor__actions"><button class="button button--ghost" type="button" data-cancel-editor>Cancelar</button><button class="button button--primary" type="submit">${icon("save", 16)} ${editing ? "Salvar perfil" : "Criar perfil"}</button></div></form>`;
 }
 
@@ -29,7 +36,7 @@ export function profilesView({ profiles, currentProfile }) {
 
 export function bindProfiles(root, { profiles, onBack, onCreate, onCreated, onUpdate, onDelete }) {
   const showEditor = (profile = null) => {
-    const values = profile ? { institution: profile.instituicao, course: profile.curso, semester: profile.semestre } : emptyForm();
+    const values = profile ? { institution: profile.instituicao, course: profile.curso, semester: profile.semestre, startDate: dateInputValue(profile.data_inicio), endDate: dateInputValue(profile.data_fim) } : emptyForm();
     const modalRoot = document.querySelector("#modal-root");
     modalRoot.innerHTML = editorModal(values, Boolean(profile));
     const close = () => {

@@ -22,8 +22,11 @@ create table if not exists public.perfil_estudo (
   instituicao text not null check (char_length(btrim(instituicao)) between 1 and 120),
   curso text not null check (char_length(btrim(curso)) between 1 and 120),
   semestre integer not null check (semestre between 1 and 20),
+  data_inicio timestamptz not null,
+  data_fim timestamptz not null,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  check (data_fim >= data_inicio)
 );
 
 -- Migração compatível com uma instalação anterior que possua apenas as colunas
@@ -117,6 +120,8 @@ alter table public.perfil_estudo add column if not exists email text;
 alter table public.perfil_estudo add column if not exists instituicao text;
 alter table public.perfil_estudo add column if not exists curso text;
 alter table public.perfil_estudo add column if not exists semestre integer;
+alter table public.perfil_estudo add column if not exists data_inicio timestamptz;
+alter table public.perfil_estudo add column if not exists data_fim timestamptz;
 alter table public.perfil_estudo add column if not exists created_at timestamptz default now();
 alter table public.perfil_estudo add column if not exists updated_at timestamptz default now();
 
@@ -268,12 +273,16 @@ drop policy if exists "profiles create own" on public.perfil_estudo;
 create policy "profiles create own" on public.perfil_estudo
 for insert to authenticated with check (
   (select auth.uid()) = user_id and email = (select auth.jwt() ->> 'email')
+  and data_inicio is not null and data_fim is not null and data_fim >= data_inicio
 );
 
 drop policy if exists "profiles update own" on public.perfil_estudo;
 create policy "profiles update own" on public.perfil_estudo
 for update to authenticated using ((select auth.uid()) = user_id)
-with check ((select auth.uid()) = user_id and email = (select auth.jwt() ->> 'email'));
+with check (
+  (select auth.uid()) = user_id and email = (select auth.jwt() ->> 'email')
+  and data_inicio is not null and data_fim is not null and data_fim >= data_inicio
+);
 
 drop policy if exists "profiles delete own" on public.perfil_estudo;
 create policy "profiles delete own" on public.perfil_estudo
