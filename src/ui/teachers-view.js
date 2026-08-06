@@ -40,13 +40,18 @@ function contactAction({ href, label, iconName, available, external = false }) {
   return `<a class="teacher-card__contact-button" data-teacher-contact href="${href}" aria-label="Enviar ${label}" title="Enviar ${label}" ${external ? 'target="_blank" rel="noopener noreferrer"' : ""}>${icon(iconName, 19)}</a>`;
 }
 
-function teachersList(teachers) {
+function teacherDisciplines(teacherId, disciplines) {
+  const names = disciplines.filter((discipline) => discipline.professor_id === teacherId).map((discipline) => escapeHtml(discipline.nome_disciplina));
+  return names.length ? `<small class="teacher-card__disciplines">${icon("book", 13)} ${names.join(" · ")}</small>` : "";
+}
+
+function teachersList(teachers, disciplines = []) {
   if (!teachers.length) return `<div class="teachers-empty"><span>${icon("users", 26)}</span><h3>Nenhum professor cadastrado</h3><p>Adicione os professores deste perfil para encontrá-los rapidamente.</p></div>`;
   return `<div class="teachers-list">${teachers.map((teacher) => {
     const phone = digitsOnly(teacher.telefone_professor);
     return `<article class="teacher-card" data-edit-teacher="${escapeHtml(teacher.id)}" role="button" tabindex="0" aria-label="Editar ${escapeHtml(teacher.nome_professor)}">
       <span class="teacher-card__badge">${icon("userRound", 20)}</span>
-      <div class="teacher-card__main"><h2>${escapeHtml(teacher.nome_professor)}</h2></div>
+      <div class="teacher-card__main"><h2>${escapeHtml(teacher.nome_professor)}</h2>${teacherDisciplines(teacher.id, disciplines)}</div>
       <div class="teacher-card__contact-actions teacher-card__contact-actions--side">${contactAction({ href: `mailto:${encodeURIComponent(teacher.email_professor || "")}`, label: "e-mail", iconName: "mail", available: Boolean(teacher.email_professor) })}${contactAction({ href: `https://wa.me/${phone}`, label: "WhatsApp", iconName: "messageSquare", available: Boolean(phone), external: true })}</div>
     </article>`;
   }).join("")}</div>`;
@@ -117,12 +122,12 @@ function bindTeacherCards(container, onEdit) {
   });
 }
 
-export function teachersView({ profile, teachers }) {
+export function teachersView({ profile, teachers, disciplines = [] }) {
   const course = escapeHtml(profile?.curso || "Perfil de estudo");
   return `<section class="page teachers-page">
     <button class="back-link" data-back>${icon("arrowLeft", 18)} Voltar</button>
     <div class="page-heading page-heading--row"><div><span class="eyebrow">CORPO DOCENTE</span><h1>Professores</h1><p>Organize os contatos do perfil <strong>${course}</strong>.</p></div><button class="button button--primary" data-add-teacher>${icon("plus", 18)} Adicionar professor</button></div>
-    <div class="teachers-layout"><section class="teachers-panel">${teachersList(teachers)}</section><aside class="teachers-aside"><span class="teachers-aside__icon">${icon("book", 23)}</span><h3>Contato à mão.</h3><p>Guarde informações úteis para falar com cada professor quando precisar.</p></aside></div>
+    <div class="teachers-layout"><section class="teachers-panel">${teachersList(teachers, disciplines)}</section><aside class="teachers-aside"><span class="teachers-aside__icon">${icon("book", 23)}</span><h3>Contato à mão.</h3><p>Guarde informações úteis para falar com cada professor quando precisar.</p></aside></div>
   </section>`;
 }
 

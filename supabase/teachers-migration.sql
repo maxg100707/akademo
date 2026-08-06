@@ -14,6 +14,51 @@ create table if not exists public.professores (
   updated_at timestamptz not null default now()
 );
 
+do $$
+declare old_fk record;
+begin
+  if exists (
+    select 1 from pg_attribute
+    where attrelid = 'public.professores'::regclass and attname = 'id'
+      and atttypid <> 'uuid'::regtype and not attisdropped
+  ) then
+    alter table public.professores rename column id to legacy_id;
+  end if;
+  if exists (
+    select 1 from pg_attribute
+    where attrelid = 'public.professores'::regclass and attname = 'perfil'
+      and atttypid <> 'uuid'::regtype and not attisdropped
+  ) then
+    for old_fk in
+      select c.conname
+      from pg_constraint as c
+      join pg_attribute as a on a.attrelid = c.conrelid and a.attnum = any(c.conkey)
+      where c.conrelid = 'public.professores'::regclass
+        and c.contype = 'f' and a.attname = 'perfil'
+    loop
+      execute format('alter table public.professores drop constraint if exists %I', old_fk.conname);
+    end loop;
+    alter table public.professores rename column perfil to legacy_perfil;
+  end if;
+end;
+$$;
+
+alter table public.professores add column if not exists id uuid;
+alter table public.professores add column if not exists email_user text;
+alter table public.professores add column if not exists perfil uuid;
+alter table public.professores add column if not exists nome_professor text;
+alter table public.professores add column if not exists email_professor text;
+alter table public.professores add column if not exists telefone_professor text;
+
+-- Garante as colunas também quando a tabela já existia em uma versão anterior.
+alter table public.professores add column if not exists created_at timestamptz default now();
+alter table public.professores add column if not exists updated_at timestamptz default now();
+
+-- Instalações antigas podem ter criado este campo como bigint. O app precisa
+-- preservar o DDI e possíveis zeros iniciais, portanto o formato definitivo é texto.
+alter table public.professores
+  alter column telefone_professor type text using telefone_professor::text;
+
 update public.professores
 set telefone_professor = nullif(regexp_replace(telefone_professor, '[^0-9]', '', 'g'), '')
 where telefone_professor is not null;
@@ -25,6 +70,84 @@ begin
   ) then
     alter table public.professores add constraint professores_telefone_professor_check
       check (telefone_professor is null or telefone_professor ~ '^[0-9]{1,15}$');
+  end if;
+end;
+$$;
+
+update public.professores set id = gen_random_uuid() where id is null;
+alter table public.professores alter column id set default gen_random_uuid();
+
+do $$
+begin
+  if exists (
+    select 1 from pg_attribute
+    where attrelid = 'public.professores'::regclass and attname = 'legacy_perfil' and not attisdropped
+  ) and exists (
+    select 1 from pg_attribute
+    where attrelid = 'public.perfil_estudo'::regclass and attname = 'legacy_id' and not attisdropped
+  ) then
+    execute $sql$
+      update public.professores as professor
+      set perfil = profile.id,
+          email_user = coalesce(professor.email_user, profile.email)
+      from public.perfil_estudo as profile
+      where professor.perfil is null
+        and professor.legacy_perfil::text = profile.legacy_id::text
+    $sql$;
+  end if;
+end;
+$$;
+
+update public.professores as professor
+set perfil = profile.id,
+    email_user = coalesce(professor.email_user, profile.email)
+from (
+  select email, (array_agg(id))[1] as id
+  from public.perfil_estudo
+  group by email
+  having count(*) = 1
+) as profile
+where professor.perfil is null
+  and lower(btrim(coalesce(professor.email_user, ''))) = lower(profile.email);
+
+update public.professores as professor
+set email_user = profile.email
+from public.perfil_estudo as profile
+where professor.email_user is null and professor.perfil = profile.id;
+
+do $$
+declare orphan_professors integer;
+begin
+  select count(*) into orphan_professors
+  from public.professores as professor
+  left join public.perfil_estudo as profile on profile.id = professor.perfil
+  where professor.perfil is null or profile.id is null or professor.email_user is null
+    or professor.nome_professor is null or btrim(professor.nome_professor) = '';
+  if orphan_professors > 0 then
+    raise exception 'Há % professor(es) legados sem perfil identificável. Atualize o perfil/e-mail desses registros antes de continuar.', orphan_professors;
+  end if;
+end;
+$$;
+
+alter table public.professores alter column id set not null;
+alter table public.professores alter column email_user set not null;
+alter table public.professores alter column perfil set not null;
+alter table public.professores alter column nome_professor set not null;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_index indexes join pg_attribute attributes
+      on attributes.attrelid = indexes.indrelid and attributes.attnum = any(indexes.indkey)
+    where indexes.indrelid = 'public.professores'::regclass and indexes.indisunique and attributes.attname = 'id'
+  ) then
+    alter table public.professores add constraint professores_id_key unique (id);
+  end if;
+  if not exists (
+    select 1 from pg_constraint where conrelid = 'public.professores'::regclass and conname = 'professores_perfil_fkey'
+  ) then
+    alter table public.professores add constraint professores_perfil_fkey
+      foreign key (perfil) references public.perfil_estudo(id) on delete cascade;
   end if;
 end;
 $$;

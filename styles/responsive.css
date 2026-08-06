@@ -30,3 +30,11 @@
 }
 
 @media (max-width: 430px) { .teacher-phone-fields { grid-template-columns: 1fr; } }
+
+@media (max-width: 760px) {
+  .disciplines-layout { grid-template-columns: 1fr; }.disciplines-aside { display: none; }.disciplines-panel { padding: 20px; }
+  .modal--discipline-editor, .modal--discipline-setup { max-height: calc(100dvh - 28px); }.discipline-editor, .modal--discipline-setup { padding: 23px; }
+  .discipline-editor__actions, .discipline-setup__actions { flex-direction: column-reverse; align-items: stretch; }.discipline-editor__actions .button, .discipline-setup__actions .button { width: 100%; }.discipline-setup__actions .text-button { align-self: center; }
+  .discipline-setup__form { padding: 15px; }.discipline-setup__form-actions { flex-wrap: wrap; }.discipline-setup__form-actions > span { display: none; }.discipline-setup__form-actions .button:last-child { flex: 1; }
+  .discipline-setup__confirm > div > div { flex-direction: column-reverse; }.discipline-setup__confirm > div > div .button { width: 100%; }
+}

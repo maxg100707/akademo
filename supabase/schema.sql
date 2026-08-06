@@ -329,6 +329,7 @@ create table if not exists public.professores (
 );
 
 do $$
+declare old_fk record;
 begin
   if exists (
     select 1 from pg_attribute
@@ -342,6 +343,15 @@ begin
     where attrelid = 'public.professores'::regclass and attname = 'perfil'
       and atttypid <> 'uuid'::regtype and not attisdropped
   ) then
+    for old_fk in
+      select c.conname
+      from pg_constraint as c
+      join pg_attribute as a on a.attrelid = c.conrelid and a.attnum = any(c.conkey)
+      where c.conrelid = 'public.professores'::regclass
+        and c.contype = 'f' and a.attname = 'perfil'
+    loop
+      execute format('alter table public.professores drop constraint if exists %I', old_fk.conname);
+    end loop;
     alter table public.professores rename column perfil to legacy_perfil;
   end if;
 end;
@@ -356,12 +366,50 @@ alter table public.professores add column if not exists telefone_professor text;
 alter table public.professores add column if not exists created_at timestamptz default now();
 alter table public.professores add column if not exists updated_at timestamptz default now();
 
+-- Converte esquemas antigos que usavam bigint; telefone deve ser texto para
+-- armazenar DDI e preservar a representação normalizada do número.
+alter table public.professores
+  alter column telefone_professor type text using telefone_professor::text;
+
 update public.professores
 set telefone_professor = nullif(regexp_replace(telefone_professor, '[^0-9]', '', 'g'), '')
 where telefone_professor is not null;
 
 update public.professores set id = gen_random_uuid() where id is null;
 alter table public.professores alter column id set default gen_random_uuid();
+
+do $$
+begin
+  if exists (
+    select 1 from pg_attribute
+    where attrelid = 'public.professores'::regclass and attname = 'legacy_perfil' and not attisdropped
+  ) and exists (
+    select 1 from pg_attribute
+    where attrelid = 'public.perfil_estudo'::regclass and attname = 'legacy_id' and not attisdropped
+  ) then
+    execute $sql$
+      update public.professores as professor
+      set perfil = profile.id,
+          email_user = coalesce(professor.email_user, profile.email)
+      from public.perfil_estudo as profile
+      where professor.perfil is null
+        and professor.legacy_perfil::text = profile.legacy_id::text
+    $sql$;
+  end if;
+end;
+$$;
+
+update public.professores as professor
+set perfil = profile.id,
+    email_user = coalesce(professor.email_user, profile.email)
+from (
+  select email, (array_agg(id))[1] as id
+  from public.perfil_estudo
+  group by email
+  having count(*) = 1
+) as profile
+where professor.perfil is null
+  and lower(btrim(coalesce(professor.email_user, ''))) = lower(profile.email);
 
 update public.professores as professor
 set email_user = profile.email
@@ -477,4 +525,91 @@ create policy "teachers delete own profile" on public.professores
 for delete to authenticated using (
   email_user = (select auth.jwt() ->> 'email')
   and exists (select 1 from public.perfil_estudo as profile where profile.id = professores.perfil and profile.user_id = (select auth.uid()))
+);
+
+-- Disciplinas: cada disciplina pertence a um perfil e a um professor daquele mesmo perfil.
+create table if not exists public.disciplinas (
+  id uuid primary key default gen_random_uuid(),
+  email_user text not null,
+  perfil uuid not null references public.perfil_estudo(id) on delete cascade,
+  nome_disciplina text not null check (char_length(btrim(nome_disciplina)) between 1 and 120),
+  resumo_disciplina text check (resumo_disciplina is null or char_length(resumo_disciplina) <= 500),
+  professor_id uuid not null references public.professores(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists disciplinas_perfil_idx on public.disciplinas(perfil, created_at);
+create index if not exists disciplinas_professor_idx on public.disciplinas(professor_id);
+
+drop trigger if exists disciplinas_set_updated_at on public.disciplinas;
+create trigger disciplinas_set_updated_at before update on public.disciplinas
+for each row execute procedure public.set_updated_at();
+
+-- Inclui disciplinas na sincronização de e-mail feita pelo trigger do Auth.
+create or replace function public.sync_auth_user_email()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  if new.email is distinct from old.email then
+    update public.users set email = new.email, updated_at = now() where id = new.id;
+    update public.perfil_estudo set email = new.email, updated_at = now() where user_id = new.id;
+    update public.professores as professor
+    set email_user = new.email, updated_at = now()
+    from public.perfil_estudo as profile
+    where professor.perfil = profile.id and profile.user_id = new.id;
+    update public.disciplinas as disciplina
+    set email_user = new.email, updated_at = now()
+    from public.perfil_estudo as profile
+    where disciplina.perfil = profile.id and profile.user_id = new.id;
+  end if;
+  return new;
+end;
+$$;
+
+alter table public.disciplinas enable row level security;
+revoke all on table public.disciplinas from anon, authenticated;
+grant select, insert, update, delete on table public.disciplinas to authenticated;
+
+drop policy if exists "disciplines read own profile" on public.disciplinas;
+create policy "disciplines read own profile" on public.disciplinas
+for select to authenticated using (
+  email_user = (select auth.jwt() ->> 'email')
+  and exists (select 1 from public.perfil_estudo as profile where profile.id = disciplinas.perfil and profile.user_id = (select auth.uid()))
+);
+
+drop policy if exists "disciplines create own profile" on public.disciplinas;
+create policy "disciplines create own profile" on public.disciplinas
+for insert to authenticated with check (
+  email_user = (select auth.jwt() ->> 'email')
+  and exists (select 1 from public.perfil_estudo as profile where profile.id = disciplinas.perfil and profile.user_id = (select auth.uid()))
+  and exists (
+    select 1 from public.professores as professor
+    where professor.id = disciplinas.professor_id and professor.perfil = disciplinas.perfil
+      and professor.email_user = (select auth.jwt() ->> 'email')
+  )
+);
+
+drop policy if exists "disciplines update own profile" on public.disciplinas;
+create policy "disciplines update own profile" on public.disciplinas
+for update to authenticated using (
+  email_user = (select auth.jwt() ->> 'email')
+  and exists (select 1 from public.perfil_estudo as profile where profile.id = disciplinas.perfil and profile.user_id = (select auth.uid()))
+) with check (
+  email_user = (select auth.jwt() ->> 'email')
+  and exists (select 1 from public.perfil_estudo as profile where profile.id = disciplinas.perfil and profile.user_id = (select auth.uid()))
+  and exists (
+    select 1 from public.professores as professor
+    where professor.id = disciplinas.professor_id and professor.perfil = disciplinas.perfil
+      and professor.email_user = (select auth.jwt() ->> 'email')
+  )
+);
+
+drop policy if exists "disciplines delete own profile" on public.disciplinas;
+create policy "disciplines delete own profile" on public.disciplinas
+for delete to authenticated using (
+  email_user = (select auth.jwt() ->> 'email')
+  and exists (select 1 from public.perfil_estudo as profile where profile.id = disciplinas.perfil and profile.user_id = (select auth.uid()))
 );

@@ -11,7 +11,9 @@ src/services/              Auth, dados, Storage e Supabase
 src/ui/                    telas e componentes de interface
 src/utils/                 ícones e funções auxiliares
 styles/                    CSS separado por responsabilidade
-supabase/schema.sql        tabelas, triggers e RLS
+supabase/schema.sql        tabelas, triggers e RLS completos (instalação nova)
+supabase/teachers-migration.sql    migração de professores (instalações existentes)
+supabase/disciplines-migration.sql migração de disciplinas (após professores)
 supabase/functions/        Edge Function segura para buckets e avatar Google
 ```
 
@@ -28,6 +30,10 @@ supabase/functions/        Edge Function segura para buckets e avatar Google
 
    A função valida o Bearer token internamente antes de qualquer operação; `--no-verify-jwt` permite apenas que a requisição `OPTIONS` do CORS chegue a ela. A `SUPABASE_SERVICE_ROLE_KEY` já é disponibilizada como secret padrão no ambiente de produção das Edge Functions. Se estiver usando desenvolvimento local, defina-a somente no arquivo de secrets local da CLI.
 5. Sirva a pasta por HTTP, por exemplo com a extensão Live Server do VS Code. Não abra o `index.html` diretamente pelo explorador, pois o login OAuth precisa de uma origem HTTP válida.
+
+### Atualização para instalações existentes
+
+Se o projeto já está em uso e a tabela `professores` já existe, execute somente `supabase/disciplines-migration.sql` no SQL Editor. Caso ainda não tenha aplicado a migração de professores, execute primeiro `supabase/teachers-migration.sql` e, em seguida, `supabase/disciplines-migration.sql`.
 
 ### Google OAuth: URLs que não podem ser confundidas
 
