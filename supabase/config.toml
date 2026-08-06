@@ -1,0 +1,4 @@
+[functions.provision-user-storage]
+# O preflight OPTIONS não carrega JWT. A função valida manualmente o Bearer token
+# por admin.auth.getUser() antes de qualquer operação privilegiada.
+verify_jwt = false

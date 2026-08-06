@@ -1,0 +1,11 @@
+*, *::before, *::after { box-sizing: border-box; }
+html { min-height: 100%; -webkit-tap-highlight-color: transparent; }
+body { min-height: 100vh; margin: 0; font-family: "DM Sans", sans-serif; color: var(--text); background: var(--page); transition: background .25s ease, color .25s ease; }
+button, input, select { font: inherit; }
+button { cursor: pointer; }
+button:disabled { cursor: wait; opacity: .75; }
+input, select { min-width: 0; }
+a { color: inherit; text-decoration: none; }
+img { display: block; max-width: 100%; }
+h1, h2, h3, p { margin: 0; }
+svg { flex: 0 0 auto; }

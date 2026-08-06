@@ -1,0 +1,60 @@
+.icon { display: inline-block; }
+.brand, .mobile-brand, .boot-screen__logo { font: 700 18px/1 "Outfit", sans-serif; letter-spacing: .07em; }
+.brand-icon { width: 36px; height: 36px; flex: 0 0 auto; object-fit: contain; }
+.eyebrow { display: inline-block; color: var(--green); font: 700 10px/1.3 "Outfit", sans-serif; letter-spacing: .15em; }
+.button { min-height: 46px; display: inline-flex; align-items: center; justify-content: center; gap: 9px; padding: 0 18px; border: 1px solid transparent; border-radius: 12px; font-weight: 700; font-size: 14px; transition: transform .18s ease, box-shadow .18s ease, background .18s ease, border-color .18s ease; }
+.button:hover:not(:disabled) { transform: translateY(-2px); }
+.button--primary { color: #fff; background: linear-gradient(125deg, var(--green), var(--green-dark)); box-shadow: 0 8px 18px color-mix(in srgb, var(--green) 26%, transparent); }
+.button--primary:hover:not(:disabled) { box-shadow: 0 12px 23px color-mix(in srgb, var(--green) 35%, transparent); }
+.button--secondary { color: var(--green-dark); border-color: var(--green-soft); background: var(--green-pale); }
+.button--ghost { color: var(--text-soft); border-color: var(--line); background: transparent; }
+.button--danger { color: #fff; background: var(--danger); box-shadow: 0 8px 17px color-mix(in srgb, var(--danger) 25%, transparent); }
+.button--wide { width: 100%; }
+.button--small { min-height: 38px; padding: 0 13px; font-size: 13px; }
+.text-button { padding: 0; color: var(--green); border: 0; font-weight: 700; background: none; }
+.field { display: grid; gap: 7px; color: var(--text); font-size: 13px; font-weight: 700; }
+.field > span:first-child { padding-left: 1px; }
+.field em { color: var(--text-faint); font-style: normal; font-weight: 500; }
+.field__control { position: relative; display: flex; align-items: center; gap: 10px; height: 48px; padding: 0 13px; color: var(--text-faint); border: 1px solid var(--line); border-radius: 11px; background: var(--surface); transition: border .18s, box-shadow .18s; }
+.field__control:focus-within { border-color: var(--green); box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 13%, transparent); }
+.field__control input, .field__control select { width: 100%; height: 100%; color: var(--text); outline: none; border: 0; background: transparent; font-size: 14px; }
+.field__control input::placeholder { color: var(--text-faint); }
+.field__control select { cursor: pointer; appearance: none; }
+.field__control:has(select)::after { position: absolute; right: 13px; content: "⌄"; font-size: 18px; color: var(--text-faint); pointer-events: none; }
+.field--readonly .field__control { color: var(--text-faint); background: var(--surface-muted); }
+.field > small { margin-top: -1px; color: var(--text-faint); font-size: 11px; font-weight: 500; }
+.form-grid { display: grid; gap: 17px; }
+.avatar { width: 42px; height: 42px; overflow: hidden; display: inline-grid; place-items: center; flex: 0 0 auto; border-radius: 50%; color: #fff; background: linear-gradient(145deg, #78c99a, #227a58); font: 700 14px "Outfit", sans-serif; box-shadow: inset 0 0 0 2px rgba(255,255,255,.55); }
+.avatar img { width: 100%; height: 100%; object-fit: cover; }
+.icon-button { width: 36px; height: 36px; display: inline-grid; place-items: center; padding: 0; color: var(--text-soft); border: 1px solid var(--line); border-radius: 10px; background: var(--surface); transition: .18s ease; }
+.icon-button:hover { color: var(--green); border-color: var(--green); background: var(--green-pale); }
+.icon-button--danger:hover { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 50%, var(--line)); background: color-mix(in srgb, var(--danger) 9%, var(--surface)); }
+.back-link { display: inline-flex; align-items: center; gap: 6px; margin: 0 0 25px -4px; padding: 5px 4px; color: var(--text-soft); border: 0; background: none; font-weight: 700; font-size: 13px; }
+.back-link:hover { color: var(--green); }
+.spinner { display: inline-block; width: 15px; height: 15px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .7s linear infinite; }
+.spinner--large { width: 29px; height: 29px; color: var(--green); border-width: 3px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.toast { position: relative; right: -20px; display: flex; align-items: center; gap: 9px; width: min(365px, calc(100vw - 32px)); padding: 13px 15px; color: var(--text); border: 1px solid var(--line); border-radius: 13px; background: var(--surface); box-shadow: var(--shadow-high); opacity: 0; transform: translateX(18px); transition: .24s ease; font-size: 13px; font-weight: 600; }
+.toast.is-visible { right: 0; opacity: 1; transform: translateX(0); }
+.toast--success svg { color: var(--green); }.toast--error svg { color: var(--danger); }
+#toast-root { position: fixed; z-index: 30; top: 20px; right: 20px; display: grid; gap: 9px; pointer-events: none; }
+.modal-backdrop { position: fixed; z-index: 40; inset: 0; display: grid; place-items: center; padding: 20px; background: rgba(15, 30, 23, .43); backdrop-filter: blur(4px); animation: fade-in .16s ease; }
+.modal { position: relative; width: min(430px, 100%); padding: 28px; border: 1px solid var(--line); border-radius: 21px; background: var(--surface); box-shadow: var(--shadow-high); animation: modal-up .2s ease; }
+.modal__close { position: absolute; top: 13px; right: 13px; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; color: var(--text-soft); border: 0; border-radius: 8px; background: transparent; }.modal__close:hover{ background:var(--surface-alt); }
+.modal__symbol { display: grid; place-items: center; width: 42px; height: 42px; margin-bottom: 16px; color: var(--green); border-radius: 13px; background: var(--green-pale); }.modal__symbol--danger{color:var(--danger);background:color-mix(in srgb, var(--danger) 12%, var(--surface));}
+.modal h2 { margin-bottom: 9px; font: 600 21px/1.2 "Outfit", sans-serif; }.modal p { color: var(--text-soft); line-height: 1.55; font-size: 14px; }.modal__actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 25px; }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } } @keyframes modal-up { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
+
+/* Selects seguem a mesma linguagem visual do restante do AKADEMO. */
+select { color-scheme: light; }
+body[data-theme="dark"] select { color-scheme: dark; }
+.field__control:has(select) { padding-right: 8px; border-color: var(--green-soft); background: linear-gradient(100deg, var(--surface), var(--green-pale)); }
+.field__control:has(select)::after { right: 17px; width: 7px; height: 7px; border-right: 2px solid var(--green); border-bottom: 2px solid var(--green); content: ""; transform: rotate(45deg) translateY(-3px); }
+.field__control select { padding-right: 32px; color: var(--green-dark); font-weight: 700; letter-spacing: -.01em; }
+.field__control select option, .active-profile-summary select option, .mobile-profile-indicator select option { color: var(--text); background: var(--surface); font-weight: 600; }
+.field__control select:focus { color: var(--green-deep); }
+
+/* Formulários de perfil ficam destacados e independentes da listagem. */
+.modal--editor { width: min(650px, 100%); max-height: calc(100dvh - 40px); padding: 0; overflow: auto; }
+.modal--editor .study-editor { padding: clamp(22px, 4vw, 32px); border: 0; border-radius: inherit; background: transparent; box-shadow: none; }
