@@ -13,6 +13,7 @@ export function renderLayout(root, { record, photoUrl, profiles, currentProfile,
           <div class="profile-popover__head">${avatar(record, photoUrl, "profile-popover__avatar")}<div><strong>${escapeHtml(record?.nome || "Estudante")}</strong><small>${escapeHtml(record?.email || "")}</small></div></div>
           <button data-personal>${icon("info", 18)}<span>Informações</span></button>
           <button data-profiles>${icon("graduation", 18)}<span>Perfis de estudo</span></button>
+          <button data-teachers>${icon("users", 18)}<span>Professores</span></button>
           <div class="theme-control"><span>${icon("moon", 18)} Tema escuro</span><label class="switch"><input type="checkbox" data-theme-toggle ${theme === "dark" ? "checked" : ""}/><i></i></label></div>
           <button class="profile-popover__logout" data-logout>${icon("logout", 18)}<span>Sair da conta</span></button>
         </div>
@@ -33,6 +34,7 @@ export function bindLayout(root, actions) {
   root.querySelector("[data-profile-menu]").addEventListener("click", (event) => { event.stopPropagation(); root.querySelector(".sidebar__profile-wrap").classList.toggle("is-open"); });
   root.querySelector("[data-personal]").addEventListener("click", actions.onPersonal);
   root.querySelector("[data-profiles]").addEventListener("click", actions.onProfiles);
+  root.querySelector("[data-teachers]").addEventListener("click", actions.onTeachers);
   root.querySelector("[data-logout]").addEventListener("click", actions.onLogout);
   root.querySelector("[data-theme-toggle]").addEventListener("change", actions.onTheme);
   root.querySelectorAll("[data-nav]").forEach((button) => button.addEventListener("click", () => actions.onNavigate(button.dataset.nav)));

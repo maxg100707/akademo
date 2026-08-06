@@ -20,3 +20,13 @@
   .mobile-profile-indicator { border-color: transparent; background: linear-gradient(125deg, var(--green-jade), var(--green-teal)); box-shadow: 0 5px 12px color-mix(in srgb, var(--green-teal) 22%, transparent); }
   .mobile-profile-indicator > span { color: #fff; background: rgba(255, 255, 255, .16); }.mobile-profile-indicator strong, .mobile-profile-indicator select { color: #fff; }.mobile-profile-indicator small { color: rgba(244, 255, 248, .72); }.mobile-profile-indicator div:has(select)::after { color: #fff; }
 }
+
+@media (max-width: 760px) {
+  .teachers-layout { grid-template-columns: 1fr; }.teachers-aside { display: none; }.teachers-panel { padding: 20px; }.form-grid--teacher { grid-template-columns: 1fr; }.modal--teacher-editor, .modal--teacher-setup { max-height: calc(100dvh - 28px); }.teacher-editor, .modal--teacher-setup { padding: 23px; }.teacher-editor__actions, .teacher-setup__actions { flex-direction: column-reverse; align-items: stretch; }.teacher-editor__actions .button, .teacher-setup__actions .button { width: 100%; }.teacher-setup__actions .text-button { align-self: center; }.teacher-setup__form { padding: 15px; }.teacher-setup__confirm > div > div { flex-direction: column-reverse; }.teacher-setup__confirm > div > div .button { width: 100%; }
+}
+
+@media (max-width: 760px) {
+  .teacher-setup__form-actions { flex-wrap: wrap; }.teacher-setup__form-actions > span { display: none; }.teacher-setup__form-actions .button:last-child { flex: 1; }.teacher-card { align-items: flex-start; }.teacher-card__open { margin-top: 5px; }.dashboard-teachers-link { width: 100%; margin-top: 3px; }
+}
+
+@media (max-width: 430px) { .teacher-phone-fields { grid-template-columns: 1fr; } }

@@ -1,6 +1,7 @@
 import { APP_STORAGE_KEYS, isSupabaseConfigured } from "./config.js";
 import { completeOAuthCallback, currentSession, onAuthChange, signIn, signInWithGoogle, signOut, signUp } from "./services/auth.js";
 import { createStudyProfile, deleteStudyProfile, getProfiles, updateStudyProfile } from "./services/profiles.js";
+import { createTeacher, deleteTeacher, getTeachers, updateTeacher } from "./services/teachers.js";
 import { applyPendingAvatar, ensureUserRecord, getUserRecord, profilePhotoUrl, provisionUserStorage, updatePersonalInfo } from "./services/users.js";
 import { dashboardView } from "./ui/dashboard-view.js";
 import { renderAuth } from "./ui/auth-view.js";
@@ -8,12 +9,13 @@ import { bindLayout, renderLayout } from "./ui/layout.js";
 import { renderOnboarding } from "./ui/onboarding-view.js";
 import { bindPersonal, personalView } from "./ui/personal-view.js";
 import { bindProfiles, profilesView } from "./ui/profiles-view.js";
+import { bindTeachers, openTeacherSetup, teachersView } from "./ui/teachers-view.js";
 import { showToast } from "./ui/components.js";
 import { getStoredProfile, removeStoredProfile, storeProfile } from "./utils/formatters.js";
 
 const root = document.querySelector("#app");
 const state = {
-  user: null, record: null, photoUrl: null, profiles: [], currentProfile: null,
+  user: null, record: null, photoUrl: null, profiles: [], currentProfile: null, teachers: [],
   view: "dashboard", returnView: "dashboard", collapsed: localStorage.getItem("akademo.sidebar.collapsed") === "true",
   theme: localStorage.getItem(APP_STORAGE_KEYS.theme) || "light",
 };
@@ -49,6 +51,7 @@ async function hydrate(user) {
     state.photoUrl = await profilePhotoUrl(state.record);
     localStorage.setItem(APP_STORAGE_KEYS.login, JSON.stringify({ userId: user.id, email: user.email }));
     state.profiles = await getProfiles(user.id);
+    state.teachers = [];
     selectStoredProfile();
     if (!state.profiles.length) showOnboarding();
     else renderCurrent();
@@ -90,7 +93,7 @@ function selectStoredProfile() {
 }
 
 function renderAuthScreen() {
-  state.user = null; state.record = null; state.photoUrl = null; state.profiles = []; state.currentProfile = null;
+  state.user = null; state.record = null; state.photoUrl = null; state.profiles = []; state.currentProfile = null; state.teachers = [];
   renderAuth(root, { onLogin: handleLogin, onRegister: handleRegister, onGoogle: handleGoogleLogin });
 }
 
@@ -100,6 +103,7 @@ function showOnboarding() {
     onSubmit: async (values) => {
       const profile = await createStudyProfile(state.user, values);
       state.profiles = [profile]; state.currentProfile = profile; storeProfile(profile);
+      showTeacherSetup(profile);
       state.view = "dashboard"; renderCurrent(); showToast("Seu perfil de estudo está pronto!");
     },
     onSignOut: handleLogout,
@@ -109,12 +113,17 @@ function showOnboarding() {
 function renderCurrent() {
   if (state.view === "personal") return renderPersonal();
   if (state.view === "profiles") return renderProfiles();
+  if (state.view === "teachers") return renderTeachers();
   renderDashboard();
 }
 
 function renderDashboard() {
   state.view = "dashboard";
   renderWithinLayout(dashboardView({ record: state.record, profile: state.currentProfile, profiles: state.profiles }));
+  root.querySelector("[data-open-teachers]")?.addEventListener("click", () => {
+    state.returnView = "dashboard";
+    renderTeachers();
+  });
 }
 
 function renderPersonal() {
@@ -140,9 +149,11 @@ function renderProfiles() {
     onCreate: async (values) => {
       const profile = await createStudyProfile(state.user, values);
       state.profiles = [...state.profiles, profile];
-      if (!state.currentProfile) { state.currentProfile = profile; storeProfile(profile); }
+      state.currentProfile = profile; storeProfile(profile); state.teachers = [];
       renderProfiles(); showToast("Novo perfil criado.");
+      return profile;
     },
+    onCreated: (profile) => showTeacherSetup(profile),
     onUpdate: async (id, values) => {
       const updated = await updateStudyProfile(id, values);
       state.profiles = state.profiles.map((profile) => profile.id === id ? updated : profile);
@@ -154,9 +165,71 @@ function renderProfiles() {
         await deleteStudyProfile(profile.id);
         state.profiles = state.profiles.filter((item) => item.id !== profile.id);
         if (!state.profiles.length) { state.currentProfile = null; removeStoredProfile(); showToast("Perfil removido."); return showOnboarding(); }
-        if (state.currentProfile?.id === profile.id) { state.currentProfile = state.profiles[0]; storeProfile(state.currentProfile); }
+        if (state.currentProfile?.id === profile.id) { state.currentProfile = state.profiles[0]; state.teachers = []; storeProfile(state.currentProfile); }
         renderProfiles(); showToast("Perfil removido.");
       } catch (error) { showToast(error.message || "Não foi possível excluir o perfil.", "error"); }
+    },
+  });
+}
+
+function showTeacherSetup(profile) {
+  openTeacherSetup({
+    profile,
+    onCreate: async (values) => {
+      const teacher = await createTeacher(state.user, profile, values);
+      if (state.currentProfile?.id === profile.id) state.teachers = [...state.teachers, teacher];
+      return teacher;
+    },
+    onUpdate: async (id, values) => {
+      const updated = await updateTeacher(id, profile.id, values);
+      if (state.currentProfile?.id === profile.id) state.teachers = state.teachers.map((teacher) => teacher.id === id ? updated : teacher);
+      return updated;
+    },
+    onDelete: async (id) => {
+      await deleteTeacher(id, profile.id);
+      if (state.currentProfile?.id === profile.id) state.teachers = state.teachers.filter((teacher) => teacher.id !== id);
+    },
+    onFinish: (count) => showToast(count ? "Professores cadastrados com sucesso." : "Você poderá cadastrar professores mais tarde."),
+  });
+}
+
+async function renderTeachers() {
+  const profile = state.currentProfile;
+  if (!profile) return showOnboarding();
+  state.view = "teachers";
+  try {
+    const teachers = await getTeachers(profile.id);
+    if (state.view !== "teachers" || state.currentProfile?.id !== profile.id) return;
+    state.teachers = teachers;
+    mountTeachers();
+  } catch (error) {
+    showToast(error.message || "Não foi possível carregar os professores.", "error");
+    state.view = state.returnView;
+    renderCurrent();
+  }
+}
+
+function mountTeachers() {
+  renderWithinLayout(teachersView({ profile: state.currentProfile, teachers: state.teachers }));
+  bindTeachers(root, {
+    teachers: state.teachers,
+    onBack: () => { state.view = state.returnView; renderCurrent(); },
+    onCreate: async (values) => {
+      const teacher = await createTeacher(state.user, state.currentProfile, values);
+      state.teachers = [...state.teachers, teacher];
+      mountTeachers(); showToast("Professor adicionado com sucesso.");
+      return teacher;
+    },
+    onUpdate: async (id, values) => {
+      const updated = await updateTeacher(id, state.currentProfile.id, values);
+      state.teachers = state.teachers.map((teacher) => teacher.id === id ? updated : teacher);
+      mountTeachers(); showToast("Professor atualizado com sucesso.");
+      return updated;
+    },
+    onDelete: async (teacher) => {
+      await deleteTeacher(teacher.id, state.currentProfile.id);
+      state.teachers = state.teachers.filter((item) => item.id !== teacher.id);
+      mountTeachers(); showToast("Professor removido.");
     },
   });
 }
@@ -166,9 +239,10 @@ function renderWithinLayout(content) {
   bindLayout(root, {
     onCollapse: () => { state.collapsed = !state.collapsed; localStorage.setItem("akademo.sidebar.collapsed", state.collapsed); renderCurrent(); },
     onNavigate: (view) => { state.view = view; renderCurrent(); },
-    onPersonal: () => { state.returnView = state.view === "dashboard" ? "dashboard" : state.returnView; renderPersonal(); },
-    onProfiles: () => { state.returnView = state.view === "dashboard" ? "dashboard" : state.returnView; renderProfiles(); },
-    onProfileChange: (id) => { state.currentProfile = state.profiles.find((profile) => profile.id === id); storeProfile(state.currentProfile); renderCurrent(); showToast("Perfil ativo alterado."); },
+    onPersonal: () => { state.returnView = state.view; renderPersonal(); },
+    onProfiles: () => { state.returnView = state.view; renderProfiles(); },
+    onTeachers: () => { state.returnView = state.view; renderTeachers(); },
+    onProfileChange: (id) => { state.currentProfile = state.profiles.find((profile) => profile.id === id); state.teachers = []; storeProfile(state.currentProfile); renderCurrent(); showToast("Perfil ativo alterado."); },
     onTheme: (event) => { applyTheme(event.target.checked ? "dark" : "light"); renderCurrent(); },
     onLogout: handleLogout,
   });

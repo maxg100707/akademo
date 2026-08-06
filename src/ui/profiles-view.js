@@ -27,7 +27,7 @@ export function profilesView({ profiles, currentProfile }) {
   </section>`;
 }
 
-export function bindProfiles(root, { profiles, onBack, onCreate, onUpdate, onDelete }) {
+export function bindProfiles(root, { profiles, onBack, onCreate, onCreated, onUpdate, onDelete }) {
   const showEditor = (profile = null) => {
     const values = profile ? { institution: profile.instituicao, course: profile.curso, semester: profile.semestre } : emptyForm();
     const modalRoot = document.querySelector("#modal-root");
@@ -47,8 +47,9 @@ export function bindProfiles(root, { profiles, onBack, onCreate, onUpdate, onDel
       const button = form.querySelector("[type=submit]");
       try {
         setButtonLoading(button, true);
-        await (profile ? onUpdate(profile.id, Object.fromEntries(new FormData(form))) : onCreate(Object.fromEntries(new FormData(form))));
+        const savedProfile = await (profile ? onUpdate(profile.id, Object.fromEntries(new FormData(form))) : onCreate(Object.fromEntries(new FormData(form))));
         close();
+        if (!profile) onCreated?.(savedProfile);
       }
       catch (error) { setButtonLoading(button, false); showToast(error.message || "Não foi possível salvar o perfil.", "error"); }
     });
