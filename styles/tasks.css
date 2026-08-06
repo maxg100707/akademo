@@ -1,0 +1,10 @@
+/* Detalhes contextuais ficam visiveis nos cards compactos do dashboard. */
+.tasks-list--compact .task-card__main > span {
+  display: block;
+  font-size: 7px;
+}
+
+.tasks-list--compact .task-card__main small {
+  display: inline-flex;
+  font-size: 8px;
+}

@@ -53,6 +53,13 @@ import {
   uploadContent,
 } from "./services/lessons.js";
 import {
+  createTask,
+  deleteTask,
+  getTasks,
+  setTaskCompleted,
+  updateTask,
+} from "./services/tasks.js";
+import {
   applyPendingAvatar,
   ensureUserRecord,
   getUserRecord,
@@ -90,6 +97,14 @@ import {
   lessonMaterialsView,
   lessonsWeekView,
 } from "./ui/lessons-view.js";
+import {
+  bindLessonTasks,
+  bindTasks,
+  lessonTasksView,
+  openTaskDetail,
+  openTaskEditor,
+  tasksView,
+} from "./ui/tasks-view.js";
 import { showToast } from "./ui/components.js";
 import {
   getStoredProfile,
@@ -109,6 +124,7 @@ const state = {
   schedules: [],
   chronograms: [],
   lessons: [],
+  tasks: [],
   scheduleEditing: false,
   chronogramDisciplineId: null,
   lessonWeekOffset: 0,
@@ -119,6 +135,7 @@ const state = {
   dashboardLoadedProfileId: null,
   view: "dashboard",
   returnView: "dashboard",
+  taskDisciplineFilter: "",
   collapsed: localStorage.getItem("akademo.sidebar.collapsed") === "true",
   theme: localStorage.getItem(APP_STORAGE_KEYS.theme) || "light",
 };
@@ -165,6 +182,7 @@ async function hydrate(user) {
     state.schedules = [];
     state.chronograms = [];
     state.lessons = [];
+    state.tasks = [];
     state.scheduleEditing = false;
     state.chronogramDisciplineId = null;
     state.lessonWeekOffset = 0;
@@ -172,6 +190,7 @@ async function hydrate(user) {
     state.lessonChronogram = null;
     state.activeLesson = null;
     state.activeLessonContents = [];
+    state.taskDisciplineFilter = "";
     state.dashboardLoadedProfileId = null;
     selectStoredProfile();
     if (!state.profiles.length) showOnboarding();
@@ -231,6 +250,7 @@ function renderAuthScreen() {
   state.schedules = [];
   state.chronograms = [];
   state.lessons = [];
+  state.tasks = [];
   state.scheduleEditing = false;
   state.chronogramDisciplineId = null;
   state.lessonWeekOffset = 0;
@@ -238,6 +258,7 @@ function renderAuthScreen() {
   state.lessonChronogram = null;
   state.activeLesson = null;
   state.activeLessonContents = [];
+  state.taskDisciplineFilter = "";
   state.dashboardLoadedProfileId = null;
   renderAuth(root, {
     onLogin: handleLogin,
@@ -270,11 +291,13 @@ function renderCurrent() {
   if (state.view === "disciplines") return renderDisciplines();
   if (state.view === "schedules") return renderSchedules();
   if (state.view === "chronogram") return renderChronogram();
+  if (state.view === "tasks") return renderTasks();
   if (state.view === "lessons") return renderLessons();
   if (state.view === "lesson-chronogram") return renderLessonChronogram();
   if (state.view === "lesson-form") return renderLessonForm();
   if (state.view === "lesson-detail") return renderLessonDetail();
   if (state.view === "lesson-materials") return renderLessonMaterials();
+  if (state.view === "lesson-tasks") return renderLessonTasks();
   renderDashboard();
 }
 
@@ -308,6 +331,9 @@ function mountDashboard() {
       profiles: state.profiles,
       nextClass,
       nextClassChronogram,
+      tasks: state.tasks,
+      disciplines: state.disciplines,
+      lessons: state.lessons,
       isNextClassLoading:
         state.currentProfile &&
         state.dashboardLoadedProfileId !== state.currentProfile.id,
@@ -327,6 +353,48 @@ function mountDashboard() {
     state.returnView = "dashboard";
     renderProfiles();
   });
+  const taskActions = taskCallbacks(() => mountDashboard());
+  root
+    .querySelector("[data-add-dashboard-task]")
+    ?.addEventListener("click", () =>
+      openTaskEditor({
+        disciplines: state.disciplines,
+        lessons: state.lessons,
+        ...taskActions,
+      }),
+    );
+  root.querySelectorAll("[data-open-task]").forEach((card) => {
+    const open = (event) => {
+      if (event.target.closest("[data-toggle-task]")) return;
+      const task = state.tasks.find((item) => item.id === card.dataset.openTask);
+      if (task)
+        openTaskDetail({
+          task,
+          disciplines: state.disciplines,
+          lessons: state.lessons,
+          ...taskActions,
+        });
+    };
+    card.addEventListener("click", open);
+    card.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        open(event);
+      }
+    });
+  });
+  root.querySelectorAll("[data-toggle-task]").forEach((button) =>
+    button.addEventListener("click", async (event) => {
+      event.stopPropagation();
+      const task = state.tasks.find((item) => item.id === button.dataset.toggleTask);
+      if (!task) return;
+      try {
+        await taskActions.onToggle(task);
+      } catch (error) {
+        showToast(error.message || "N\u00e3o foi poss\u00edvel atualizar a tarefa.", "error");
+      }
+    }),
+  );
   root.querySelector("[data-open-schedules]")?.addEventListener("click", () => {
     state.returnView = "dashboard";
     renderSchedules();
@@ -355,11 +423,13 @@ function mountDashboard() {
 
 async function loadDashboardData(profile) {
   try {
-    const [teachers, disciplines, schedules, chronograms] = await Promise.all([
+    const [teachers, disciplines, schedules, chronograms, lessons, tasks] = await Promise.all([
       getTeachers(profile.id),
       getDisciplines(profile.id),
       getSchedules(profile.id),
       getChronogram(profile.id),
+      getLessons(profile.id),
+      getTasks(profile.id),
     ]);
     if (state.view !== "dashboard" || state.currentProfile?.id !== profile.id)
       return;
@@ -367,6 +437,8 @@ async function loadDashboardData(profile) {
     state.disciplines = disciplines;
     state.schedules = schedules;
     state.chronograms = chronograms;
+    state.lessons = lessons;
+    state.tasks = tasks;
     state.dashboardLoadedProfileId = profile.id;
     mountDashboard();
   } catch (error) {
@@ -379,6 +451,49 @@ async function loadDashboardData(profile) {
       );
     }
   }
+}
+
+function replaceTask(task) {
+  state.tasks = [
+    task,
+    ...state.tasks.filter((item) => item.id !== task.id),
+  ];
+}
+
+function taskCallbacks(refresh) {
+  return {
+    onCreate: async (values) => {
+      const task = await createTask(state.user, state.currentProfile, values);
+      replaceTask(task);
+      await refresh();
+      showToast("Tarefa adicionada.");
+      return task;
+    },
+    onUpdate: async (id, values) => {
+      const task = await updateTask(id, state.currentProfile, values);
+      replaceTask(task);
+      await refresh();
+      showToast("Tarefa atualizada.");
+      return task;
+    },
+    onDelete: async (task) => {
+      await deleteTask(task.id, state.currentProfile.id);
+      state.tasks = state.tasks.filter((item) => item.id !== task.id);
+      await refresh();
+      showToast("Tarefa removida.");
+    },
+    onToggle: async (task) => {
+      const updated = await setTaskCompleted(
+        task,
+        state.currentProfile.id,
+        !task.completa,
+      );
+      replaceTask(updated);
+      await refresh();
+      showToast(updated.completa ? "Tarefa conclu\u00edda!" : "Tarefa reaberta.");
+      return updated;
+    },
+  };
 }
 
 function renderPersonal() {
@@ -426,6 +541,7 @@ function renderProfiles() {
       state.schedules = [];
       state.chronograms = [];
       state.lessons = [];
+      state.tasks = [];
       state.scheduleEditing = false;
       state.chronogramDisciplineId = null;
       state.lessonWeekOffset = 0;
@@ -433,6 +549,7 @@ function renderProfiles() {
       state.lessonChronogram = null;
       state.activeLesson = null;
       state.activeLessonContents = [];
+      state.taskDisciplineFilter = "";
       state.dashboardLoadedProfileId = null;
       renderProfiles();
       showToast("Novo perfil criado.");
@@ -470,6 +587,7 @@ function renderProfiles() {
           state.schedules = [];
           state.chronograms = [];
           state.lessons = [];
+          state.tasks = [];
           state.scheduleEditing = false;
           state.chronogramDisciplineId = null;
           state.lessonWeekOffset = 0;
@@ -477,6 +595,7 @@ function renderProfiles() {
           state.lessonChronogram = null;
           state.activeLesson = null;
           state.activeLessonContents = [];
+          state.taskDisciplineFilter = "";
           state.dashboardLoadedProfileId = null;
           storeProfile(state.currentProfile);
         }
@@ -527,6 +646,9 @@ function showTeacherSetup(profile) {
         );
         state.lessons = state.lessons.filter(
           (lesson) => !removedDisciplineIds.includes(lesson.disciplina),
+        );
+        state.tasks = state.tasks.filter(
+          (task) => !removedDisciplineIds.includes(task.disciplina),
         );
       }
     },
@@ -617,6 +739,9 @@ function mountTeachers() {
       state.lessons = state.lessons.filter(
         (lesson) => !removedDisciplineIds.includes(lesson.disciplina),
       );
+      state.tasks = state.tasks.filter(
+        (task) => !removedDisciplineIds.includes(task.disciplina),
+      );
       mountTeachers();
       showToast("Professor removido.");
     },
@@ -656,6 +781,7 @@ function showDisciplineSetup(profile) {
         state.lessons = state.lessons.filter(
           (lesson) => lesson.disciplina !== id,
         );
+        state.tasks = state.tasks.filter((task) => task.disciplina !== id);
       }
     },
     onFinish: (count) =>
@@ -743,6 +869,9 @@ function mountDisciplines() {
       );
       state.lessons = state.lessons.filter(
         (lesson) => lesson.disciplina !== discipline.id,
+      );
+      state.tasks = state.tasks.filter(
+        (task) => task.disciplina !== discipline.id,
       );
       mountDisciplines();
       showToast("Disciplina removida.");
@@ -932,6 +1061,59 @@ function mountChronogram() {
       mountChronogram();
       showToast("Aula removida do cronograma.");
     },
+  });
+}
+
+async function renderTasks() {
+  const profile = state.currentProfile;
+  if (!profile) return showOnboarding();
+  state.view = "tasks";
+  try {
+    const [disciplines, lessons, tasks] = await Promise.all([
+      getDisciplines(profile.id),
+      getLessons(profile.id),
+      getTasks(profile.id),
+    ]);
+    if (state.view !== "tasks" || state.currentProfile?.id !== profile.id)
+      return;
+    state.disciplines = disciplines;
+    state.lessons = lessons;
+    state.tasks = tasks;
+    if (
+      state.taskDisciplineFilter &&
+      !disciplines.some((item) => item.id === state.taskDisciplineFilter)
+    )
+      state.taskDisciplineFilter = "";
+    mountTasks();
+  } catch (error) {
+    showToast(
+      error.message || "N\u00e3o foi poss\u00edvel carregar as tarefas.",
+      "error",
+    );
+    state.view = state.returnView;
+    renderCurrent();
+  }
+}
+
+function mountTasks() {
+  renderWithinLayout(
+    tasksView({
+      profile: state.currentProfile,
+      disciplines: state.disciplines,
+      lessons: state.lessons,
+      tasks: state.tasks,
+      filterDisciplineId: state.taskDisciplineFilter,
+    }),
+  );
+  bindTasks(root, {
+    tasks: state.tasks,
+    disciplines: state.disciplines,
+    lessons: state.lessons,
+    onFilter: (disciplineId) => {
+      state.taskDisciplineFilter = disciplineId;
+      mountTasks();
+    },
+    ...taskCallbacks(() => mountTasks()),
   });
 }
 
@@ -1144,6 +1326,13 @@ function renderLessonDetail() {
           "error",
         ),
       ),
+    onOpenTasks: () =>
+      renderLessonTasks().catch((error) =>
+        showToast(
+          error.message || "N\u00e3o foi poss\u00edvel abrir as tarefas.",
+          "error",
+        ),
+      ),
   });
 }
 
@@ -1219,6 +1408,25 @@ async function renderLessonMaterials() {
   });
 }
 
+async function renderLessonTasks() {
+  const lesson = state.activeLesson;
+  const occurrence = state.lessonOccurrence;
+  if (!lesson || !occurrence) return renderLessonDetail();
+  state.tasks = await getTasks(state.currentProfile.id);
+  state.view = "lesson-tasks";
+  const lessonTasks = state.tasks.filter((task) => task.aula === lesson.id);
+  renderWithinLayout(
+    lessonTasksView({ lesson, occurrence, tasks: lessonTasks }),
+  );
+  bindLessonTasks(root, {
+    lesson,
+    occurrence,
+    tasks: lessonTasks,
+    onBack: renderLessonDetail,
+    ...taskCallbacks(() => renderLessonTasks()),
+  });
+}
+
 function renderWithinLayout(content) {
   renderLayout(root, { ...state, content });
   bindLayout(root, {
@@ -1272,6 +1480,7 @@ function renderWithinLayout(content) {
       state.schedules = [];
       state.chronograms = [];
       state.lessons = [];
+      state.tasks = [];
       state.scheduleEditing = false;
       state.chronogramDisciplineId = null;
       state.lessonWeekOffset = 0;
@@ -1279,6 +1488,7 @@ function renderWithinLayout(content) {
       state.lessonChronogram = null;
       state.activeLesson = null;
       state.activeLessonContents = [];
+      state.taskDisciplineFilter = "";
       state.dashboardLoadedProfileId = null;
       storeProfile(state.currentProfile);
       renderCurrent();

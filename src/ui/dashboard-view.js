@@ -1,6 +1,7 @@
 import { icon } from "../utils/icons.js";
 import { escapeHtml, firstName } from "../utils/formatters.js";
 import { displayTime, weekdayName } from "../services/schedules.js";
+import { taskListMarkup } from "./tasks-view.js";
 
 function nextClassCard(nextClass, nextClassChronogram, isLoading) {
   if (isLoading) return `<section class="next-class-card is-loading"><span class="next-class-card__icon"><span class="spinner"></span></span><div><small>PR\u00d3XIMA AULA</small><strong>Organizando sua rotina...</strong><p>Estamos buscando os hor\u00e1rios deste perfil.</p></div></section>`;
@@ -18,7 +19,7 @@ function basicAccess({ action, iconName, eyebrow, title, description, tone = "" 
   return `<button class="dashboard-basic-card ${tone}" data-open-${action}><span>${icon(iconName, 20)}</span><div><small>${eyebrow}</small><strong>${title}</strong><p>${description}</p></div>${icon("arrowRight", 17)}</button>`;
 }
 
-export function dashboardView({ record, profile, profiles, nextClass, nextClassChronogram, isNextClassLoading }) {
+export function dashboardView({ record, profile, profiles, nextClass, nextClassChronogram, isNextClassLoading, tasks = [], disciplines = [], lessons = [] }) {
   const name = escapeHtml(firstName(record?.nome));
   const course = escapeHtml(profile?.curso || "seu curso");
   const institution = escapeHtml(profile?.instituicao || "sua institui\u00e7\u00e3o");
@@ -27,7 +28,7 @@ export function dashboardView({ record, profile, profiles, nextClass, nextClassC
       <div><span class="eyebrow">VIS\u00c3O GERAL</span><h1>Ol\u00e1, ${name} <span class="wave">\u2726</span></h1><p>Seu espa\u00e7o para estudar com mais inten\u00e7\u00e3o, ${course} por vez.</p></div>
       <div class="active-profile-summary active-profile-summary--select"><span class="active-profile-summary__icon">${icon("graduation", 19)}</span><div class="active-profile-summary__details"><span>PERFIL ATIVO</span>${profiles.length > 1 ? `<label class="active-profile-summary__select-wrap"><span class="visually-hidden">Selecionar perfil de estudo</span><select data-profile-select aria-label="Selecionar perfil de estudo">${profiles.map((item) => `<option value="${item.id}" ${item.id === profile?.id ? "selected" : ""}>${escapeHtml(item.curso)} \u00b7 ${item.semestre}\u00ba</option>`).join("")}</select></label>` : `<strong>${course}</strong>`}<small>${institution} \u00b7 ${profile?.semestre}\u00ba semestre</small></div></div>
     </div>
-    <section class="dashboard-recent"><div class="dashboard-section-title"><div><span class="eyebrow">RECENTES</span><h2>Sua rotina agora</h2></div><span class="soft-status">Perfil em foco</span></div>${nextClassCard(nextClass, nextClassChronogram, isNextClassLoading)}</section>
+    <section class="dashboard-recent"><div class="dashboard-section-title"><div><span class="eyebrow">RECENTES</span><h2>Sua rotina agora</h2></div><span class="soft-status">Perfil em foco</span></div><div class="dashboard-recent-grid"><div>${nextClassCard(nextClass, nextClassChronogram, isNextClassLoading)}</div><section class="dashboard-tasks"><div class="dashboard-tasks__head"><div><span class="eyebrow">PR\u00d3XIMAS ENTREGAS</span><h3>Tarefas a vencer</h3></div><button class="icon-button" type="button" data-add-dashboard-task aria-label="Adicionar tarefa" ${disciplines.length ? "" : "disabled title=\"Cadastre uma disciplina primeiro\""}>${icon("plus", 18)}</button></div>${taskListMarkup(tasks.filter((task) => !task.completa).sort((first, second) => new Date(first.prazo) - new Date(second.prazo)).slice(0, 5), disciplines, lessons, { compact: true, emptyMessage: "Nenhuma tarefa pendente no momento." })}</section></div></section>
     <section class="dashboard-basics"><div class="dashboard-section-title"><div><span class="eyebrow">CADASTROS B\u00c1SICOS</span><h2>Organize sua base</h2></div></div><div class="dashboard-basic-grid">${basicAccess({ action: "teachers", iconName: "users", eyebrow: "PROFESSORES", title: "Professores", description: "Contatos do perfil" })}${basicAccess({ action: "disciplines", iconName: "book", eyebrow: "DISCIPLINAS", title: "Disciplinas", description: "Sua grade de estudo", tone: "dashboard-basic-card--teal" })}${basicAccess({ action: "profiles", iconName: "graduation", eyebrow: "PERFIS", title: "Perfis de estudo", description: "Cursos e semestres", tone: "dashboard-basic-card--olive" })}</div></section>
   </section>`;
 }
