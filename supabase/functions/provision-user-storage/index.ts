@@ -4,6 +4,14 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 // Mantém os headers sincronizados com o cliente Supabase atual (inclui headers novos de Functions).
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 
+const BUCKET_ALLOWED_TYPES = [
+  "image/jpeg", "image/png", "image/webp", "image/gif", "application/pdf", "text/plain", "application/json",
+  "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-powerpoint", "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/zip", "application/x-zip-compressed", "application/octet-stream",
+];
+
 function fileExtension(contentType: string) {
   if (contentType.includes("png")) return "png";
   if (contentType.includes("webp")) return "webp";
@@ -32,11 +40,18 @@ Deno.serve(async (request) => {
     if (!existingBucket) {
       const { error: bucketError } = await admin.storage.createBucket(bucketId, {
         public: false,
-        fileSizeLimit: "5MB",
-        allowedMimeTypes: ["image/jpeg", "image/png", "image/webp", "image/gif"],
+        fileSizeLimit: "20MB",
+        allowedMimeTypes: BUCKET_ALLOWED_TYPES,
       });
       // Duas requisições simultâneas podem tentar criar o mesmo bucket; isso é seguro.
       if (bucketError && !/already exists|duplicate/i.test(bucketError.message)) throw bucketError;
+    } else {
+      const { error: bucketUpdateError } = await admin.storage.updateBucket(bucketId, {
+        public: false,
+        fileSizeLimit: "20MB",
+        allowedMimeTypes: BUCKET_ALLOWED_TYPES,
+      });
+      if (bucketUpdateError) throw bucketUpdateError;
     }
 
     let photoPath: string | null = null;

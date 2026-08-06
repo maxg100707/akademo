@@ -17,6 +17,7 @@ supabase/disciplines-migration.sql migração de disciplinas (após professores)
 supabase/schedules-migration.sql   migração de horários (após disciplinas)
 supabase/profile-dates-migration.sql período de início e fim dos perfis
 supabase/chronogram-migration.sql  migração do cronograma (após horários e datas)
+supabase/lessons-migration.sql     migração de aulas e conteúdos (após cronograma)
 supabase/functions/        Edge Function segura para buckets e avatar Google
 ```
 
@@ -36,7 +37,7 @@ supabase/functions/        Edge Function segura para buckets e avatar Google
 
 ### Atualização para instalações existentes
 
-Se o projeto já está em uso, execute as migrações que ainda não foram aplicadas nesta ordem: `supabase/teachers-migration.sql`, `supabase/disciplines-migration.sql`, `supabase/schedules-migration.sql`, `supabase/profile-dates-migration.sql` e `supabase/chronogram-migration.sql`. A última cria o cronograma e suas políticas de acesso.
+Se o projeto já está em uso, execute as migrações que ainda não foram aplicadas nesta ordem: `supabase/teachers-migration.sql`, `supabase/disciplines-migration.sql`, `supabase/schedules-migration.sql`, `supabase/profile-dates-migration.sql`, `supabase/chronogram-migration.sql` e `supabase/lessons-migration.sql`. Depois publique novamente a Edge Function `provision-user-storage`, pois ela passa a aceitar materiais de aula de até 20 MB.
 
 ### Google OAuth: URLs que não podem ser confundidas
 

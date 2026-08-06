@@ -734,7 +734,7 @@ drop trigger if exists cronograma_set_updated_at on public.cronograma;
 create trigger cronograma_set_updated_at before update on public.cronograma
 for each row execute procedure public.set_updated_at();
 
--- A mesma ocorrÃªncia de uma disciplina pode ter apenas um registro de cronograma.
+-- A mesma ocorrencia de uma disciplina pode ter apenas um registro de cronograma.
 create or replace function public.prevent_duplicate_chronogram_entry()
 returns trigger
 language plpgsql
@@ -751,7 +751,7 @@ begin
   ) then
     raise exception using
       errcode = '23505',
-      message = 'JÃ¡ existe um cronograma para esta aula.';
+      message = U&'J\00E1 existe um cronograma para esta aula.';
   end if;
   return new;
 end;
@@ -830,3 +830,146 @@ for delete to authenticated using (
   email_user = (select auth.jwt() ->> 'email')
   and exists (select 1 from public.perfil_estudo as profile where profile.id = cronograma.perfil and profile.user_id = (select auth.uid()))
 );
+
+-- Aulas: o registro de uma ocorrencia concreta do cronograma.
+create table if not exists public.aulas (
+  id uuid primary key default gen_random_uuid(),
+  email_user text not null,
+  perfil uuid not null references public.perfil_estudo(id) on delete cascade,
+  disciplina uuid not null references public.disciplinas(id) on delete cascade,
+  horario uuid not null references public.horarios(id) on delete cascade,
+  cronograma uuid not null unique references public.cronograma(id) on delete cascade,
+  tema text not null check (char_length(btrim(tema)) between 1 and 180),
+  resumo text check (resumo is null or char_length(resumo) <= 5000),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.conteudos (
+  id uuid primary key default gen_random_uuid(),
+  email_user text not null,
+  perfil uuid not null references public.perfil_estudo(id) on delete cascade,
+  aula uuid not null references public.aulas(id) on delete cascade,
+  path text not null check (path like 'conteudos/%'),
+  titulo text not null check (char_length(btrim(titulo)) between 1 and 160),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.cronograma add column if not exists aula uuid;
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conrelid = 'public.cronograma'::regclass and conname = 'cronograma_aula_fkey') then
+    alter table public.cronograma add constraint cronograma_aula_fkey foreign key (aula) references public.aulas(id) on delete set null;
+  end if;
+end;
+$$;
+
+create index if not exists aulas_perfil_created_idx on public.aulas(perfil, created_at desc);
+create index if not exists aulas_horario_idx on public.aulas(horario);
+create index if not exists conteudos_aula_created_idx on public.conteudos(aula, created_at desc);
+
+drop trigger if exists aulas_set_updated_at on public.aulas;
+create trigger aulas_set_updated_at before update on public.aulas for each row execute procedure public.set_updated_at();
+drop trigger if exists conteudos_set_updated_at on public.conteudos;
+create trigger conteudos_set_updated_at before update on public.conteudos for each row execute procedure public.set_updated_at();
+
+-- O vinculo inverso do cronograma tambem precisa pertencer ao mesmo perfil/disciplina.
+drop policy if exists "chronogram update own profile" on public.cronograma;
+create policy "chronogram update own profile" on public.cronograma
+for update to authenticated using (
+  email_user = (select auth.jwt() ->> 'email')
+  and exists (select 1 from public.perfil_estudo as profile where profile.id = cronograma.perfil and profile.user_id = (select auth.uid()))
+) with check (
+  email_user = (select auth.jwt() ->> 'email')
+  and exists (select 1 from public.perfil_estudo as profile where profile.id = cronograma.perfil and profile.user_id = (select auth.uid()))
+  and exists (select 1 from public.disciplinas as discipline where discipline.id = cronograma.disciplina and discipline.perfil = cronograma.perfil and discipline.email_user = (select auth.jwt() ->> 'email'))
+  and (cronograma.aula is null or exists (select 1 from public.aulas as lesson where lesson.id = cronograma.aula and lesson.perfil = cronograma.perfil and lesson.disciplina = cronograma.disciplina))
+);
+
+alter table public.aulas enable row level security;
+alter table public.conteudos enable row level security;
+revoke all on table public.aulas from anon, authenticated;
+revoke all on table public.conteudos from anon, authenticated;
+grant select, insert, delete on table public.aulas to authenticated;
+grant update (resumo, updated_at) on table public.aulas to authenticated;
+grant select, insert, delete on table public.conteudos to authenticated;
+
+drop policy if exists "lessons read own profile" on public.aulas;
+create policy "lessons read own profile" on public.aulas
+for select to authenticated using (
+  email_user = (select auth.jwt() ->> 'email')
+  and exists (select 1 from public.perfil_estudo as profile where profile.id = aulas.perfil and profile.user_id = (select auth.uid()))
+);
+drop policy if exists "lessons create own profile" on public.aulas;
+create policy "lessons create own profile" on public.aulas
+for insert to authenticated with check (
+  email_user = (select auth.jwt() ->> 'email')
+  and exists (select 1 from public.perfil_estudo as profile where profile.id = aulas.perfil and profile.user_id = (select auth.uid()))
+  and exists (select 1 from public.horarios as schedule where schedule.id = aulas.horario and schedule.perfil = aulas.perfil and schedule.disciplina = aulas.disciplina)
+  and exists (select 1 from public.cronograma as chronogram where chronogram.id = aulas.cronograma and chronogram.perfil = aulas.perfil and chronogram.disciplina = aulas.disciplina and chronogram.tema = aulas.tema and chronogram.aula is null and coalesce(chronogram.feriado, false) = false)
+);
+drop policy if exists "lessons update own profile" on public.aulas;
+create policy "lessons update own profile" on public.aulas
+for update to authenticated using (
+  email_user = (select auth.jwt() ->> 'email')
+  and exists (select 1 from public.perfil_estudo as profile where profile.id = aulas.perfil and profile.user_id = (select auth.uid()))
+) with check (
+  email_user = (select auth.jwt() ->> 'email')
+  and exists (select 1 from public.perfil_estudo as profile where profile.id = aulas.perfil and profile.user_id = (select auth.uid()))
+);
+drop policy if exists "lessons delete own profile" on public.aulas;
+create policy "lessons delete own profile" on public.aulas
+for delete to authenticated using (
+  email_user = (select auth.jwt() ->> 'email')
+  and exists (select 1 from public.perfil_estudo as profile where profile.id = aulas.perfil and profile.user_id = (select auth.uid()))
+);
+
+drop policy if exists "contents read own lesson" on public.conteudos;
+create policy "contents read own lesson" on public.conteudos
+for select to authenticated using (
+  email_user = (select auth.jwt() ->> 'email')
+  and exists (select 1 from public.aulas as lesson join public.perfil_estudo as profile on profile.id = lesson.perfil where lesson.id = conteudos.aula and lesson.perfil = conteudos.perfil and profile.user_id = (select auth.uid()))
+);
+drop policy if exists "contents create own lesson" on public.conteudos;
+create policy "contents create own lesson" on public.conteudos
+for insert to authenticated with check (
+  email_user = (select auth.jwt() ->> 'email') and path like 'conteudos/%'
+  and exists (select 1 from public.aulas as lesson join public.perfil_estudo as profile on profile.id = lesson.perfil where lesson.id = conteudos.aula and lesson.perfil = conteudos.perfil and profile.user_id = (select auth.uid()) and lesson.email_user = (select auth.jwt() ->> 'email'))
+);
+drop policy if exists "contents delete own lesson" on public.conteudos;
+create policy "contents delete own lesson" on public.conteudos
+for delete to authenticated using (
+  email_user = (select auth.jwt() ->> 'email')
+  and exists (select 1 from public.aulas as lesson join public.perfil_estudo as profile on profile.id = lesson.perfil where lesson.id = conteudos.aula and lesson.perfil = conteudos.perfil and profile.user_id = (select auth.uid()))
+);
+
+drop policy if exists "akademo content read own bucket" on storage.objects;
+create policy "akademo content read own bucket" on storage.objects
+for select to authenticated using (bucket_id = (select auth.jwt() ->> 'email') and name like 'conteudos/%');
+drop policy if exists "akademo content upload own bucket" on storage.objects;
+create policy "akademo content upload own bucket" on storage.objects
+for insert to authenticated with check (bucket_id = (select auth.jwt() ->> 'email') and name like 'conteudos/%');
+drop policy if exists "akademo content delete own bucket" on storage.objects;
+create policy "akademo content delete own bucket" on storage.objects
+for delete to authenticated using (bucket_id = (select auth.jwt() ->> 'email') and name like 'conteudos/%');
+
+create or replace function public.sync_auth_user_email()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  if new.email is distinct from old.email then
+    update public.users set email = new.email, updated_at = now() where id = new.id;
+    update public.perfil_estudo set email = new.email, updated_at = now() where user_id = new.id;
+    update public.professores as professor set email_user = new.email, updated_at = now() from public.perfil_estudo as profile where professor.perfil = profile.id and profile.user_id = new.id;
+    update public.disciplinas as discipline set email_user = new.email, updated_at = now() from public.perfil_estudo as profile where discipline.perfil = profile.id and profile.user_id = new.id;
+    update public.horarios as schedule set email_user = new.email, updated_at = now() from public.perfil_estudo as profile where schedule.perfil = profile.id and profile.user_id = new.id;
+    update public.cronograma as chronogram set email_user = new.email, updated_at = now() from public.perfil_estudo as profile where chronogram.perfil = profile.id and profile.user_id = new.id;
+    update public.aulas as lesson set email_user = new.email, updated_at = now() from public.perfil_estudo as profile where lesson.perfil = profile.id and profile.user_id = new.id;
+    update public.conteudos as content set email_user = new.email, updated_at = now() from public.perfil_estudo as profile where content.perfil = profile.id and profile.user_id = new.id;
+  end if;
+  return new;
+end;
+$$;

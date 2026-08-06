@@ -208,7 +208,7 @@ drop trigger if exists cronograma_set_updated_at on public.cronograma;
 create trigger cronograma_set_updated_at before update on public.cronograma
 for each row execute procedure public.set_updated_at();
 
--- Impede duplicidade da mesma aula, inclusive se a requisiÃ§Ã£o nÃ£o vier pela interface.
+-- Impede duplicidade da mesma aula, inclusive se a requisicao nao vier pela interface.
 create or replace function public.prevent_duplicate_chronogram_entry()
 returns trigger
 language plpgsql
@@ -225,7 +225,7 @@ begin
   ) then
     raise exception using
       errcode = '23505',
-      message = 'JÃ¡ existe um cronograma para esta aula.';
+      message = U&'J\00E1 existe um cronograma para esta aula.';
   end if;
   return new;
 end;

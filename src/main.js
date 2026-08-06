@@ -5,6 +5,7 @@ import { createTeacher, deleteTeacher, getTeachers, updateTeacher } from "./serv
 import { createDiscipline, deleteDiscipline, getDisciplines, updateDiscipline } from "./services/disciplines.js";
 import { createSchedule, deleteSchedule, getNextClass, getSchedules, updateSchedule } from "./services/schedules.js";
 import { createChronogramEntry, deleteChronogramEntry, findChronogramEntry, getChronogram, getLessonOccurrences, updateChronogramEntry } from "./services/chronogram.js";
+import { createLesson, deleteContent, getContentUrl, getContents, getLessonByChronogram, getLessons, getWeekOccurrences, startOfWeek, uploadContent } from "./services/lessons.js";
 import { applyPendingAvatar, ensureUserRecord, getUserRecord, profilePhotoUrl, provisionUserStorage, updatePersonalInfo } from "./services/users.js";
 import { dashboardView } from "./ui/dashboard-view.js";
 import { renderAuth } from "./ui/auth-view.js";
@@ -16,13 +17,14 @@ import { bindTeachers, openTeacherSetup, teachersView } from "./ui/teachers-view
 import { bindDisciplines, disciplinesView, openDisciplineSetup } from "./ui/disciplines-view.js";
 import { bindSchedules, schedulesView } from "./ui/schedules-view.js";
 import { bindChronogram, chronogramView } from "./ui/chronogram-view.js";
+import { bindLessonChronogram, bindLessonDetail, bindLessonForm, bindLessonsWeek, lessonChronogramView, lessonDetailView, lessonFormView, lessonsWeekView } from "./ui/lessons-view.js";
 import { showToast } from "./ui/components.js";
 import { getStoredProfile, removeStoredProfile, storeProfile } from "./utils/formatters.js";
 
 const root = document.querySelector("#app");
 const state = {
-  user: null, record: null, photoUrl: null, profiles: [], currentProfile: null, teachers: [], disciplines: [], schedules: [], chronograms: [],
-  scheduleEditing: false, chronogramDisciplineId: null, dashboardLoadedProfileId: null,
+  user: null, record: null, photoUrl: null, profiles: [], currentProfile: null, teachers: [], disciplines: [], schedules: [], chronograms: [], lessons: [],
+  scheduleEditing: false, chronogramDisciplineId: null, lessonWeekOffset: 0, lessonOccurrence: null, lessonChronogram: null, activeLesson: null, activeLessonContents: [], dashboardLoadedProfileId: null,
   view: "dashboard", returnView: "dashboard", collapsed: localStorage.getItem("akademo.sidebar.collapsed") === "true",
   theme: localStorage.getItem(APP_STORAGE_KEYS.theme) || "light",
 };
@@ -62,8 +64,14 @@ async function hydrate(user) {
     state.disciplines = [];
     state.schedules = [];
     state.chronograms = [];
+    state.lessons = [];
     state.scheduleEditing = false;
     state.chronogramDisciplineId = null;
+    state.lessonWeekOffset = 0;
+    state.lessonOccurrence = null;
+    state.lessonChronogram = null;
+    state.activeLesson = null;
+    state.activeLessonContents = [];
     state.dashboardLoadedProfileId = null;
     selectStoredProfile();
     if (!state.profiles.length) showOnboarding();
@@ -106,7 +114,7 @@ function selectStoredProfile() {
 }
 
 function renderAuthScreen() {
-  state.user = null; state.record = null; state.photoUrl = null; state.profiles = []; state.currentProfile = null; state.teachers = []; state.disciplines = []; state.schedules = []; state.chronograms = []; state.scheduleEditing = false; state.chronogramDisciplineId = null; state.dashboardLoadedProfileId = null;
+  state.user = null; state.record = null; state.photoUrl = null; state.profiles = []; state.currentProfile = null; state.teachers = []; state.disciplines = []; state.schedules = []; state.chronograms = []; state.lessons = []; state.scheduleEditing = false; state.chronogramDisciplineId = null; state.lessonWeekOffset = 0; state.lessonOccurrence = null; state.lessonChronogram = null; state.activeLesson = null; state.activeLessonContents = []; state.dashboardLoadedProfileId = null;
   renderAuth(root, { onLogin: handleLogin, onRegister: handleRegister, onGoogle: handleGoogleLogin });
 }
 
@@ -130,6 +138,10 @@ function renderCurrent() {
   if (state.view === "disciplines") return renderDisciplines();
   if (state.view === "schedules") return renderSchedules();
   if (state.view === "chronogram") return renderChronogram();
+  if (state.view === "lessons") return renderLessons();
+  if (state.view === "lesson-chronogram") return renderLessonChronogram();
+  if (state.view === "lesson-form") return renderLessonForm();
+  if (state.view === "lesson-detail") return renderLessonDetail();
   renderDashboard();
 }
 
@@ -159,6 +171,16 @@ function mountDashboard() {
   root.querySelector("[data-open-schedules]")?.addEventListener("click", () => {
     state.returnView = "dashboard";
     renderSchedules();
+  });
+  root.querySelector("[data-open-next-class]")?.addEventListener("click", () => {
+    if (!nextClass) return;
+    openLessonOccurrence({
+      key: `${nextClass.schedule.id}:${nextClass.start.toISOString()}`,
+      schedule: nextClass.schedule,
+      discipline: nextClass.discipline,
+      startsAt: nextClass.start,
+      endsAt: nextClass.end,
+    }, "dashboard").catch((error) => showToast(error.message || "N\u00e3o foi poss\u00edvel abrir a aula.", "error"));
   });
 }
 
@@ -204,7 +226,7 @@ function renderProfiles() {
     onCreate: async (values) => {
       const profile = await createStudyProfile(state.user, values);
       state.profiles = [...state.profiles, profile];
-      state.currentProfile = profile; storeProfile(profile); state.teachers = []; state.disciplines = []; state.schedules = []; state.chronograms = []; state.scheduleEditing = false; state.chronogramDisciplineId = null; state.dashboardLoadedProfileId = null;
+      state.currentProfile = profile; storeProfile(profile); state.teachers = []; state.disciplines = []; state.schedules = []; state.chronograms = []; state.lessons = []; state.scheduleEditing = false; state.chronogramDisciplineId = null; state.lessonWeekOffset = 0; state.lessonOccurrence = null; state.lessonChronogram = null; state.activeLesson = null; state.activeLessonContents = []; state.dashboardLoadedProfileId = null;
       renderProfiles(); showToast("Novo perfil criado.");
       return profile;
     },
@@ -220,7 +242,7 @@ function renderProfiles() {
         await deleteStudyProfile(profile.id);
         state.profiles = state.profiles.filter((item) => item.id !== profile.id);
         if (!state.profiles.length) { state.currentProfile = null; removeStoredProfile(); showToast("Perfil removido."); return showOnboarding(); }
-        if (state.currentProfile?.id === profile.id) { state.currentProfile = state.profiles[0]; state.teachers = []; state.disciplines = []; state.schedules = []; state.chronograms = []; state.scheduleEditing = false; state.chronogramDisciplineId = null; state.dashboardLoadedProfileId = null; storeProfile(state.currentProfile); }
+        if (state.currentProfile?.id === profile.id) { state.currentProfile = state.profiles[0]; state.teachers = []; state.disciplines = []; state.schedules = []; state.chronograms = []; state.lessons = []; state.scheduleEditing = false; state.chronogramDisciplineId = null; state.lessonWeekOffset = 0; state.lessonOccurrence = null; state.lessonChronogram = null; state.activeLesson = null; state.activeLessonContents = []; state.dashboardLoadedProfileId = null; storeProfile(state.currentProfile); }
         renderProfiles(); showToast("Perfil removido.");
       } catch (error) { showToast(error.message || "Não foi possível excluir o perfil.", "error"); }
     },
@@ -248,6 +270,7 @@ function showTeacherSetup(profile) {
         state.disciplines = state.disciplines.filter((discipline) => discipline.professor_id !== id);
         state.schedules = state.schedules.filter((schedule) => !removedDisciplineIds.includes(schedule.disciplina));
         state.chronograms = state.chronograms.filter((entry) => !removedDisciplineIds.includes(entry.disciplina));
+        state.lessons = state.lessons.filter((lesson) => !removedDisciplineIds.includes(lesson.disciplina));
       }
     },
     onFinish: (count) => {
@@ -298,6 +321,7 @@ function mountTeachers() {
       state.disciplines = state.disciplines.filter((discipline) => discipline.professor_id !== teacher.id);
       state.schedules = state.schedules.filter((schedule) => !removedDisciplineIds.includes(schedule.disciplina));
       state.chronograms = state.chronograms.filter((entry) => !removedDisciplineIds.includes(entry.disciplina));
+      state.lessons = state.lessons.filter((lesson) => !removedDisciplineIds.includes(lesson.disciplina));
       mountTeachers(); showToast("Professor removido.");
     },
   });
@@ -323,6 +347,7 @@ function showDisciplineSetup(profile) {
         state.disciplines = state.disciplines.filter((discipline) => discipline.id !== id);
         state.schedules = state.schedules.filter((schedule) => schedule.disciplina !== id);
         state.chronograms = state.chronograms.filter((entry) => entry.disciplina !== id);
+        state.lessons = state.lessons.filter((lesson) => lesson.disciplina !== id);
       }
     },
     onFinish: (count) => showToast(count ? "Disciplinas cadastradas com sucesso." : "Você poderá cadastrar disciplinas mais tarde."),
@@ -369,6 +394,7 @@ function mountDisciplines() {
       state.disciplines = state.disciplines.filter((item) => item.id !== discipline.id);
       state.schedules = state.schedules.filter((schedule) => schedule.disciplina !== discipline.id);
       state.chronograms = state.chronograms.filter((entry) => entry.disciplina !== discipline.id);
+      state.lessons = state.lessons.filter((lesson) => lesson.disciplina !== discipline.id);
       mountDisciplines(); showToast("Disciplina removida.");
     },
   });
@@ -490,6 +516,178 @@ function mountChronogram() {
   });
 }
 
+async function renderLessons() {
+  const profile = state.currentProfile;
+  if (!profile) return showOnboarding();
+  state.view = "lessons";
+  try {
+    const [disciplines, schedules, chronograms, lessons] = await Promise.all([
+      getDisciplines(profile.id), getSchedules(profile.id), getChronogram(profile.id), getLessons(profile.id),
+    ]);
+    if (state.view !== "lessons" || state.currentProfile?.id !== profile.id) return;
+    state.disciplines = disciplines;
+    state.schedules = schedules;
+    state.chronograms = chronograms;
+    state.lessons = lessons;
+    state.dashboardLoadedProfileId = profile.id;
+    mountLessons();
+  } catch (error) {
+    showToast(error.message || "N\u00e3o foi poss\u00edvel carregar as aulas.", "error");
+    state.view = state.returnView;
+    renderCurrent();
+  }
+}
+
+function mountLessons() {
+  const weekStart = startOfWeek(new Date(), state.lessonWeekOffset);
+  const occurrences = getWeekOccurrences(state.currentProfile, state.schedules, state.disciplines, weekStart);
+  renderWithinLayout(lessonsWeekView({
+    weekStart,
+    occurrences,
+    chronograms: state.chronograms,
+    lessons: state.lessons,
+  }));
+  bindLessonsWeek(root, {
+    occurrences,
+    onPrevious: () => { state.lessonWeekOffset -= 1; mountLessons(); },
+    onNext: () => { state.lessonWeekOffset += 1; mountLessons(); },
+    onOpen: (occurrence) => openLessonOccurrence(occurrence, "lessons")
+      .catch((error) => showToast(error.message || "N\u00e3o foi poss\u00edvel abrir a aula.", "error")),
+  });
+}
+
+async function openLessonOccurrence(occurrence, returnView = state.view) {
+  if (!occurrence?.discipline || !state.currentProfile) throw new Error("Esta aula n\u00e3o est\u00e1 mais dispon\u00edvel.");
+  state.returnView = returnView;
+  state.lessonOccurrence = occurrence;
+  const chronogram = findChronogramEntry(state.chronograms, occurrence.discipline.id, occurrence.startsAt);
+  if (chronogram?.feriado) {
+    const existingHolidayLesson = state.lessons.find((lesson) => lesson.cronograma === chronogram.id)
+      || await getLessonByChronogram(state.currentProfile.id, chronogram.id);
+    if (existingHolidayLesson) {
+      if (!state.lessons.some((lesson) => lesson.id === existingHolidayLesson.id)) state.lessons = [existingHolidayLesson, ...state.lessons];
+      await showLessonDetail(existingHolidayLesson, occurrence);
+      return;
+    }
+    throw new Error("Esta data esta marcada como feriado. Nao e possivel registrar uma aula.");
+  }
+  if (!chronogram) {
+    state.lessonChronogram = null;
+    state.view = "lesson-chronogram";
+    renderLessonChronogram();
+    return;
+  }
+  state.lessonChronogram = chronogram;
+  const existing = state.lessons.find((lesson) => lesson.cronograma === chronogram.id)
+    || await getLessonByChronogram(state.currentProfile.id, chronogram.id);
+  if (existing) {
+    if (!state.lessons.some((lesson) => lesson.id === existing.id)) state.lessons = [existing, ...state.lessons];
+    await showLessonDetail(existing, occurrence);
+    return;
+  }
+  state.view = "lesson-form";
+  renderLessonForm();
+}
+
+function lessonBack() {
+  state.lessonOccurrence = null;
+  state.lessonChronogram = null;
+  state.activeLesson = null;
+  state.activeLessonContents = [];
+  state.view = state.returnView || "lessons";
+  renderCurrent();
+}
+
+function renderLessonChronogram() {
+  const occurrence = state.lessonOccurrence;
+  if (!occurrence) return lessonBack();
+  state.view = "lesson-chronogram";
+  renderWithinLayout(lessonChronogramView(occurrence));
+  bindLessonChronogram(root, {
+    onBack: lessonBack,
+    onSave: async (values) => {
+      const chronogram = await createChronogramEntry(state.user, state.currentProfile, values);
+      state.chronograms = [...state.chronograms, chronogram].sort((first, second) => new Date(first.data_hora) - new Date(second.data_hora));
+      if (chronogram.feriado) {
+        state.lessonOccurrence = null;
+        state.lessonChronogram = null;
+        state.activeLesson = null;
+        state.activeLessonContents = [];
+        state.returnView = "lessons";
+        state.view = "lessons";
+        await renderLessons();
+        showToast("Feriado registrado na agenda.");
+        return;
+      }
+      state.lessonChronogram = chronogram;
+      state.view = "lesson-form";
+      renderLessonForm();
+      showToast("Cronograma da aula registrado.");
+    },
+  });
+}
+
+function renderLessonForm() {
+  const occurrence = state.lessonOccurrence;
+  const chronogram = state.lessonChronogram;
+  if (!occurrence || !chronogram) return lessonBack();
+  state.view = "lesson-form";
+  renderWithinLayout(lessonFormView(occurrence, chronogram));
+  bindLessonForm(root, {
+    onBack: lessonBack,
+    onSave: async (summary) => {
+      const lesson = await createLesson(state.user, state.currentProfile, occurrence, chronogram, summary);
+      state.lessons = [lesson, ...state.lessons.filter((item) => item.id !== lesson.id)];
+      await showLessonDetail(lesson, occurrence);
+      showToast("Aula salva com sucesso.");
+    },
+  });
+}
+
+async function showLessonDetail(lesson, occurrence = state.lessonOccurrence) {
+  state.activeLesson = lesson;
+  state.lessonOccurrence = occurrence;
+  state.activeLessonContents = await getContents(lesson.id);
+  state.view = "lesson-detail";
+  renderLessonDetail();
+}
+
+function renderLessonDetail() {
+  const lesson = state.activeLesson;
+  if (!lesson) return lessonBack();
+  renderWithinLayout(lessonDetailView({
+    lesson,
+    occurrence: state.lessonOccurrence,
+    contents: state.activeLessonContents,
+  }));
+  bindLessonDetail(root, {
+    contents: state.activeLessonContents,
+    onBack: lessonBack,
+    onUpload: async (values) => {
+      const content = await uploadContent(state.user, state.currentProfile, lesson, values);
+      state.activeLessonContents = [content, ...state.activeLessonContents];
+      renderLessonDetail();
+      showToast("Arquivo adicionado \u00e0 aula.");
+    },
+    onOpenContent: async (content) => {
+      try { window.open(await getContentUrl(state.user, content), "_blank", "noopener,noreferrer"); }
+      catch (error) { showToast(error.message || "N\u00e3o foi poss\u00edvel abrir o arquivo.", "error"); }
+    },
+    onDownloadContent: async (content) => {
+      try { window.open(await getContentUrl(state.user, content, true), "_blank", "noopener,noreferrer"); }
+      catch (error) { showToast(error.message || "N\u00e3o foi poss\u00edvel baixar o arquivo.", "error"); }
+    },
+    onDeleteContent: async (content) => {
+      try {
+        await deleteContent(state.user, content);
+        state.activeLessonContents = state.activeLessonContents.filter((item) => item.id !== content.id);
+        renderLessonDetail();
+        showToast("Arquivo exclu\u00eddo.");
+      } catch (error) { showToast(error.message || "N\u00e3o foi poss\u00edvel excluir o arquivo.", "error"); }
+    },
+  });
+}
+
 function renderWithinLayout(content) {
   renderLayout(root, { ...state, content });
   bindLayout(root, {
@@ -497,6 +695,7 @@ function renderWithinLayout(content) {
     onNavigate: (view) => {
       if (view === "schedules") { state.returnView = state.view; state.scheduleEditing = false; }
       if (view === "chronogram") { state.returnView = state.view; state.chronogramDisciplineId = null; }
+      if (view === "lessons") { state.returnView = state.view; state.lessonWeekOffset = 0; state.lessonOccurrence = null; state.lessonChronogram = null; state.activeLesson = null; state.activeLessonContents = []; }
       state.view = view;
       renderCurrent();
     },
@@ -504,7 +703,7 @@ function renderWithinLayout(content) {
     onProfiles: () => { state.returnView = state.view; renderProfiles(); },
     onTeachers: () => { state.returnView = state.view; renderTeachers(); },
     onDisciplines: () => { state.returnView = state.view; renderDisciplines(); },
-    onProfileChange: (id) => { state.currentProfile = state.profiles.find((profile) => profile.id === id); state.teachers = []; state.disciplines = []; state.schedules = []; state.chronograms = []; state.scheduleEditing = false; state.chronogramDisciplineId = null; state.dashboardLoadedProfileId = null; storeProfile(state.currentProfile); renderCurrent(); showToast("Perfil ativo alterado."); },
+    onProfileChange: (id) => { state.currentProfile = state.profiles.find((profile) => profile.id === id); state.teachers = []; state.disciplines = []; state.schedules = []; state.chronograms = []; state.lessons = []; state.scheduleEditing = false; state.chronogramDisciplineId = null; state.lessonWeekOffset = 0; state.lessonOccurrence = null; state.lessonChronogram = null; state.activeLesson = null; state.activeLessonContents = []; state.dashboardLoadedProfileId = null; storeProfile(state.currentProfile); renderCurrent(); showToast("Perfil ativo alterado."); },
     onTheme: (event) => { applyTheme(event.target.checked ? "dark" : "light"); renderCurrent(); },
     onLogout: handleLogout,
   });
