@@ -72,7 +72,7 @@ export function lessonDetailView({ lesson, occurrence }) {
 }
 
 function contentCard(content) {
-  return `<article class="lesson-content-card"><span class="lesson-content-card__icon">${icon("file", 20)}</span><div><strong>${escapeHtml(content.titulo)}</strong><small>Arquivo privado desta aula</small></div><div class="lesson-content-card__actions"><button class="icon-button" data-open-content="${escapeHtml(content.id)}" aria-label="Abrir ${escapeHtml(content.titulo)}">${icon("file", 17)}</button><button class="icon-button" data-download-content="${escapeHtml(content.id)}" aria-label="Baixar ${escapeHtml(content.titulo)}">${icon("download", 17)}</button><button class="icon-button icon-button--danger" data-delete-content="${escapeHtml(content.id)}" aria-label="Excluir ${escapeHtml(content.titulo)}">${icon("trash", 17)}</button></div></article>`;
+  return `<article class="lesson-content-card" data-open-content="${escapeHtml(content.id)}" role="button" tabindex="0" aria-label="Abrir ${escapeHtml(content.titulo)}"><span class="lesson-content-card__icon">${icon("file", 20)}</span><div><strong>${escapeHtml(content.titulo)}</strong><small>Arquivo privado desta aula</small></div><div class="lesson-content-card__actions"><button class="icon-button" data-download-content="${escapeHtml(content.id)}" aria-label="Baixar ${escapeHtml(content.titulo)}">${icon("download", 17)}</button><button class="icon-button icon-button--danger" data-delete-content="${escapeHtml(content.id)}" aria-label="Excluir ${escapeHtml(content.titulo)}">${icon("trash", 17)}</button></div></article>`;
 }
 
 export function lessonMaterialsView({ lesson, occurrence, contents }) {
@@ -156,10 +156,17 @@ export function bindLessonDetail(root, { onBack, onOpenMaterials }) {
 export function bindLessonMaterials(root, { contents, onBack, onUpload, onOpenContent, onDownloadContent, onDeleteContent }) {
   root.querySelector("[data-lesson-tools-back]").addEventListener("click", onBack);
   root.querySelector("[data-upload-content]").addEventListener("click", () => openContentUpload(onUpload));
-  root.querySelectorAll("[data-open-content]").forEach((button) => button.addEventListener("click", () => {
-    const content = contents.find((item) => item.id === button.dataset.openContent);
-    if (content) onOpenContent(content);
-  }));
+  root.querySelectorAll("[data-open-content]").forEach((card) => {
+    const open = (event) => {
+      if (event?.target?.closest("[data-download-content], [data-delete-content]")) return;
+      const content = contents.find((item) => item.id === card.dataset.openContent);
+      if (content) onOpenContent(content);
+    };
+    card.addEventListener("click", open);
+    card.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") { event.preventDefault(); open(event); }
+    });
+  });
   root.querySelectorAll("[data-download-content]").forEach((button) => button.addEventListener("click", () => {
     const content = contents.find((item) => item.id === button.dataset.downloadContent);
     if (content) onDownloadContent(content);

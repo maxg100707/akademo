@@ -34,7 +34,7 @@ let googleAvatarSyncFor = null;
 function applyTheme(theme) {
   state.theme = theme;
   document.body.dataset.theme = theme;
-  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#202624" : "#f7faf8");
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#1b2d22" : "#eef4ef");
   localStorage.setItem(APP_STORAGE_KEYS.theme, theme);
 }
 
