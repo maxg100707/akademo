@@ -44,6 +44,7 @@ import {
 import {
   createLesson,
   deleteContent,
+  getContentsByDiscipline,
   getContentUrl,
   getContents,
   getLessonByChronogram,
@@ -51,6 +52,7 @@ import {
   getWeekOccurrences,
   startOfWeek,
   uploadContent,
+  uploadExamContent,
 } from "./services/lessons.js";
 import {
   createTask,
@@ -59,6 +61,14 @@ import {
   setTaskCompleted,
   updateTask,
 } from "./services/tasks.js";
+import {
+  createExam,
+  createExamTopic,
+  deleteExamTopic,
+  getExamTopics,
+  getExams,
+  updateExamTopic,
+} from "./services/exams.js";
 import {
   applyPendingAvatar,
   ensureUserRecord,
@@ -105,6 +115,17 @@ import {
   openTaskEditor,
   tasksView,
 } from "./ui/tasks-view.js";
+import {
+  bindExamDetail,
+  bindExamMaterials,
+  bindExams,
+  bindExamTopic,
+  examDetailView,
+  examMaterialsView,
+  examsView,
+  examTopicView,
+  openExamThemeSetup,
+} from "./ui/exams-view.js";
 import { showToast } from "./ui/components.js";
 import {
   getStoredProfile,
@@ -125,6 +146,8 @@ const state = {
   chronograms: [],
   lessons: [],
   tasks: [],
+  exams: [],
+  examTopics: [],
   scheduleEditing: false,
   chronogramDisciplineId: null,
   lessonWeekOffset: 0,
@@ -132,6 +155,9 @@ const state = {
   lessonChronogram: null,
   activeLesson: null,
   activeLessonContents: [],
+  activeExam: null,
+  activeExamTopic: null,
+  activeExamContents: [],
   dashboardLoadedProfileId: null,
   view: "dashboard",
   returnView: "dashboard",
@@ -183,6 +209,8 @@ async function hydrate(user) {
     state.chronograms = [];
     state.lessons = [];
     state.tasks = [];
+    state.exams = [];
+    state.examTopics = [];
     state.scheduleEditing = false;
     state.chronogramDisciplineId = null;
     state.lessonWeekOffset = 0;
@@ -190,6 +218,9 @@ async function hydrate(user) {
     state.lessonChronogram = null;
     state.activeLesson = null;
     state.activeLessonContents = [];
+    state.activeExam = null;
+    state.activeExamTopic = null;
+    state.activeExamContents = [];
     state.taskDisciplineFilter = "";
     state.dashboardLoadedProfileId = null;
     selectStoredProfile();
@@ -251,6 +282,8 @@ function renderAuthScreen() {
   state.chronograms = [];
   state.lessons = [];
   state.tasks = [];
+  state.exams = [];
+  state.examTopics = [];
   state.scheduleEditing = false;
   state.chronogramDisciplineId = null;
   state.lessonWeekOffset = 0;
@@ -258,6 +291,9 @@ function renderAuthScreen() {
   state.lessonChronogram = null;
   state.activeLesson = null;
   state.activeLessonContents = [];
+  state.activeExam = null;
+  state.activeExamTopic = null;
+  state.activeExamContents = [];
   state.taskDisciplineFilter = "";
   state.dashboardLoadedProfileId = null;
   renderAuth(root, {
@@ -292,6 +328,10 @@ function renderCurrent() {
   if (state.view === "schedules") return renderSchedules();
   if (state.view === "chronogram") return renderChronogram();
   if (state.view === "tasks") return renderTasks();
+  if (state.view === "exams") return renderExams();
+  if (state.view === "exam-detail") return renderExamDetail();
+  if (state.view === "exam-topic") return renderExamTopic();
+  if (state.view === "exam-materials") return renderExamMaterials();
   if (state.view === "lessons") return renderLessons();
   if (state.view === "lesson-chronogram") return renderLessonChronogram();
   if (state.view === "lesson-form") return renderLessonForm();
@@ -334,6 +374,8 @@ function mountDashboard() {
       tasks: state.tasks,
       disciplines: state.disciplines,
       lessons: state.lessons,
+      exams: state.exams,
+      chronograms: state.chronograms,
       isNextClassLoading:
         state.currentProfile &&
         state.dashboardLoadedProfileId !== state.currentProfile.id,
@@ -353,6 +395,34 @@ function mountDashboard() {
     state.returnView = "dashboard";
     renderProfiles();
   });
+  root.querySelectorAll("[data-open-dashboard-exam]").forEach((button) =>
+    button.addEventListener("click", () => {
+      const exam = state.exams.find(
+        (item) => item.id === button.dataset.openDashboardExam,
+      );
+      if (!exam) return;
+      openExam(exam).catch((error) =>
+        showToast(
+          error.message || "Não foi possível abrir a prova.",
+          "error",
+        ),
+      );
+    }),
+  );
+  root.querySelectorAll("[data-open-dashboard-chronogram]").forEach((button) =>
+    button.addEventListener("click", () => {
+      const chronogram = state.chronograms.find(
+        (item) => item.id === button.dataset.openDashboardChronogram,
+      );
+      if (!chronogram) return;
+      openExamForChronogram(chronogram).catch((error) =>
+        showToast(
+          error.message || "Não foi possível abrir a prova.",
+          "error",
+        ),
+      );
+    }),
+  );
   const taskActions = taskCallbacks(() => mountDashboard());
   root
     .querySelector("[data-add-dashboard-task]")
@@ -423,13 +493,14 @@ function mountDashboard() {
 
 async function loadDashboardData(profile) {
   try {
-    const [teachers, disciplines, schedules, chronograms, lessons, tasks] = await Promise.all([
+    const [teachers, disciplines, schedules, chronograms, lessons, tasks, exams] = await Promise.all([
       getTeachers(profile.id),
       getDisciplines(profile.id),
       getSchedules(profile.id),
       getChronogram(profile.id),
       getLessons(profile.id),
       getTasks(profile.id),
+      getExams(profile.id),
     ]);
     if (state.view !== "dashboard" || state.currentProfile?.id !== profile.id)
       return;
@@ -439,6 +510,7 @@ async function loadDashboardData(profile) {
     state.chronograms = chronograms;
     state.lessons = lessons;
     state.tasks = tasks;
+    state.exams = exams;
     state.dashboardLoadedProfileId = profile.id;
     mountDashboard();
   } catch (error) {
@@ -1117,6 +1189,432 @@ function mountTasks() {
   });
 }
 
+function examTopicValues(topic, contents = topic?.conteudos || []) {
+  return {
+    theme: topic?.tema || "",
+    summary: topic?.resumo || "",
+    links: Array.isArray(topic?.links) ? topic.links : [],
+    contents,
+  };
+}
+
+function replaceExamTopic(topic) {
+  state.examTopics = [
+    topic,
+    ...state.examTopics.filter((item) => item.id !== topic.id),
+  ];
+  if (state.activeExamTopic?.id === topic.id) state.activeExamTopic = topic;
+}
+
+function examOccurrencesByDiscipline() {
+  const now = new Date();
+  return Object.fromEntries(
+    state.disciplines.map((discipline) => [
+      discipline.id,
+      getLessonOccurrences(
+        state.currentProfile,
+        discipline.id,
+        state.schedules,
+      ).filter(
+        (occurrence) =>
+          occurrence.startsAt >= now &&
+          !findChronogramEntry(
+            state.chronograms,
+            discipline.id,
+            occurrence.startsAt,
+          ),
+      ),
+    ]),
+  );
+}
+
+async function renderExams() {
+  const profile = state.currentProfile;
+  if (!profile) return showOnboarding();
+  state.view = "exams";
+  try {
+    const [disciplines, schedules, chronograms, exams] = await Promise.all([
+      getDisciplines(profile.id),
+      getSchedules(profile.id),
+      getChronogram(profile.id),
+      getExams(profile.id),
+    ]);
+    const scheduledProofsWithoutRecord = chronograms.filter(
+      (entry) =>
+        entry.prova &&
+        new Date(entry.data_hora) >= new Date() &&
+        !exams.some((exam) => exam.cronograma === entry.id),
+    );
+    const recoveredExams = await Promise.all(
+      scheduledProofsWithoutRecord.map((entry) =>
+        createExam(state.user, profile, {
+          disciplineId: entry.disciplina,
+          chronogramId: entry.id,
+          title: entry.tema,
+          dateTime: entry.data_hora,
+        }),
+      ),
+    );
+    const allExams = [...exams, ...recoveredExams];
+    const topicGroups = await Promise.all(
+      allExams.map((exam) => getExamTopics(profile.id, exam.id)),
+    );
+    if (state.view !== "exams" || state.currentProfile?.id !== profile.id)
+      return;
+    state.disciplines = disciplines;
+    state.schedules = schedules;
+    state.chronograms = chronograms;
+    state.exams = allExams.sort(
+      (first, second) => new Date(first.data) - new Date(second.data),
+    );
+    state.examTopics = topicGroups.flat();
+    state.activeExam = null;
+    state.activeExamTopic = null;
+    state.activeExamContents = [];
+    mountExams();
+  } catch (error) {
+    showToast(
+      error.message || "Não foi possível carregar as provas.",
+      "error",
+    );
+    state.view = state.returnView;
+    renderCurrent();
+  }
+}
+
+function mountExams() {
+  const occurrencesByDiscipline = examOccurrencesByDiscipline();
+  renderWithinLayout(
+    examsView({
+      profile: state.currentProfile,
+      disciplines: state.disciplines,
+      exams: state.exams,
+      topics: state.examTopics,
+      occurrencesByDiscipline,
+    }),
+  );
+  bindExams(root, {
+    disciplines: state.disciplines,
+    occurrencesByDiscipline,
+    onCreate: async (values) => {
+      const chronogram = await createChronogramEntry(
+        state.user,
+        state.currentProfile,
+        {
+          disciplineId: values.disciplineId,
+          dateTime: values.dateTime,
+          topic: values.title,
+          kind: "exam",
+        },
+      );
+      try {
+        const exam = await createExam(state.user, state.currentProfile, {
+          disciplineId: values.disciplineId,
+          chronogramId: chronogram.id,
+          title: values.title,
+          dateTime: values.dateTime,
+        });
+        state.chronograms = [...state.chronograms, chronogram].sort(
+          (first, second) =>
+            new Date(first.data_hora) - new Date(second.data_hora),
+        );
+        state.exams = [...state.exams, exam].sort(
+          (first, second) => new Date(first.data) - new Date(second.data),
+        );
+        showToast("Prova adicionada ao cronograma.");
+        return exam;
+      } catch (error) {
+        await deleteChronogramEntry(chronogram.id, state.currentProfile.id);
+        throw error;
+      }
+    },
+    onCreated: (exam) =>
+      openExamThemeSetupFor(exam).catch((error) =>
+        showToast(
+          error.message || "Não foi possível preparar os temas da prova.",
+          "error",
+        ),
+      ),
+    onOpen: (id) => {
+      const exam = state.exams.find((item) => item.id === id);
+      if (!exam) return;
+      openExam(exam).catch((error) =>
+        showToast(error.message || "Não foi possível abrir a prova.", "error"),
+      );
+    },
+  });
+}
+
+async function openExam(exam) {
+  const profileId = state.currentProfile?.id;
+  state.activeExam = exam;
+  state.activeExamTopic = null;
+  const [topics, contents] = await Promise.all([
+    getExamTopics(state.currentProfile.id, exam.id),
+    getContentsByDiscipline(state.currentProfile.id, exam.disciplina),
+  ]);
+  if (
+    state.currentProfile?.id !== profileId ||
+    state.activeExam?.id !== exam.id
+  )
+    return;
+  state.examTopics = topics;
+  state.activeExamContents = contents;
+  state.view = "exam-detail";
+  renderExamDetail();
+}
+
+async function openExamThemeSetupFor(exam) {
+  const profileId = state.currentProfile?.id;
+  state.activeExam = exam;
+  const [topics, contents] = await Promise.all([
+    getExamTopics(state.currentProfile.id, exam.id),
+    getContentsByDiscipline(state.currentProfile.id, exam.disciplina),
+  ]);
+  if (
+    state.currentProfile?.id !== profileId ||
+    state.activeExam?.id !== exam.id
+  )
+    return;
+  state.examTopics = topics;
+  state.activeExamContents = contents;
+  openExamThemeSetup({
+    exam,
+    contents,
+    initialTopics: topics,
+    onCreate: async (values) => {
+      const topic = await createExamTopic(
+        state.user,
+        state.currentProfile,
+        exam,
+        values,
+      );
+      replaceExamTopic(topic);
+      return topic;
+    },
+    onDelete: async (topic) => {
+      await deleteExamTopic(topic.id, state.currentProfile.id, exam.id);
+      state.examTopics = state.examTopics.filter((item) => item.id !== topic.id);
+    },
+    onFinish: () => {
+      state.view = "exam-detail";
+      renderExamDetail();
+    },
+  });
+}
+
+async function openExamForChronogram(chronogram) {
+  const profile = state.currentProfile;
+  if (!profile || !chronogram?.prova)
+    throw new Error("Esta prova não está mais disponível.");
+
+  state.lessonOccurrence = null;
+  state.lessonChronogram = null;
+  state.activeLesson = null;
+  state.activeLessonContents = [];
+  const exams = await getExams(profile.id);
+  state.exams = exams;
+  const existing = exams.find((exam) => exam.cronograma === chronogram.id);
+  if (existing) {
+    await openExam(existing);
+    return;
+  }
+
+  const exam = await createExam(state.user, profile, {
+    disciplineId: chronogram.disciplina,
+    chronogramId: chronogram.id,
+    title: chronogram.tema,
+    dateTime: chronogram.data_hora,
+  });
+  state.exams = [...state.exams, exam].sort(
+    (first, second) => new Date(first.data) - new Date(second.data),
+  );
+  state.view = "exams";
+  mountExams();
+  await openExamThemeSetupFor(exam);
+  showToast("Prova criada. Agora defina os temas de estudo.");
+}
+
+function examBack() {
+  state.activeExam = null;
+  state.activeExamTopic = null;
+  state.activeExamContents = [];
+  state.view = "exams";
+  renderExams();
+}
+
+function renderExamDetail() {
+  const exam = state.activeExam;
+  if (!exam) return examBack();
+  const discipline = state.disciplines.find(
+    (item) => item.id === exam.disciplina,
+  );
+  state.view = "exam-detail";
+  renderWithinLayout(
+    examDetailView({
+      exam,
+      discipline,
+      topics: state.examTopics,
+      contents: state.activeExamContents,
+    }),
+  );
+  bindExamDetail(root, {
+    exam,
+    topics: state.examTopics,
+    contents: state.activeExamContents,
+    onBack: examBack,
+    onOpenTopic: (id) => {
+      const topic = state.examTopics.find((item) => item.id === id);
+      if (!topic) return;
+      state.activeExamTopic = topic;
+      state.view = "exam-topic";
+      renderExamTopic();
+    },
+    onOpenMaterials: () => renderExamMaterials(),
+    onCreateTopic: async (values) => {
+      const topic = await createExamTopic(
+        state.user,
+        state.currentProfile,
+        exam,
+        values,
+      );
+      replaceExamTopic(topic);
+      renderExamDetail();
+      showToast("Tema adicionado à prova.");
+      return topic;
+    },
+  });
+}
+
+function renderExamTopic() {
+  const exam = state.activeExam;
+  const topic = state.activeExamTopic;
+  if (!exam || !topic) return renderExamDetail();
+  state.view = "exam-topic";
+  renderWithinLayout(
+    examTopicView({
+      exam,
+      topic,
+      contents: state.activeExamContents,
+    }),
+  );
+  bindExamTopic(root, {
+    exam,
+    topic,
+    contents: state.activeExamContents,
+    onBack: renderExamDetail,
+    onOpenMaterials: () => renderExamMaterials(),
+    onOpenContent: (content) => openContent(content),
+    onUpdate: async (_topic, values) => {
+      const updated = await updateExamTopic(
+        topic.id,
+        state.user,
+        state.currentProfile,
+        exam,
+        values,
+      );
+      replaceExamTopic(updated);
+      renderExamTopic();
+      showToast("Tema atualizado.");
+      return updated;
+    },
+    onDelete: async (item) => {
+      await deleteExamTopic(item.id, state.currentProfile.id, exam.id);
+      state.examTopics = state.examTopics.filter((entry) => entry.id !== item.id);
+      state.activeExamTopic = null;
+      renderExamDetail();
+      showToast("Tema removido da prova.");
+    },
+  });
+}
+
+async function openContent(content) {
+  try {
+    window.open(
+      await getContentUrl(state.user, content),
+      "_blank",
+      "noopener,noreferrer",
+    );
+  } catch (error) {
+    showToast(error.message || "Não foi possível abrir o arquivo.", "error");
+  }
+}
+
+async function updateExamTopicContents(topicId, contentIds) {
+  const topic = state.examTopics.find((item) => item.id === topicId);
+  if (!topic || !state.activeExam) return;
+  const updated = await updateExamTopic(
+    topic.id,
+    state.user,
+    state.currentProfile,
+    state.activeExam,
+    examTopicValues(topic, contentIds),
+  );
+  replaceExamTopic(updated);
+  return updated;
+}
+
+function renderExamMaterials() {
+  const exam = state.activeExam;
+  if (!exam) return renderExamDetail();
+  const discipline = state.disciplines.find(
+    (item) => item.id === exam.disciplina,
+  );
+  state.view = "exam-materials";
+  renderWithinLayout(
+    examMaterialsView({
+      exam,
+      discipline,
+      topics: state.examTopics,
+      contents: state.activeExamContents,
+    }),
+  );
+  bindExamMaterials(root, {
+    topics: state.examTopics,
+    contents: state.activeExamContents,
+    onBack: renderExamDetail,
+    onOpenContent: (content) => openContent(content),
+    onLink: async (topicId, ids) => {
+      const topic = state.examTopics.find((item) => item.id === topicId);
+      if (!topic) throw new Error("Tema não encontrado.");
+      const contentIds = [
+        ...new Set([...(Array.isArray(topic.conteudos) ? topic.conteudos : []), ...ids]),
+      ];
+      await updateExamTopicContents(topicId, contentIds);
+      renderExamMaterials();
+      showToast("Materiais vinculados ao tema.");
+    },
+    onUpload: async ({ topicId, title, file }) => {
+      const content = await uploadExamContent(
+        state.user,
+        state.currentProfile,
+        exam,
+        { title, file },
+      );
+      state.activeExamContents = [content, ...state.activeExamContents];
+      const topic = state.examTopics.find((item) => item.id === topicId);
+      await updateExamTopicContents(topicId, [
+        ...(Array.isArray(topic?.conteudos) ? topic.conteudos : []),
+        content.id,
+      ]);
+      renderExamMaterials();
+      showToast("Arquivo enviado e vinculado ao tema.");
+    },
+    onUnlink: async (topicId, contentId) => {
+      const topic = state.examTopics.find((item) => item.id === topicId);
+      if (!topic) return;
+      await updateExamTopicContents(
+        topicId,
+        (Array.isArray(topic.conteudos) ? topic.conteudos : []).filter(
+          (id) => id !== contentId,
+        ),
+      );
+      renderExamMaterials();
+      showToast("Arquivo desvinculado da prova.");
+    },
+  });
+}
+
 async function renderLessons() {
   const profile = state.currentProfile;
   if (!profile) return showOnboarding();
@@ -1208,6 +1706,10 @@ async function openLessonOccurrence(occurrence, returnView = state.view) {
       "Esta data esta marcada como feriado. Nao e possivel registrar uma aula.",
     );
   }
+  if (chronogram?.prova) {
+    await openExamForChronogram(chronogram);
+    return;
+  }
   if (!chronogram) {
     state.lessonChronogram = null;
     state.view = "lesson-chronogram";
@@ -1265,6 +1767,10 @@ function renderLessonChronogram() {
         showToast("Feriado registrado na agenda.");
         return;
       }
+      if (chronogram.prova) {
+        await openExamForChronogram(chronogram);
+        return;
+      }
       state.lessonChronogram = chronogram;
       state.view = "lesson-form";
       renderLessonForm();
@@ -1277,6 +1783,15 @@ function renderLessonForm() {
   const occurrence = state.lessonOccurrence;
   const chronogram = state.lessonChronogram;
   if (!occurrence || !chronogram) return lessonBack();
+  if (chronogram.prova) {
+    openExamForChronogram(chronogram).catch((error) =>
+      showToast(
+        error.message || "Não foi possível abrir a prova.",
+        "error",
+      ),
+    );
+    return;
+  }
   state.view = "lesson-form";
   renderWithinLayout(lessonFormView(occurrence, chronogram));
   bindLessonForm(root, {
@@ -1452,6 +1967,12 @@ function renderWithinLayout(content) {
         state.activeLesson = null;
         state.activeLessonContents = [];
       }
+      if (view === "exams") {
+        state.returnView = state.view;
+        state.activeExam = null;
+        state.activeExamTopic = null;
+        state.activeExamContents = [];
+      }
       state.view = view;
       renderCurrent();
     },
@@ -1481,6 +2002,8 @@ function renderWithinLayout(content) {
       state.chronograms = [];
       state.lessons = [];
       state.tasks = [];
+      state.exams = [];
+      state.examTopics = [];
       state.scheduleEditing = false;
       state.chronogramDisciplineId = null;
       state.lessonWeekOffset = 0;
@@ -1488,6 +2011,9 @@ function renderWithinLayout(content) {
       state.lessonChronogram = null;
       state.activeLesson = null;
       state.activeLessonContents = [];
+      state.activeExam = null;
+      state.activeExamTopic = null;
+      state.activeExamContents = [];
       state.taskDisciplineFilter = "";
       state.dashboardLoadedProfileId = null;
       storeProfile(state.currentProfile);

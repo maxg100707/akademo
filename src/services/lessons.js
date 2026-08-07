@@ -84,6 +84,7 @@ export async function getLessonByChronogram(profileId, chronogramId) {
 
 export async function createLesson(user, profile, occurrence, chronogram, summary) {
   if (chronogram?.feriado) throw new Error("Nao e possivel registrar uma aula em um feriado.");
+  if (chronogram?.prova) throw new Error("Nao e possivel registrar uma aula em um cronograma de prova.");
   const { data, error } = await requireSupabase()
     .from("aulas")
     .insert({
@@ -130,6 +131,17 @@ export async function getContents(lessonId) {
   return data;
 }
 
+export async function getContentsByDiscipline(profileId, disciplineId) {
+  const { data, error } = await requireSupabase()
+    .from("conteudos")
+    .select("*")
+    .eq("perfil", profileId)
+    .eq("disciplina", disciplineId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
+
 function contentPath(lessonId, file) {
   const random = globalThis.crypto?.randomUUID?.() || Math.random().toString(36).slice(2, 12);
   return `conteudos/${lessonId}/${Date.now()}-${random}.${extensionFromFile(file)}`;
@@ -155,7 +167,36 @@ export async function uploadContent(user, profile, lesson, { title, file }) {
   const { data, error } = await client.from("conteudos").insert({
     email_user: user.email,
     perfil: profile.id,
+    disciplina: lesson.disciplina,
     aula: lesson.id,
+    path,
+    titulo: cleanTitle,
+  }).select().single();
+  if (error) {
+    await client.storage.from(user.email).remove([path]);
+    throw error;
+  }
+  return data;
+}
+
+export async function uploadExamContent(user, profile, exam, { title, file }) {
+  if (!(file instanceof File) || !file.size) throw new Error("Selecione um arquivo para enviar.");
+  if (file.size > MAX_CONTENT_SIZE) throw new Error("O arquivo deve ter no m\u00e1ximo 20 MB.");
+  if (file.type && !ALLOWED_CONTENT_TYPES.has(file.type)) throw new Error("Este tipo de arquivo ainda n\u00e3o \u00e9 aceito pelo armazenamento.");
+  const cleanTitle = String(title || "").trim();
+  if (!cleanTitle) throw new Error("Informe um t\u00edtulo para o arquivo.");
+  await provisionUserStorage();
+  const client = requireSupabase();
+  const path = contentPath(`provas/${exam.id}`, file);
+  const { error: uploadError } = await client.storage.from(user.email).upload(path, file, {
+    contentType: file.type || "application/octet-stream", cacheControl: "3600", upsert: false,
+  });
+  if (uploadError) throw uploadError;
+  const { data, error } = await client.from("conteudos").insert({
+    email_user: user.email,
+    perfil: profile.id,
+    disciplina: exam.disciplina,
+    aula: null,
     path,
     titulo: cleanTitle,
   }).select().single();
