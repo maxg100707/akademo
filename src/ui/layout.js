@@ -25,6 +25,13 @@ export function renderLayout(root, { record, photoUrl, profiles, currentProfile,
     <div class="mobile-menu-overlay" data-mobile-close></div>
     <main class="main-area"><header class="mobile-topbar"><button class="mobile-menu-button" data-mobile-open aria-label="Abrir menu">${icon("bars", 20)}</button><a href="#" class="mobile-brand"><img class="brand-icon" src="icon.png" alt=""/> AKADEMO</a><div class="mobile-profile-indicator" title="${course}"><span>${icon("graduation", 16)}</span><div>${profiles.length > 1 ? `<small>PERFIL ATIVO</small><select data-profile-select aria-label="Selecionar perfil de estudo">${profiles.map((profile) => `<option value="${profile.id}" ${profile.id === currentProfile?.id ? "selected" : ""}>${escapeHtml(profile.curso)}</option>`).join("")}</select>` : `<strong>${course}</strong><small>${currentProfile?.semestre}º semestre</small>`}</div></div></header>${content}</main>
   </div>`;
+  root.querySelector(".main-area").insertAdjacentHTML("afterbegin", `
+    <header class="desktop-topbar">
+      <div class="desktop-profile-indicator" title="${course}">
+        <span>${icon("graduation", 16)}</span>
+        <div>${profiles.length > 1 ? `<small>PERFIL ATIVO</small><select data-profile-select aria-label="Selecionar perfil de estudo">${profiles.map((profile) => `<option value="${profile.id}" ${profile.id === currentProfile?.id ? "selected" : ""}>${escapeHtml(profile.curso)}</option>`).join("")}</select>` : `<strong>${course}</strong><small>${currentProfile?.semestre}º semestre</small>`}</div>
+      </div>
+    </header>`);
 }
 
 export function bindLayout(root, actions) {
@@ -32,13 +39,13 @@ export function bindLayout(root, actions) {
   root.querySelectorAll("[data-mobile-open]").forEach((button) => button.addEventListener("click", () => root.querySelector(".app-shell").classList.add("mobile-menu-open")));
   root.querySelectorAll("[data-mobile-close]").forEach((button) => button.addEventListener("click", () => root.querySelector(".app-shell").classList.remove("mobile-menu-open")));
   const profileWrapper = root.querySelector(".sidebar__profile-wrap");
-  const sidebar = root.querySelector(".sidebar");
   const mobileTopbar = root.querySelector(".mobile-topbar");
+  const desktopTopbar = root.querySelector(".desktop-topbar");
   const profileViewport = window.matchMedia("(max-width: 760px)");
   const placeProfileMenu = () => {
     if (!profileWrapper) return;
     if (profileViewport.matches) mobileTopbar?.append(profileWrapper);
-    else sidebar?.querySelector(".sidebar__top")?.after(profileWrapper);
+    else desktopTopbar?.append(profileWrapper);
   };
 
   if (root.profileViewportQuery && root.profileViewportHandler) {

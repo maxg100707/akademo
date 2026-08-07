@@ -9,6 +9,8 @@
 
 body { background: var(--page); }
 
+.desktop-topbar { display: none; }
+
 button:focus-visible,
 a:focus-visible,
 select:focus-visible,
@@ -724,6 +726,211 @@ body[data-theme="dark"] .dashboard-calendar__legend span svg { color: var(--on-s
   color: var(--text);
   border-color: var(--surface-deep);
   background: var(--surface-muted);
+}
+
+/* Desktop: navegacao compacta que revela o conteudo somente no hover. */
+@media (min-width: 761px) {
+  .desktop-topbar {
+    position: sticky;
+    z-index: 11;
+    top: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 78px;
+    border-bottom: 1px solid var(--green-soft);
+    background: var(--surface-alt);
+  }
+
+  .desktop-profile-indicator {
+    position: absolute;
+    left: 50%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: min(360px, 42vw);
+    min-width: 220px;
+    padding: 7px 12px 7px 7px;
+    color: var(--text);
+    border: 1px solid var(--green-accent);
+    border-radius: 12px;
+    background: var(--surface-contrast);
+    transform: translateX(-50%);
+  }
+
+  .desktop-profile-indicator > span {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    color: var(--green-accent);
+    border-radius: 8px;
+    background: var(--surface-deep);
+  }
+
+  .desktop-profile-indicator > div { display: grid; min-width: 0; gap: 1px; }
+
+  .desktop-profile-indicator strong,
+  .desktop-profile-indicator small,
+  .desktop-profile-indicator select {
+    display: block;
+    overflow: hidden;
+    color: var(--text);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .desktop-profile-indicator strong,
+  .desktop-profile-indicator select {
+    width: 100%;
+    padding: 0 13px 0 0;
+    border: 0;
+    outline: 0;
+    appearance: none;
+    background: transparent;
+    font: 600 14px/1.2 "Outfit", sans-serif;
+  }
+
+  .desktop-profile-indicator small {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .08em;
+  }
+
+  .desktop-profile-indicator div:has(select) { position: relative; width: 100%; }
+  .desktop-profile-indicator div:has(select)::after {
+    position: absolute;
+    top: 50%;
+    right: 0;
+    width: 7px;
+    height: 7px;
+    border-right: 2px solid var(--green-accent);
+    border-bottom: 2px solid var(--green-accent);
+    content: "";
+    pointer-events: none;
+    transform: translateY(-70%) rotate(45deg);
+  }
+
+  .desktop-topbar > .sidebar__profile-wrap {
+    position: absolute;
+    top: 12px;
+    right: clamp(25px, 4vw, 64px);
+    margin: 0;
+  }
+
+  .desktop-topbar .sidebar-profile {
+    display: grid;
+    place-items: center;
+    width: 54px;
+    height: 54px;
+    gap: 0;
+    padding: 0;
+  }
+
+  .desktop-topbar .sidebar-profile__details,
+  .desktop-topbar .sidebar-profile > .icon { display: none; }
+
+  .desktop-topbar .sidebar-profile__avatar {
+    width: 50px;
+    height: 50px;
+  }
+
+  .desktop-topbar .sidebar-profile:hover,
+  .desktop-topbar .sidebar__profile-wrap.is-open .sidebar-profile { background: var(--surface-deep); }
+
+  .desktop-topbar > .sidebar__profile-wrap .profile-popover {
+    top: calc(100% + 8px);
+    right: 0;
+    left: auto;
+  }
+
+  .app-shell,
+  .app-shell.sidebar-collapsed { grid-template-columns: 79px minmax(0, 1fr); }
+
+  .sidebar,
+  .sidebar-collapsed .sidebar {
+    z-index: 12;
+    width: 79px;
+    padding-right: 13px;
+    padding-left: 13px;
+  }
+
+  .collapse-button,
+  .sidebar-collapsed .collapse-button { display: none; }
+
+  .sidebar .brand__text,
+  .sidebar .sidebar-profile__details,
+  .sidebar .sidebar-profile > .icon,
+  .sidebar .sidebar-nav__label,
+  .sidebar .nav-item span,
+  .sidebar .sidebar__profile-select,
+  .sidebar .sidebar__tip {
+    width: 0;
+    height: 0;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .sidebar__top,
+  .sidebar-collapsed .sidebar__top { justify-content: center; }
+
+  .sidebar__profile-wrap,
+  .sidebar-collapsed .sidebar__profile-wrap { margin-top: 31px; }
+
+  .sidebar-profile,
+  .sidebar-collapsed .sidebar-profile {
+    justify-content: center;
+    gap: 0;
+    padding: 5px;
+  }
+
+  .sidebar .profile-popover,
+  .sidebar-collapsed .profile-popover {
+    top: -5px;
+    left: 55px;
+  }
+
+  .sidebar .nav-item,
+  .sidebar-collapsed .nav-item {
+    justify-content: center;
+    padding: 11px 6px;
+  }
+
+  .sidebar:hover {
+    z-index: 12;
+    width: 255px;
+    padding-right: 14px;
+    padding-left: 14px;
+    box-shadow: var(--shadow-high);
+  }
+
+  .sidebar:hover .brand__text,
+  .sidebar:hover .sidebar-profile__details,
+  .sidebar:hover .sidebar-profile > .icon,
+  .sidebar:hover .sidebar-nav__label,
+  .sidebar:hover .nav-item span,
+  .sidebar:hover .sidebar__profile-select,
+  .sidebar:hover .sidebar__tip {
+    width: auto;
+    height: auto;
+    margin: initial;
+    padding: initial;
+    overflow: initial;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .sidebar:hover .sidebar__top { justify-content: initial; }
+  .sidebar:hover .sidebar__profile-wrap { margin-top: 33px; }
+  .sidebar:hover .sidebar-profile { justify-content: initial; gap: 10px; padding: 7px; }
+  .sidebar:hover .profile-popover { top: calc(100% + 8px); left: 0; }
+  .sidebar:hover .nav-item { justify-content: initial; padding: 11px 10px; }
+  .sidebar:hover .sidebar-nav__label { padding: 0 10px 6px; }
+  .sidebar:hover .sidebar__profile-select { margin: 13px 0 23px; padding: 0 7px; }
+  .sidebar:hover .sidebar__tip { display: flex; gap: 9px; padding: 11px 9px; }
 }
 
 /* Menos movimento e menos decoração preservam foco durante o uso contínuo. */

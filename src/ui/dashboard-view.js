@@ -74,14 +74,12 @@ function dashboardCalendar({ tasks, exams, presentations, disciplines, chronogra
   return `<section class="dashboard-calendar"><header><div><span class="eyebrow">CALENDÁRIO ACADÊMICO</span><h3>Próximos compromissos</h3></div><button class="icon-button" type="button" data-add-dashboard-task aria-label="Adicionar tarefa" ${disciplines.length ? "" : "disabled title=\"Cadastre uma disciplina primeiro\""}>${icon("plus", 18)}</button></header><div class="dashboard-calendar__legend"><span>${icon("check", 13)} Tarefas</span><span>${icon("exam", 13)} Provas</span><span>${icon("presentation", 13)} Apresentações</span></div><div class="dashboard-calendar__list">${entries}</div></section>`;
 }
 
-export function dashboardView({ record, profile, profiles, nextClass, nextClassChronogram, isNextClassLoading, tasks = [], disciplines = [], lessons = [], exams = [], presentations = [], chronograms = [] }) {
+export function dashboardView({ record, profile, nextClass, nextClassChronogram, isNextClassLoading, tasks = [], disciplines = [], lessons = [], exams = [], presentations = [], chronograms = [] }) {
   const name = escapeHtml(firstName(record?.nome));
   const course = escapeHtml(profile?.curso || "seu curso");
-  const institution = escapeHtml(profile?.instituicao || "sua instituição");
   return `<section class="page dashboard-page">
     <div class="page-heading page-heading--hero">
       <div><span class="eyebrow">VISÃO GERAL</span><h1>Olá, ${name} <span class="wave">✦</span></h1><p>Seu espaço para estudar com mais intenção, ${course} por vez.</p></div>
-      <div class="active-profile-summary active-profile-summary--select"><span class="active-profile-summary__icon">${icon("graduation", 19)}</span><div class="active-profile-summary__details"><span>PERFIL ATIVO</span>${profiles.length > 1 ? `<label class="active-profile-summary__select-wrap"><span class="visually-hidden">Selecionar perfil de estudo</span><select data-profile-select aria-label="Selecionar perfil de estudo">${profiles.map((item) => `<option value="${item.id}" ${item.id === profile?.id ? "selected" : ""}>${escapeHtml(item.curso)} · ${item.semestre}º</option>`).join("")}</select></label>` : `<strong>${course}</strong>`}<small>${institution} · ${profile?.semestre}º semestre</small></div></div>
     </div>
     <section class="dashboard-recent">
       <div class="dashboard-section-title"><div><span class="eyebrow">RECENTES</span><h2>Sua rotina agora</h2></div><span class="soft-status">Perfil em foco</span></div>
