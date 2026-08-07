@@ -143,6 +143,16 @@ export async function getContentsByDiscipline(profileId, disciplineId) {
   return data || [];
 }
 
+export async function getProfileContents(profileId) {
+  const { data, error } = await requireSupabase()
+    .from("conteudos")
+    .select("*")
+    .eq("perfil", profileId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
+
 function contentPath(lessonId, file) {
   const random = globalThis.crypto?.randomUUID?.() || Math.random().toString(36).slice(2, 12);
   return `conteudos/${lessonId}/${Date.now()}-${random}.${extensionFromFile(file)}`;
@@ -177,6 +187,62 @@ export async function uploadContent(user, profile, lesson, { title, file }) {
     await client.storage.from(user.email).remove([path]);
     throw error;
   }
+  return data;
+}
+
+export async function uploadProfileContent(user, profile, { title, disciplineId, lessonId, file }) {
+  if (!(file instanceof File) || !file.size) throw new Error("Selecione um arquivo para enviar.");
+  if (file.size > MAX_CONTENT_SIZE) throw new Error("O arquivo deve ter no máximo 20 MB.");
+  if (file.type && !ALLOWED_CONTENT_TYPES.has(file.type)) throw new Error("Este tipo de arquivo ainda não é aceito pelo armazenamento.");
+  const cleanTitle = String(title || "").trim();
+  const discipline = String(disciplineId || "").trim() || null;
+  const lesson = String(lessonId || "").trim() || null;
+  if (!cleanTitle) throw new Error("Informe um título para o arquivo.");
+  if (lesson && !discipline) throw new Error("Selecione a disciplina da aula vinculada.");
+
+  await provisionUserStorage();
+  const client = requireSupabase();
+  const path = contentPath(`arquivos/${profile.id}`, file);
+  const { error: uploadError } = await client.storage.from(user.email).upload(path, file, {
+    contentType: file.type || "application/octet-stream",
+    cacheControl: "3600",
+    upsert: false,
+  });
+  if (uploadError) throw uploadError;
+
+  const { data, error } = await client.from("conteudos").insert({
+    email_user: user.email,
+    perfil: profile.id,
+    disciplina: discipline,
+    aula: lesson,
+    path,
+    titulo: cleanTitle,
+  }).select().single();
+  if (error) {
+    await client.storage.from(user.email).remove([path]);
+    if (!discipline && ["23502", "42501", "P0001"].includes(error.code)) {
+      throw new Error("O banco ainda está configurado para exigir uma disciplina. Execute a migration de arquivos e tente novamente.");
+    }
+    throw error;
+  }
+  return data;
+}
+
+export async function updateProfileContent(contentId, user, profile, { title, disciplineId, lessonId }) {
+  const cleanTitle = String(title || "").trim();
+  const discipline = String(disciplineId || "").trim() || null;
+  const lesson = String(lessonId || "").trim() || null;
+  if (!cleanTitle) throw new Error("Informe um título para o arquivo.");
+  if (lesson && !discipline) throw new Error("Selecione a disciplina da aula vinculada.");
+  const { data, error } = await requireSupabase()
+    .from("conteudos")
+    .update({ titulo: cleanTitle, disciplina: discipline, aula: lesson })
+    .eq("id", contentId)
+    .eq("perfil", profile.id)
+    .eq("email_user", user.email)
+    .select()
+    .single();
+  if (error) throw error;
   return data;
 }
 

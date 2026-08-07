@@ -7,6 +7,7 @@ import {
   setButtonLoading,
   showToast,
 } from "./components.js";
+import { openContentUploadWizard } from "./content-upload-wizard.js";
 
 const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "S\u00e1b"];
 const TYPE_META = {
@@ -122,9 +123,57 @@ function toolContext(lesson, occurrence) {
   return `<header class="lesson-tool-context"><span>${icon("book", 15)}</span><div><small>FERRAMENTA DA AULA</small><strong>${escapeHtml(discipline)}</strong></div><p>${escapeHtml(lesson.tema || "Tema da aula")}</p></header>`;
 }
 
+function lessonTopicCard(lesson) {
+  return `<section class="lesson-topic-card"><div><span>${icon("book", 18)}</span><div><small>TEMA DA AULA</small><strong>${escapeHtml(lesson.tema)}</strong></div></div><button class="button button--secondary" data-edit-lesson-topic>${icon("edit", 16)} Editar tema</button></section>`;
+}
+
 export function lessonDetailView({ lesson, occurrence }) {
   const date = occurrence?.startsAt || new Date(lesson.created_at);
-  return `<section class="page lesson-detail-page"><button class="back-link" data-lesson-back>${icon("arrowLeft", 18)} Aulas</button><section class="lesson-detail-hero"><div><span class="eyebrow">AULA REGISTRADA</span><h1>${escapeHtml(lesson.tema)}</h1><p>${escapeHtml(occurrence?.discipline?.nome_disciplina || "Disciplina")} \u00b7 ${escapeHtml(dateLabel(date))}</p></div><span>${icon("check", 23)}</span></section><section class="lesson-summary-card"><div><span>${icon("book", 18)}</span><div><small>RESUMO DA AULA</small><p>${lesson.resumo ? escapeHtml(lesson.resumo).replace(/\n/g, "<br/>") : "Nenhum resumo foi adicionado para esta aula."}</p></div></div></section><section class="lesson-tools"><div class="lesson-tools__heading"><div><span class="eyebrow">FERRAMENTAS</span><h2>Recursos desta aula</h2><p>Centralize materiais e seus pr\u00f3ximos passos no mesmo lugar.</p></div></div><div class="lesson-tools-grid"><button class="lesson-tool-card" data-open-lesson-materials><span>${icon("file", 24)}</span><div><small>ARQUIVOS</small><strong>Materiais</strong><p>Slides, listas, documentos e outros conte\u00fados.</p></div><em>Abrir ${icon("arrowRight", 17)}</em></button><button class="lesson-tool-card lesson-tool-card--tasks" data-open-lesson-tasks><span>${icon("check", 24)}</span><div><small>ORGANIZA\u00c7\u00c3O</small><strong>Tarefas</strong><p>Entregas e pend\u00eancias que nasceram nesta aula.</p></div><em>Abrir ${icon("arrowRight", 17)}</em></button></div></section></section>`;
+  return `<section class="page lesson-detail-page"><button class="back-link" data-lesson-back>${icon("arrowLeft", 18)} Aulas</button><section class="lesson-detail-hero"><div><span class="eyebrow">AULA REGISTRADA</span><h1>${escapeHtml(lesson.tema)}</h1><p>${escapeHtml(occurrence?.discipline?.nome_disciplina || "Disciplina")} \u00b7 ${escapeHtml(dateLabel(date))}</p></div><span>${icon("check", 23)}</span></section>${lessonTopicCard(lesson)}<section class="lesson-summary-card"><div><span>${icon("book", 18)}</span><div><small>RESUMO DA AULA</small><p>${lesson.resumo ? escapeHtml(lesson.resumo).replace(/\n/g, "<br/>") : "Nenhum resumo foi adicionado para esta aula."}</p></div></div></section><section class="lesson-tools"><div class="lesson-tools__heading"><div><span class="eyebrow">FERRAMENTAS</span><h2>Recursos desta aula</h2><p>Centralize materiais e seus pr\u00f3ximos passos no mesmo lugar.</p></div></div><div class="lesson-tools-grid"><button class="lesson-tool-card" data-open-lesson-materials><span>${icon("file", 24)}</span><div><small>ARQUIVOS</small><strong>Materiais</strong><p>Slides, listas, documentos e outros conte\u00fados.</p></div><em>Abrir ${icon("arrowRight", 17)}</em></button><button class="lesson-tool-card lesson-tool-card--tasks" data-open-lesson-tasks><span>${icon("check", 24)}</span><div><small>ORGANIZA\u00c7\u00c3O</small><strong>Tarefas</strong><p>Entregas e pend\u00eancias que nasceram nesta aula.</p></div><em>Abrir ${icon("arrowRight", 17)}</em></button></div></section></section>`;
+}
+
+function lessonTopicEditorModal(lesson) {
+  return `<div class="modal-backdrop" data-lesson-topic-backdrop><section class="modal modal--lesson-topic" role="dialog" aria-modal="true" aria-labelledby="lesson-topic-title"><form class="lesson-topic-editor" data-lesson-topic-form novalidate><div class="lesson-topic-editor__head"><div><span class="eyebrow">TEMA DA AULA</span><h2 id="lesson-topic-title">Editar tema</h2><p>A atualiza\u00e7\u00e3o tamb\u00e9m ser\u00e1 aplicada ao cronograma desta aula.</p></div><button class="icon-button" type="button" data-close-lesson-topic aria-label="Fechar">${icon("close", 19)}</button></div><label class="field"><span>Tema</span><span class="field__control">${icon("book", 17)}<input name="topic" maxlength="180" value="${escapeHtml(lesson.tema)}" required autofocus /></span></label><div class="lesson-topic-editor__actions"><button class="button button--ghost" type="button" data-close-lesson-topic>Cancelar</button><button class="button button--primary" type="submit">${icon("save", 17)} Salvar tema</button></div></form></section></div>`;
+}
+
+export function openLessonTopicEditor({ lesson, onSave }) {
+  const modalRoot = document.querySelector("#modal-root");
+  modalRoot.innerHTML = lessonTopicEditorModal(lesson);
+  const close = () => {
+    document.removeEventListener("keydown", onKeydown);
+    closeModal();
+  };
+  const onKeydown = (event) => {
+    if (event.key === "Escape") close();
+  };
+  document.addEventListener("keydown", onKeydown);
+  modalRoot
+    .querySelectorAll("[data-close-lesson-topic]")
+    .forEach((button) => button.addEventListener("click", close));
+  modalRoot
+    .querySelector("[data-lesson-topic-backdrop]")
+    .addEventListener("click", (event) => {
+      if (event.target === event.currentTarget) close();
+    });
+  modalRoot
+    .querySelector("[data-lesson-topic-form]")
+    .addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      if (!form.reportValidity()) return;
+      const button = form.querySelector("[type=submit]");
+      try {
+        setButtonLoading(button, true);
+        await onSave(String(new FormData(form).get("topic") || "").trim());
+        close();
+      } catch (error) {
+        setButtonLoading(button, false);
+        showToast(
+          error.message || "N\u00e3o foi poss\u00edvel atualizar o tema.",
+          "error",
+        );
+      }
+    });
 }
 
 function contentCard(content) {
@@ -133,86 +182,6 @@ function contentCard(content) {
 
 export function lessonMaterialsView({ lesson, occurrence, contents }) {
   return `<section class="page lesson-materials-page"><button class="back-link" data-lesson-tools-back>${icon("arrowLeft", 18)} Ferramentas</button>${toolContext(lesson, occurrence)}<section class="lesson-contents"><div class="lesson-contents__heading"><div><span class="eyebrow">MATERIAIS</span><h1>Conte\u00fados da aula</h1><p>Arquivos ficam privados no seu espa\u00e7o AKADEMO.</p></div><button class="button button--primary" data-upload-content>${icon("upload", 17)} Adicionar arquivo</button></div><div class="lesson-content-list">${contents.length ? contents.map(contentCard).join("") : `<div class="lesson-contents-empty"><span>${icon("file", 26)}</span><h3>Nenhum arquivo ainda</h3><p>Adicione materiais para manter tudo organizado nesta aula.</p></div>`}</div></section></section>`;
-}
-
-function contentUploadModal() {
-  return `<div class="modal-backdrop" data-content-upload-backdrop><section class="modal modal--content-upload" role="dialog" aria-modal="true" aria-labelledby="content-upload-title"><form class="content-upload-form" data-content-upload-form novalidate><div class="content-upload-form__head"><div><span class="eyebrow">NOVO CONTE\u00daDO</span><h2 id="content-upload-title">Adicionar arquivo</h2><p>Arquivos de at\u00e9 20 MB ficam privados no seu bucket.</p></div><button class="icon-button" type="button" data-close-content-upload aria-label="Fechar">${icon("close", 19)}</button></div><label class="field"><span>T\u00edtulo do arquivo</span><span class="field__control">${icon("file", 17)}<input name="title" maxlength="160" placeholder="Ex.: Slides da aula" required autofocus /></span></label><input type="file" data-content-file hidden /><button class="content-dropzone" type="button" data-content-dropzone><span>${icon("upload", 25)}</span><strong>Arraste um arquivo ou clique para selecionar</strong><small data-content-file-name>At\u00e9 20 MB</small></button><div class="content-upload-form__actions"><button class="button button--ghost" type="button" data-close-content-upload>Cancelar</button><button class="button button--primary" type="submit">${icon("upload", 17)} Enviar arquivo</button></div></form></section></div>`;
-}
-
-function openContentUpload(onUpload) {
-  const modalRoot = document.querySelector("#modal-root");
-  let selectedFile = null;
-  modalRoot.innerHTML = contentUploadModal();
-  const close = () => {
-    document.removeEventListener("keydown", onKeydown);
-    closeModal();
-  };
-  const onKeydown = (event) => {
-    if (event.key === "Escape") close();
-  };
-  const setFile = (file) => {
-    if (!file) return;
-    selectedFile = file;
-    modalRoot.querySelector("[data-content-file-name]").textContent =
-      `${file.name} (${Math.ceil(file.size / 1024)} KB)`;
-    modalRoot
-      .querySelector("[data-content-dropzone]")
-      .classList.add("has-file");
-  };
-  document.addEventListener("keydown", onKeydown);
-  modalRoot
-    .querySelectorAll("[data-close-content-upload]")
-    .forEach((button) => button.addEventListener("click", close));
-  modalRoot
-    .querySelector("[data-content-upload-backdrop]")
-    .addEventListener("click", (event) => {
-      if (event.target === event.currentTarget) close();
-    });
-  const input = modalRoot.querySelector("[data-content-file]");
-  const dropzone = modalRoot.querySelector("[data-content-dropzone]");
-  dropzone.addEventListener("click", () => input.click());
-  input.addEventListener("change", () => setFile(input.files?.[0]));
-  ["dragenter", "dragover"].forEach((eventName) =>
-    dropzone.addEventListener(eventName, (event) => {
-      event.preventDefault();
-      dropzone.classList.add("is-dragging");
-    }),
-  );
-  ["dragleave", "drop"].forEach((eventName) =>
-    dropzone.addEventListener(eventName, (event) => {
-      event.preventDefault();
-      dropzone.classList.remove("is-dragging");
-    }),
-  );
-  dropzone.addEventListener("drop", (event) =>
-    setFile(event.dataTransfer?.files?.[0]),
-  );
-  modalRoot
-    .querySelector("[data-content-upload-form]")
-    .addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const form = event.currentTarget;
-      if (!form.reportValidity()) return;
-      if (!selectedFile) {
-        showToast("Selecione um arquivo para continuar.", "error");
-        return;
-      }
-      const button = form.querySelector("[type=submit]");
-      try {
-        setButtonLoading(button, true);
-        await onUpload({
-          title: new FormData(form).get("title"),
-          file: selectedFile,
-        });
-        close();
-      } catch (error) {
-        setButtonLoading(button, false);
-        showToast(
-          error.message || "N\u00e3o foi poss\u00edvel enviar o arquivo.",
-          "error",
-        );
-      }
-    });
 }
 
 export function bindLessonsWeek(
@@ -280,7 +249,10 @@ export function bindLessonForm(root, { onBack, onSave }) {
     });
 }
 
-export function bindLessonDetail(root, { onBack, onOpenMaterials, onOpenTasks }) {
+export function bindLessonDetail(
+  root,
+  { onBack, onOpenMaterials, onOpenTasks, onEditTopic },
+) {
   root
     .querySelectorAll("[data-lesson-back]")
     .forEach((button) => button.addEventListener("click", onBack));
@@ -290,6 +262,9 @@ export function bindLessonDetail(root, { onBack, onOpenMaterials, onOpenTasks })
   root
     .querySelector("[data-open-lesson-tasks]")
     .addEventListener("click", onOpenTasks);
+  root
+    .querySelector("[data-edit-lesson-topic]")
+    .addEventListener("click", onEditTopic);
 }
 
 export function bindLessonMaterials(
@@ -308,7 +283,9 @@ export function bindLessonMaterials(
     .addEventListener("click", onBack);
   root
     .querySelector("[data-upload-content]")
-    .addEventListener("click", () => openContentUpload(onUpload));
+    .addEventListener("click", () =>
+      openContentUploadWizard({ context: "lesson", onUpload }),
+    );
   root.querySelectorAll("[data-open-content]").forEach((card) => {
     const open = (event) => {
       if (

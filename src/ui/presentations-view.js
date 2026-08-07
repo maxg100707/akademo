@@ -2,6 +2,7 @@ import { displayTime } from "../services/schedules.js";
 import { escapeHtml } from "../utils/formatters.js";
 import { icon } from "../utils/icons.js";
 import { closeModal, setButtonLoading, showToast } from "./components.js";
+import { openContentUploadWizard } from "./content-upload-wizard.js";
 
 const asArray = (value) => (Array.isArray(value) ? value : []);
 
@@ -86,40 +87,6 @@ function openPresentationCreate({ disciplines, occurrencesByDiscipline, onCreate
     } catch (error) {
       setButtonLoading(button, false);
       showToast(error.message || "Não foi possível criar a apresentação.", "error");
-    }
-  });
-}
-
-function presentationUploadModal() {
-  return `<div class="modal-backdrop" data-presentation-upload-backdrop><section class="modal modal--presentation-upload" role="dialog" aria-modal="true" aria-labelledby="presentation-upload-title"><form class="presentation-upload-form" data-presentation-upload-form novalidate><div class="presentation-editor__head"><div><span class="eyebrow">NOVO ARQUIVO</span><h2 id="presentation-upload-title">Enviar material</h2><p>O arquivo ficará salvo na disciplina e associado a esta apresentação.</p></div><button class="icon-button" type="button" data-close-presentation-upload aria-label="Fechar">${icon("close", 19)}</button></div><label class="field"><span>Título do arquivo</span><span class="field__control">${icon("file", 17)}<input name="title" maxlength="160" required placeholder="Ex.: Roteiro da apresentação" autofocus /></span></label><label class="field"><span>Arquivo</span><span class="field__control">${icon("upload", 17)}<input name="file" type="file" required /></span></label><div class="presentation-editor__actions"><button class="button button--ghost" type="button" data-close-presentation-upload>Cancelar</button><button class="button button--primary" type="submit">${icon("upload", 16)} Enviar arquivo</button></div></form></section></div>`;
-}
-
-function openPresentationUpload(onUpload) {
-  const modalRoot = document.querySelector("#modal-root");
-  modalRoot.innerHTML = presentationUploadModal();
-  let unbindKeydown = null;
-  const close = () => {
-    unbindKeydown?.();
-    closeModal();
-  };
-  unbindKeydown = closeWithEscape(close);
-  modalRoot.querySelectorAll("[data-close-presentation-upload]").forEach((button) => button.addEventListener("click", close));
-  modalRoot.querySelector("[data-presentation-upload-backdrop]").addEventListener("click", (event) => {
-    if (event.target === event.currentTarget) close();
-  });
-  modalRoot.querySelector("[data-presentation-upload-form]").addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const form = event.currentTarget;
-    if (!form.reportValidity()) return;
-    const button = form.querySelector("[type=submit]");
-    try {
-      setButtonLoading(button, true);
-      const data = new FormData(form);
-      await onUpload({ title: data.get("title"), file: data.get("file") });
-      close();
-    } catch (error) {
-      setButtonLoading(button, false);
-      showToast(error.message || "Não foi possível enviar o arquivo.", "error");
     }
   });
 }
@@ -244,7 +211,11 @@ export function bindPresentations(root, { disciplines, occurrencesByDiscipline, 
 export function bindPresentationDetail(root, { presentation, contents, onBack, onEdit, onOpenContent, onUpload }) {
   root.querySelector("[data-presentation-back]").addEventListener("click", onBack);
   root.querySelector("[data-edit-presentation]").addEventListener("click", onEdit);
-  root.querySelector("[data-upload-presentation-content]")?.addEventListener("click", () => openPresentationUpload(onUpload));
+  root
+    .querySelector("[data-upload-presentation-content]")
+    ?.addEventListener("click", () =>
+      openContentUploadWizard({ context: "presentation", onUpload }),
+    );
   root.querySelectorAll("[data-open-presentation-content]").forEach((button) => {
     button.addEventListener("click", () => {
       const content = contents.find((item) => item.id === button.dataset.openPresentationContent);

@@ -2,6 +2,7 @@ import { displayTime } from "../services/schedules.js";
 import { escapeHtml } from "../utils/formatters.js";
 import { icon } from "../utils/icons.js";
 import { closeModal, confirmModal, setButtonLoading, showToast } from "./components.js";
+import { openContentUploadWizard } from "./content-upload-wizard.js";
 
 const asArray = (value) => Array.isArray(value) ? value : [];
 
@@ -206,10 +207,6 @@ function linkContentsModal(topics, contents) {
   return `<div class="modal-backdrop" data-link-exam-content-backdrop><section class="modal modal--exam-content-picker" role="dialog" aria-modal="true" aria-labelledby="link-exam-content-title"><form data-link-exam-content-form novalidate><div class="exam-editor__head"><div><span class="eyebrow">MATERIAIS DA PROVA</span><h2 id="link-exam-content-title">Vincular arquivos</h2><p>Escolha um tema e os conte\u00fados da disciplina.</p></div><button class="icon-button" type="button" data-close-link-exam-content aria-label="Fechar">${icon("close", 19)}</button></div><label class="field"><span>Tema</span><span class="field__control">${icon("book", 17)}<select name="topicId" required><option value="">Selecione o tema</option>${topics.map((topic) => `<option value="${escapeHtml(topic.id)}">${escapeHtml(topic.tema)}</option>`).join("")}</select></span></label><div class="exam-content-picker__list">${contentChoices(contents)}</div><div class="exam-editor__actions"><button class="button button--ghost" type="button" data-close-link-exam-content>Cancelar</button><button class="button button--primary" type="submit">${icon("plus", 16)} Vincular selecionados</button></div></form></section></div>`;
 }
 
-function uploadExamContentModal(topics) {
-  return `<div class="modal-backdrop" data-upload-exam-content-backdrop><section class="modal modal--exam-content-picker" role="dialog" aria-modal="true" aria-labelledby="upload-exam-content-title"><form data-upload-exam-content-form novalidate><div class="exam-editor__head"><div><span class="eyebrow">NOVO ARQUIVO</span><h2 id="upload-exam-content-title">Enviar material</h2><p>O arquivo ficar\u00e1 salvo na disciplina e associado ao tema escolhido.</p></div><button class="icon-button" type="button" data-close-upload-exam-content aria-label="Fechar">${icon("close", 19)}</button></div><label class="field"><span>Tema</span><span class="field__control">${icon("book", 17)}<select name="topicId" required><option value="">Selecione o tema</option>${topics.map((topic) => `<option value="${escapeHtml(topic.id)}">${escapeHtml(topic.tema)}</option>`).join("")}</select></span></label><label class="field"><span>T\u00edtulo do arquivo</span><span class="field__control">${icon("file", 17)}<input name="title" maxlength="160" required placeholder="Ex.: Lista de revis\u00e3o" /></span></label><label class="field"><span>Arquivo</span><span class="field__control">${icon("upload", 17)}<input name="file" type="file" required /></span></label><div class="exam-editor__actions"><button class="button button--ghost" type="button" data-close-upload-exam-content>Cancelar</button><button class="button button--primary" type="submit">${icon("upload", 16)} Enviar e vincular</button></div></form></section></div>`;
-}
-
 function openSimpleModal(markup, backdrop, closeSelector, onBind) {
   const modalRoot = document.querySelector("#modal-root");
   modalRoot.innerHTML = markup;
@@ -260,12 +257,11 @@ export function bindExamMaterials(root, { topics, contents, onBack, onOpenConten
       const button = form.querySelector("[type=submit]"); try { setButtonLoading(button, true); await onLink(new FormData(form).get("topicId"), ids); close(); } catch (error) { setButtonLoading(button, false); showToast(error.message || "N\u00e3o foi poss\u00edvel vincular os arquivos.", "error"); }
     });
   }));
-  root.querySelector("[data-upload-exam-content]")?.addEventListener("click", () => openSimpleModal(uploadExamContentModal(topics), "[data-upload-exam-content-backdrop]", "[data-close-upload-exam-content]", (modalRoot, close) => {
-    modalRoot.querySelector("[data-upload-exam-content-form]").addEventListener("submit", async (event) => {
-      event.preventDefault(); const form = event.currentTarget; if (!form.reportValidity()) return;
-      const button = form.querySelector("[type=submit]"); try { setButtonLoading(button, true); await onUpload({ topicId: new FormData(form).get("topicId"), title: new FormData(form).get("title"), file: new FormData(form).get("file") }); close(); } catch (error) { setButtonLoading(button, false); showToast(error.message || "N\u00e3o foi poss\u00edvel enviar o arquivo.", "error"); }
-    });
-  }));
+  root
+    .querySelector("[data-upload-exam-content]")
+    ?.addEventListener("click", () =>
+      openContentUploadWizard({ context: "exam", topics, onUpload }),
+    );
   root.querySelectorAll("[data-unlink-exam-content]").forEach((button) => button.addEventListener("click", async () => {
     const [topicId, contentId] = button.dataset.unlinkExamContent.split(":");
     try {

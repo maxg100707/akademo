@@ -35,6 +35,7 @@ import {
 } from "./services/schedules.js";
 import {
   createChronogramEntry,
+  chronogramKind,
   deleteChronogramEntry,
   findChronogramEntry,
   getChronogram,
@@ -44,6 +45,7 @@ import {
 import {
   createLesson,
   deleteContent,
+  getProfileContents,
   getContentsByDiscipline,
   getContentUrl,
   getContents,
@@ -53,7 +55,9 @@ import {
   startOfWeek,
   uploadContent,
   uploadExamContent,
+  uploadProfileContent,
   uploadPresentationContent,
+  updateProfileContent,
 } from "./services/lessons.js";
 import {
   createTask,
@@ -112,6 +116,7 @@ import {
   lessonFormView,
   lessonMaterialsView,
   lessonsWeekView,
+  openLessonTopicEditor,
 } from "./ui/lessons-view.js";
 import {
   bindLessonTasks,
@@ -139,6 +144,7 @@ import {
   presentationDetailView,
   presentationsView,
 } from "./ui/presentations-view.js";
+import { bindFiles, filesView } from "./ui/files-view.js";
 import { showToast } from "./ui/components.js";
 import {
   getStoredProfile,
@@ -174,10 +180,13 @@ const state = {
   activeExamContents: [],
   activePresentation: null,
   activePresentationContents: [],
+  profileContents: [],
   dashboardLoadedProfileId: null,
   view: "dashboard",
   returnView: "dashboard",
   taskDisciplineFilter: "",
+  fileDisciplineFilter: "",
+  fileSearch: "",
   collapsed: localStorage.getItem("akademo.sidebar.collapsed") === "true",
   theme: localStorage.getItem(APP_STORAGE_KEYS.theme) || "light",
 };
@@ -240,7 +249,10 @@ async function hydrate(user) {
     state.activeExamContents = [];
     state.activePresentation = null;
     state.activePresentationContents = [];
+    state.profileContents = [];
     state.taskDisciplineFilter = "";
+    state.fileDisciplineFilter = "";
+    state.fileSearch = "";
     state.dashboardLoadedProfileId = null;
     selectStoredProfile();
     if (!state.profiles.length) showOnboarding();
@@ -316,7 +328,10 @@ function renderAuthScreen() {
   state.activeExamContents = [];
   state.activePresentation = null;
   state.activePresentationContents = [];
+  state.profileContents = [];
   state.taskDisciplineFilter = "";
+  state.fileDisciplineFilter = "";
+  state.fileSearch = "";
   state.dashboardLoadedProfileId = null;
   renderAuth(root, {
     onLogin: handleLogin,
@@ -350,6 +365,7 @@ function renderCurrent() {
   if (state.view === "schedules") return renderSchedules();
   if (state.view === "chronogram") return renderChronogram();
   if (state.view === "tasks") return renderTasks();
+  if (state.view === "files") return renderFiles();
   if (state.view === "exams") return renderExams();
   if (state.view === "exam-detail") return renderExamDetail();
   if (state.view === "exam-topic") return renderExamTopic();
@@ -1179,6 +1195,7 @@ function mountChronogram() {
           (first, second) =>
             new Date(first.data_hora) - new Date(second.data_hora),
         );
+      syncLinkedLessonTopic(updated);
       mountChronogram();
       showToast("Aula atualizada.");
       return updated;
@@ -1244,6 +1261,126 @@ function mountTasks() {
       mountTasks();
     },
     ...taskCallbacks(() => mountTasks()),
+  });
+}
+
+function syncLinkedLessonTopic(chronogram) {
+  if (!chronogram?.aula) return;
+  const withSyncedTopic = (lesson) =>
+    lesson.id === chronogram.aula
+      ? { ...lesson, tema: chronogram.tema }
+      : lesson;
+  state.lessons = state.lessons.map(withSyncedTopic);
+  if (state.activeLesson?.id === chronogram.aula) {
+    state.activeLesson = withSyncedTopic(state.activeLesson);
+  }
+}
+
+async function renderFiles() {
+  const profile = state.currentProfile;
+  if (!profile) return showOnboarding();
+  state.view = "files";
+  try {
+    const [disciplines, lessons, contents] = await Promise.all([
+      getDisciplines(profile.id),
+      getLessons(profile.id),
+      getProfileContents(profile.id),
+    ]);
+    if (state.view !== "files" || state.currentProfile?.id !== profile.id)
+      return;
+    state.disciplines = disciplines;
+    state.lessons = lessons;
+    state.profileContents = contents;
+    if (
+      state.fileDisciplineFilter &&
+      state.fileDisciplineFilter !== "__none__" &&
+      !disciplines.some((item) => item.id === state.fileDisciplineFilter)
+    )
+      state.fileDisciplineFilter = "";
+    mountFiles();
+  } catch (error) {
+    showToast(
+      error.message || "Não foi possível carregar os arquivos do perfil.",
+      "error",
+    );
+    state.view = state.returnView;
+    renderCurrent();
+  }
+}
+
+function mountFiles() {
+  renderWithinLayout(
+    filesView({
+      contents: state.profileContents,
+      disciplines: state.disciplines,
+      lessons: state.lessons,
+      filter: state.fileDisciplineFilter,
+      search: state.fileSearch,
+    }),
+  );
+  bindFiles(root, {
+    contents: state.profileContents,
+    disciplines: state.disciplines,
+    lessons: state.lessons,
+    onFilter: (disciplineId) => {
+      state.fileDisciplineFilter = disciplineId;
+      mountFiles();
+    },
+    onSearch: (query) => {
+      state.fileSearch = query;
+      mountFiles();
+      const search = root.querySelector("[data-files-search]");
+      search?.focus();
+      search?.setSelectionRange(query.length, query.length);
+    },
+    onUpload: async (values) => {
+      const content = await uploadProfileContent(
+        state.user,
+        state.currentProfile,
+        values,
+      );
+      state.profileContents = [content, ...state.profileContents];
+      mountFiles();
+      showToast("Arquivo adicionado ao perfil.");
+      return content;
+    },
+    onOpen: (content) => openContent(content),
+    onDownload: async (content) => {
+      try {
+        window.open(
+          await getContentUrl(state.user, content, true),
+          "_blank",
+          "noopener,noreferrer",
+        );
+      } catch (error) {
+        showToast(
+          error.message || "Não foi possível baixar o arquivo.",
+          "error",
+        );
+      }
+    },
+    onEdit: async (content, values) => {
+      const updated = await updateProfileContent(
+        content.id,
+        state.user,
+        state.currentProfile,
+        values,
+      );
+      state.profileContents = state.profileContents.map((item) =>
+        item.id === updated.id ? updated : item,
+      );
+      mountFiles();
+      showToast("Arquivo atualizado.");
+      return updated;
+    },
+    onDelete: async (content) => {
+      await deleteContent(state.user, content);
+      state.profileContents = state.profileContents.filter(
+        (item) => item.id !== content.id,
+      );
+      mountFiles();
+      showToast("Arquivo excluído.");
+    },
   });
 }
 
@@ -2206,6 +2343,36 @@ function renderLessonDetail() {
           "error",
         ),
       ),
+    onEditTopic: () =>
+      openLessonTopicEditor({
+        lesson,
+        onSave: async (topic) => {
+          const chronogram = state.chronograms.find(
+            (entry) => entry.id === lesson.cronograma,
+          );
+          if (!chronogram) {
+            throw new Error(
+              "N\u00e3o foi poss\u00edvel localizar o cronograma desta aula.",
+            );
+          }
+          const updated = await updateChronogramEntry(
+            chronogram.id,
+            state.currentProfile,
+            {
+              disciplineId: chronogram.disciplina,
+              dateTime: chronogram.data_hora,
+              topic,
+              kind: chronogramKind(chronogram),
+            },
+          );
+          state.chronograms = state.chronograms.map((entry) =>
+            entry.id === updated.id ? updated : entry,
+          );
+          syncLinkedLessonTopic(updated);
+          renderLessonDetail();
+          showToast("Tema atualizado no cronograma e na aula.");
+        },
+      }),
   });
 }
 
@@ -2336,6 +2503,11 @@ function renderWithinLayout(content) {
         state.activePresentation = null;
         state.activePresentationContents = [];
       }
+      if (view === "files") {
+        state.returnView = state.view;
+        state.fileDisciplineFilter = "";
+        state.fileSearch = "";
+      }
       state.view = view;
       renderCurrent();
     },
@@ -2380,7 +2552,10 @@ function renderWithinLayout(content) {
       state.activeExamContents = [];
       state.activePresentation = null;
       state.activePresentationContents = [];
+      state.profileContents = [];
       state.taskDisciplineFilter = "";
+      state.fileDisciplineFilter = "";
+      state.fileSearch = "";
       state.dashboardLoadedProfileId = null;
       storeProfile(state.currentProfile);
       renderCurrent();
