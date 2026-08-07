@@ -85,6 +85,7 @@ export async function getLessonByChronogram(profileId, chronogramId) {
 export async function createLesson(user, profile, occurrence, chronogram, summary) {
   if (chronogram?.feriado) throw new Error("Nao e possivel registrar uma aula em um feriado.");
   if (chronogram?.prova) throw new Error("Nao e possivel registrar uma aula em um cronograma de prova.");
+  if (chronogram?.apresentacao) throw new Error("Nao e possivel registrar uma aula em um cronograma de apresentacao.");
   const { data, error } = await requireSupabase()
     .from("aulas")
     .insert({
@@ -196,6 +197,34 @@ export async function uploadExamContent(user, profile, exam, { title, file }) {
     email_user: user.email,
     perfil: profile.id,
     disciplina: exam.disciplina,
+    aula: null,
+    path,
+    titulo: cleanTitle,
+  }).select().single();
+  if (error) {
+    await client.storage.from(user.email).remove([path]);
+    throw error;
+  }
+  return data;
+}
+
+export async function uploadPresentationContent(user, profile, presentation, { title, file }) {
+  if (!(file instanceof File) || !file.size) throw new Error("Selecione um arquivo para enviar.");
+  if (file.size > MAX_CONTENT_SIZE) throw new Error("O arquivo deve ter no máximo 20 MB.");
+  if (file.type && !ALLOWED_CONTENT_TYPES.has(file.type)) throw new Error("Este tipo de arquivo ainda não é aceito pelo armazenamento.");
+  const cleanTitle = String(title || "").trim();
+  if (!cleanTitle) throw new Error("Informe um título para o arquivo.");
+  await provisionUserStorage();
+  const client = requireSupabase();
+  const path = contentPath(`apresentacoes/${presentation.id}`, file);
+  const { error: uploadError } = await client.storage.from(user.email).upload(path, file, {
+    contentType: file.type || "application/octet-stream", cacheControl: "3600", upsert: false,
+  });
+  if (uploadError) throw uploadError;
+  const { data, error } = await client.from("conteudos").insert({
+    email_user: user.email,
+    perfil: profile.id,
+    disciplina: presentation.disciplina,
     aula: null,
     path,
     titulo: cleanTitle,

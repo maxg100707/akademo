@@ -53,6 +53,7 @@ import {
   startOfWeek,
   uploadContent,
   uploadExamContent,
+  uploadPresentationContent,
 } from "./services/lessons.js";
 import {
   createTask,
@@ -69,6 +70,11 @@ import {
   getExams,
   updateExamTopic,
 } from "./services/exams.js";
+import {
+  createPresentation,
+  getPresentations,
+  updatePresentation,
+} from "./services/presentations.js";
 import {
   applyPendingAvatar,
   ensureUserRecord,
@@ -126,6 +132,13 @@ import {
   examTopicView,
   openExamThemeSetup,
 } from "./ui/exams-view.js";
+import {
+  bindPresentationDetail,
+  bindPresentations,
+  openPresentationEditor,
+  presentationDetailView,
+  presentationsView,
+} from "./ui/presentations-view.js";
 import { showToast } from "./ui/components.js";
 import {
   getStoredProfile,
@@ -148,6 +161,7 @@ const state = {
   tasks: [],
   exams: [],
   examTopics: [],
+  presentations: [],
   scheduleEditing: false,
   chronogramDisciplineId: null,
   lessonWeekOffset: 0,
@@ -158,6 +172,8 @@ const state = {
   activeExam: null,
   activeExamTopic: null,
   activeExamContents: [],
+  activePresentation: null,
+  activePresentationContents: [],
   dashboardLoadedProfileId: null,
   view: "dashboard",
   returnView: "dashboard",
@@ -211,6 +227,7 @@ async function hydrate(user) {
     state.tasks = [];
     state.exams = [];
     state.examTopics = [];
+    state.presentations = [];
     state.scheduleEditing = false;
     state.chronogramDisciplineId = null;
     state.lessonWeekOffset = 0;
@@ -221,6 +238,8 @@ async function hydrate(user) {
     state.activeExam = null;
     state.activeExamTopic = null;
     state.activeExamContents = [];
+    state.activePresentation = null;
+    state.activePresentationContents = [];
     state.taskDisciplineFilter = "";
     state.dashboardLoadedProfileId = null;
     selectStoredProfile();
@@ -284,6 +303,7 @@ function renderAuthScreen() {
   state.tasks = [];
   state.exams = [];
   state.examTopics = [];
+  state.presentations = [];
   state.scheduleEditing = false;
   state.chronogramDisciplineId = null;
   state.lessonWeekOffset = 0;
@@ -294,6 +314,8 @@ function renderAuthScreen() {
   state.activeExam = null;
   state.activeExamTopic = null;
   state.activeExamContents = [];
+  state.activePresentation = null;
+  state.activePresentationContents = [];
   state.taskDisciplineFilter = "";
   state.dashboardLoadedProfileId = null;
   renderAuth(root, {
@@ -332,6 +354,8 @@ function renderCurrent() {
   if (state.view === "exam-detail") return renderExamDetail();
   if (state.view === "exam-topic") return renderExamTopic();
   if (state.view === "exam-materials") return renderExamMaterials();
+  if (state.view === "presentations") return renderPresentations();
+  if (state.view === "presentation-detail") return renderPresentationDetail();
   if (state.view === "lessons") return renderLessons();
   if (state.view === "lesson-chronogram") return renderLessonChronogram();
   if (state.view === "lesson-form") return renderLessonForm();
@@ -375,6 +399,7 @@ function mountDashboard() {
       disciplines: state.disciplines,
       lessons: state.lessons,
       exams: state.exams,
+      presentations: state.presentations,
       chronograms: state.chronograms,
       isNextClassLoading:
         state.currentProfile &&
@@ -423,6 +448,37 @@ function mountDashboard() {
       );
     }),
   );
+  root.querySelectorAll("[data-open-dashboard-presentation]").forEach((button) =>
+    button.addEventListener("click", () => {
+      const presentation = state.presentations.find(
+        (item) => item.id === button.dataset.openDashboardPresentation,
+      );
+      if (!presentation) return;
+      openPresentation(presentation).catch((error) =>
+        showToast(
+          error.message || "Não foi possível abrir a apresentação.",
+          "error",
+        ),
+      );
+    }),
+  );
+  root
+    .querySelectorAll("[data-open-dashboard-presentation-chronogram]")
+    .forEach((button) =>
+      button.addEventListener("click", () => {
+        const chronogram = state.chronograms.find(
+          (item) =>
+            item.id === button.dataset.openDashboardPresentationChronogram,
+        );
+        if (!chronogram) return;
+        openPresentationForChronogram(chronogram).catch((error) =>
+          showToast(
+            error.message || "Não foi possível abrir a apresentação.",
+            "error",
+          ),
+        );
+      }),
+    );
   const taskActions = taskCallbacks(() => mountDashboard());
   root
     .querySelector("[data-add-dashboard-task]")
@@ -493,7 +549,7 @@ function mountDashboard() {
 
 async function loadDashboardData(profile) {
   try {
-    const [teachers, disciplines, schedules, chronograms, lessons, tasks, exams] = await Promise.all([
+    const [teachers, disciplines, schedules, chronograms, lessons, tasks, exams, presentations] = await Promise.all([
       getTeachers(profile.id),
       getDisciplines(profile.id),
       getSchedules(profile.id),
@@ -501,6 +557,7 @@ async function loadDashboardData(profile) {
       getLessons(profile.id),
       getTasks(profile.id),
       getExams(profile.id),
+      getPresentations(profile.id),
     ]);
     if (state.view !== "dashboard" || state.currentProfile?.id !== profile.id)
       return;
@@ -511,6 +568,7 @@ async function loadDashboardData(profile) {
     state.lessons = lessons;
     state.tasks = tasks;
     state.exams = exams;
+    state.presentations = presentations;
     state.dashboardLoadedProfileId = profile.id;
     mountDashboard();
   } catch (error) {
@@ -1615,6 +1673,289 @@ function renderExamMaterials() {
   });
 }
 
+async function renderPresentations() {
+  const profile = state.currentProfile;
+  if (!profile) return showOnboarding();
+  state.view = "presentations";
+  try {
+    const [disciplines, schedules, chronograms, presentations] = await Promise.all([
+      getDisciplines(profile.id),
+      getSchedules(profile.id),
+      getChronogram(profile.id),
+      getPresentations(profile.id),
+    ]);
+    const scheduledWithoutRecord = chronograms.filter(
+      (entry) =>
+        entry.apresentacao &&
+        new Date(entry.data_hora) >= new Date() &&
+        !presentations.some((item) => item.cronograma === entry.id),
+    );
+    const recoveredPresentations = await Promise.all(
+      scheduledWithoutRecord.map((entry) =>
+        createPresentation(state.user, profile, {
+          disciplineId: entry.disciplina,
+          chronogramId: entry.id,
+          title: entry.tema,
+          dateTime: entry.data_hora,
+        }),
+      ),
+    );
+    if (
+      state.view !== "presentations" ||
+      state.currentProfile?.id !== profile.id
+    )
+      return;
+    state.disciplines = disciplines;
+    state.schedules = schedules;
+    state.chronograms = chronograms;
+    state.presentations = [...presentations, ...recoveredPresentations].sort(
+      (first, second) => new Date(first.data) - new Date(second.data),
+    );
+    state.activePresentation = null;
+    state.activePresentationContents = [];
+    mountPresentations();
+  } catch (error) {
+    showToast(
+      error.message || "Não foi possível carregar as apresentações.",
+      "error",
+    );
+    state.view = state.returnView;
+    renderCurrent();
+  }
+}
+
+function mountPresentations() {
+  const occurrencesByDiscipline = examOccurrencesByDiscipline();
+  renderWithinLayout(
+    presentationsView({
+      profile: state.currentProfile,
+      disciplines: state.disciplines,
+      presentations: state.presentations,
+      occurrencesByDiscipline,
+    }),
+  );
+  bindPresentations(root, {
+    disciplines: state.disciplines,
+    occurrencesByDiscipline,
+    onCreate: async (values) => {
+      const chronogram = await createChronogramEntry(
+        state.user,
+        state.currentProfile,
+        {
+          disciplineId: values.disciplineId,
+          dateTime: values.dateTime,
+          topic: values.title,
+          kind: "presentation",
+        },
+      );
+      try {
+        const presentation = await createPresentation(
+          state.user,
+          state.currentProfile,
+          {
+            disciplineId: values.disciplineId,
+            chronogramId: chronogram.id,
+            title: values.title,
+            dateTime: values.dateTime,
+          },
+        );
+        state.chronograms = [...state.chronograms, chronogram].sort(
+          (first, second) =>
+            new Date(first.data_hora) - new Date(second.data_hora),
+        );
+        state.presentations = [...state.presentations, presentation].sort(
+          (first, second) => new Date(first.data) - new Date(second.data),
+        );
+        showToast("Apresentação adicionada ao cronograma.");
+        return presentation;
+      } catch (error) {
+        await deleteChronogramEntry(chronogram.id, state.currentProfile.id);
+        throw error;
+      }
+    },
+    onCreated: (presentation) =>
+      configurePresentation(presentation).catch((error) =>
+        showToast(
+          error.message || "Não foi possível configurar a apresentação.",
+          "error",
+        ),
+      ),
+    onOpen: (id) => {
+      const presentation = state.presentations.find((item) => item.id === id);
+      if (!presentation) return;
+      openPresentation(presentation).catch((error) =>
+        showToast(
+          error.message || "Não foi possível abrir a apresentação.",
+          "error",
+        ),
+      );
+    },
+  });
+}
+
+function replacePresentation(presentation) {
+  state.presentations = [
+    presentation,
+    ...state.presentations.filter((item) => item.id !== presentation.id),
+  ];
+  if (state.activePresentation?.id === presentation.id)
+    state.activePresentation = presentation;
+}
+
+async function openPresentation(presentation) {
+  const profileId = state.currentProfile?.id;
+  state.activePresentation = presentation;
+  const contents = await getContentsByDiscipline(
+    state.currentProfile.id,
+    presentation.disciplina,
+  );
+  if (
+    state.currentProfile?.id !== profileId ||
+    state.activePresentation?.id !== presentation.id
+  )
+    return;
+  state.activePresentationContents = contents;
+  state.view = "presentation-detail";
+  renderPresentationDetail();
+}
+
+async function configurePresentation(presentation = state.activePresentation) {
+  if (!presentation || !state.currentProfile) return;
+  const profileId = state.currentProfile.id;
+  state.activePresentation = presentation;
+  const contents = await getContentsByDiscipline(
+    profileId,
+    presentation.disciplina,
+  );
+  if (
+    state.currentProfile?.id !== profileId ||
+    state.activePresentation?.id !== presentation.id
+  )
+    return;
+  state.activePresentationContents = contents;
+  openPresentationEditor({
+    presentation,
+    contents,
+    onSave: async (values) => {
+      const updated = await updatePresentation(
+        presentation.id,
+        state.user,
+        state.currentProfile,
+        presentation,
+        values,
+      );
+      replacePresentation(updated);
+      showToast("Apresentação atualizada.");
+      return updated;
+    },
+    onClose: () => {
+      state.view = "presentation-detail";
+      renderPresentationDetail();
+    },
+  });
+}
+
+async function openPresentationForChronogram(chronogram) {
+  const profile = state.currentProfile;
+  if (!profile || !chronogram?.apresentacao)
+    throw new Error("Esta apresentação não está mais disponível.");
+  state.lessonOccurrence = null;
+  state.lessonChronogram = null;
+  state.activeLesson = null;
+  state.activeLessonContents = [];
+  const presentations = await getPresentations(profile.id);
+  state.presentations = presentations;
+  const existing = presentations.find(
+    (presentation) => presentation.cronograma === chronogram.id,
+  );
+  if (existing) {
+    await openPresentation(existing);
+    return;
+  }
+  const presentation = await createPresentation(state.user, profile, {
+    disciplineId: chronogram.disciplina,
+    chronogramId: chronogram.id,
+    title: chronogram.tema,
+    dateTime: chronogram.data_hora,
+  });
+  state.presentations = [...state.presentations, presentation].sort(
+    (first, second) => new Date(first.data) - new Date(second.data),
+  );
+  state.view = "presentations";
+  mountPresentations();
+  await configurePresentation(presentation);
+  showToast("Apresentação criada. Agora registre as instruções e materiais.");
+}
+
+function presentationBack() {
+  state.activePresentation = null;
+  state.activePresentationContents = [];
+  state.view = "presentations";
+  renderPresentations();
+}
+
+function renderPresentationDetail() {
+  const presentation = state.activePresentation;
+  if (!presentation) return presentationBack();
+  const discipline = state.disciplines.find(
+    (item) => item.id === presentation.disciplina,
+  );
+  state.view = "presentation-detail";
+  renderWithinLayout(
+    presentationDetailView({
+      presentation,
+      discipline,
+      contents: state.activePresentationContents,
+    }),
+  );
+  bindPresentationDetail(root, {
+    presentation,
+    contents: state.activePresentationContents,
+    onBack: presentationBack,
+    onEdit: () =>
+      configurePresentation(presentation).catch((error) =>
+        showToast(
+          error.message || "Não foi possível editar a apresentação.",
+          "error",
+        ),
+      ),
+    onOpenContent: (content) => openContent(content),
+    onUpload: async ({ title, file }) => {
+      const content = await uploadPresentationContent(
+        state.user,
+        state.currentProfile,
+        presentation,
+        { title, file },
+      );
+      state.activePresentationContents = [
+        content,
+        ...state.activePresentationContents,
+      ];
+      const updated = await updatePresentation(
+        presentation.id,
+        state.user,
+        state.currentProfile,
+        presentation,
+        {
+          instructions: presentation.instrucao || "",
+          links: Array.isArray(presentation.links) ? presentation.links : [],
+          contents: [
+            ...new Set([
+              ...(Array.isArray(presentation.conteudos)
+                ? presentation.conteudos
+                : []),
+              content.id,
+            ]),
+          ],
+        },
+      );
+      replacePresentation(updated);
+      renderPresentationDetail();
+      showToast("Arquivo enviado e associado à apresentação.");
+    },
+  });
+}
+
 async function renderLessons() {
   const profile = state.currentProfile;
   if (!profile) return showOnboarding();
@@ -1710,6 +2051,10 @@ async function openLessonOccurrence(occurrence, returnView = state.view) {
     await openExamForChronogram(chronogram);
     return;
   }
+  if (chronogram?.apresentacao) {
+    await openPresentationForChronogram(chronogram);
+    return;
+  }
   if (!chronogram) {
     state.lessonChronogram = null;
     state.view = "lesson-chronogram";
@@ -1771,6 +2116,10 @@ function renderLessonChronogram() {
         await openExamForChronogram(chronogram);
         return;
       }
+      if (chronogram.apresentacao) {
+        await openPresentationForChronogram(chronogram);
+        return;
+      }
       state.lessonChronogram = chronogram;
       state.view = "lesson-form";
       renderLessonForm();
@@ -1787,6 +2136,15 @@ function renderLessonForm() {
     openExamForChronogram(chronogram).catch((error) =>
       showToast(
         error.message || "Não foi possível abrir a prova.",
+        "error",
+      ),
+    );
+    return;
+  }
+  if (chronogram.apresentacao) {
+    openPresentationForChronogram(chronogram).catch((error) =>
+      showToast(
+        error.message || "Não foi possível abrir a apresentação.",
         "error",
       ),
     );
@@ -1973,6 +2331,11 @@ function renderWithinLayout(content) {
         state.activeExamTopic = null;
         state.activeExamContents = [];
       }
+      if (view === "presentations") {
+        state.returnView = state.view;
+        state.activePresentation = null;
+        state.activePresentationContents = [];
+      }
       state.view = view;
       renderCurrent();
     },
@@ -2004,6 +2367,7 @@ function renderWithinLayout(content) {
       state.tasks = [];
       state.exams = [];
       state.examTopics = [];
+      state.presentations = [];
       state.scheduleEditing = false;
       state.chronogramDisciplineId = null;
       state.lessonWeekOffset = 0;
@@ -2014,6 +2378,8 @@ function renderWithinLayout(content) {
       state.activeExam = null;
       state.activeExamTopic = null;
       state.activeExamContents = [];
+      state.activePresentation = null;
+      state.activePresentationContents = [];
       state.taskDisciplineFilter = "";
       state.dashboardLoadedProfileId = null;
       storeProfile(state.currentProfile);

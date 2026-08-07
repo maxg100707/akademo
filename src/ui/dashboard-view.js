@@ -1,7 +1,6 @@
 import { icon } from "../utils/icons.js";
 import { escapeHtml, firstName } from "../utils/formatters.js";
 import { displayTime, weekdayName } from "../services/schedules.js";
-import { taskListMarkup } from "./tasks-view.js";
 
 function nextClassCard(nextClass, nextClassChronogram, isLoading) {
   if (isLoading) return `<section class="next-class-card is-loading"><span class="next-class-card__icon"><span class="spinner"></span></span><div><small>PRÓXIMA AULA</small><strong>Organizando sua rotina...</strong><p>Estamos buscando os horários deste perfil.</p></div></section>`;
@@ -19,57 +18,66 @@ function basicAccess({ action, iconName, eyebrow, title, description, tone = "" 
   return `<button class="dashboard-basic-card ${tone}" data-open-${action}><span>${icon(iconName, 20)}</span><div><small>${eyebrow}</small><strong>${title}</strong><p>${description}</p></div>${icon("arrowRight", 17)}</button>`;
 }
 
-function dashboardExams(exams, disciplines, chronograms) {
-  const now = new Date();
-  const inOneWeek = new Date(now);
-  inOneWeek.setDate(inOneWeek.getDate() + 7);
-  const knownChronograms = new Set(exams.map((exam) => exam.cronograma));
-  const upcoming = [
-    ...exams,
-    ...chronograms
-      .filter((entry) => entry.prova && !knownChronograms.has(entry.id))
-      .map((entry) => ({
-        id: `chronogram:${entry.id}`,
-        cronograma: entry.id,
-        disciplina: entry.disciplina,
-        titulo: entry.tema,
-        data: entry.data_hora,
-        isChronogramOnly: true,
-      })),
-  ]
-    .filter((exam) => {
-      const date = new Date(exam.data);
-      return date >= now && date < inOneWeek;
-    })
-    .sort((first, second) => new Date(first.data) - new Date(second.data));
-  const formatDate = (value) =>
-    new Intl.DateTimeFormat("pt-BR", {
-      weekday: "short",
-      day: "2-digit",
-      month: "short",
-      hour: "2-digit",
-      minute: "2-digit",
-    }).format(new Date(value)).replace(".", "");
-  const entries = upcoming.length
-    ? upcoming.map((exam) => {
-      const discipline = disciplines.find((item) => item.id === exam.disciplina);
-      const action = exam.isChronogramOnly
-        ? `data-open-dashboard-chronogram="${escapeHtml(exam.cronograma)}"`
-        : `data-open-dashboard-exam="${escapeHtml(exam.id)}"`;
-      return `<button class="dashboard-exam-card" type="button" ${action}><span>${icon("exam", 17)}</span><div><small>${escapeHtml(discipline?.nome_disciplina || "Disciplina")}</small><strong>${escapeHtml(exam.titulo)}</strong><p>${escapeHtml(formatDate(exam.data))}</p></div>${icon("arrowRight", 15)}</button>`;
-    }).join("")
-    : `<p class="dashboard-exams__empty">Nenhuma prova marcada para os próximos sete dias.</p>`;
-  return `<section class="dashboard-exams"><div class="dashboard-exams__head"><div><span class="eyebrow">PRÓXIMAS PROVAS</span><h3>Na próxima semana</h3></div><span>${icon("exam", 17)}</span></div><div class="dashboard-exams__list">${entries}</div></section>`;
+function calendarDate(value) {
+  const date = new Date(value);
+  return {
+    day: new Intl.DateTimeFormat("pt-BR", { day: "2-digit" }).format(date),
+    month: new Intl.DateTimeFormat("pt-BR", { month: "short" }).format(date).replace(".", ""),
+    time: new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" }).format(date),
+  };
 }
 
-export function dashboardView({ record, profile, profiles, nextClass, nextClassChronogram, isNextClassLoading, tasks = [], disciplines = [], lessons = [], exams = [], chronograms = [] }) {
+function calendarAction(entry) {
+  if (entry.kind === "task") return `data-open-task="${escapeHtml(entry.id)}"`;
+  if (entry.kind === "exam") return entry.isChronogramOnly
+    ? `data-open-dashboard-chronogram="${escapeHtml(entry.cronograma)}"`
+    : `data-open-dashboard-exam="${escapeHtml(entry.id)}"`;
+  return entry.isChronogramOnly
+    ? `data-open-dashboard-presentation-chronogram="${escapeHtml(entry.cronograma)}"`
+    : `data-open-dashboard-presentation="${escapeHtml(entry.id)}"`;
+}
+
+function dashboardCalendar({ tasks, exams, presentations, disciplines, chronograms }) {
+  const now = new Date();
+  const knownExams = new Set(exams.map((exam) => exam.cronograma));
+  const knownPresentations = new Set(presentations.map((item) => item.cronograma));
+  const events = [
+    ...tasks
+      .filter((task) => !task.completa)
+      .map((task) => ({ ...task, kind: "task", date: task.prazo })),
+    ...exams.map((exam) => ({ ...exam, kind: "exam", date: exam.data })),
+    ...chronograms
+      .filter((entry) => entry.prova && !knownExams.has(entry.id))
+      .map((entry) => ({ id: `exam:${entry.id}`, cronograma: entry.id, disciplina: entry.disciplina, titulo: entry.tema, date: entry.data_hora, kind: "exam", isChronogramOnly: true })),
+    ...presentations.map((item) => ({ ...item, kind: "presentation", date: item.data })),
+    ...chronograms
+      .filter((entry) => entry.apresentacao && !knownPresentations.has(entry.id))
+      .map((entry) => ({ id: `presentation:${entry.id}`, cronograma: entry.id, disciplina: entry.disciplina, titulo: entry.tema, date: entry.data_hora, kind: "presentation", isChronogramOnly: true })),
+  ]
+    .filter((entry) => entry.kind === "task" || new Date(entry.date) >= now)
+    .sort((first, second) => new Date(first.date) - new Date(second.date))
+    .slice(0, 8);
+  const details = {
+    task: { label: "TAREFA", iconName: "check" },
+    exam: { label: "PROVA", iconName: "exam" },
+    presentation: { label: "APRESENTAÇÃO", iconName: "presentation" },
+  };
+  const entries = events.length
+    ? events.map((entry) => {
+      const discipline = disciplines.find((item) => item.id === entry.disciplina);
+      const date = calendarDate(entry.date);
+      const detail = details[entry.kind];
+      const overdue = entry.kind === "task" && new Date(entry.date) < now;
+      return `<button class="dashboard-calendar__event dashboard-calendar__event--${entry.kind} ${overdue ? "is-overdue" : ""}" type="button" ${calendarAction(entry)}><span class="dashboard-calendar__date"><strong>${date.day}</strong><small>${date.month}</small></span><div class="dashboard-calendar__content"><div class="dashboard-calendar__meta"><span class="dashboard-calendar__type">${icon(detail.iconName, 15)}<small>${detail.label}</small></span><small>${escapeHtml(discipline?.nome_disciplina || "Disciplina")}</small></div><strong>${escapeHtml(entry.titulo)}</strong><p>${overdue ? "Prazo atrasado" : entry.kind === "task" ? `Prazo às ${date.time}` : `${date.time} · compromisso programado`}</p></div>${icon("arrowRight", 16)}</button>`;
+    }).join("")
+    : `<p class="dashboard-calendar__empty">Nenhuma tarefa, prova ou apresentação futura neste perfil.</p>`;
+  return `<section class="dashboard-calendar"><header><div><span class="eyebrow">CALENDÁRIO ACADÊMICO</span><h3>Próximos compromissos</h3></div><button class="icon-button" type="button" data-add-dashboard-task aria-label="Adicionar tarefa" ${disciplines.length ? "" : "disabled title=\"Cadastre uma disciplina primeiro\""}>${icon("plus", 18)}</button></header><div class="dashboard-calendar__legend"><span>${icon("check", 13)} Tarefas</span><span>${icon("exam", 13)} Provas</span><span>${icon("presentation", 13)} Apresentações</span></div><div class="dashboard-calendar__list">${entries}</div></section>`;
+}
+
+export function dashboardView({ record, profile, profiles, nextClass, nextClassChronogram, isNextClassLoading, tasks = [], disciplines = [], lessons = [], exams = [], presentations = [], chronograms = [] }) {
   const name = escapeHtml(firstName(record?.nome));
   const course = escapeHtml(profile?.curso || "seu curso");
   const institution = escapeHtml(profile?.instituicao || "sua instituição");
-  const pendingTasks = tasks
-    .filter((task) => !task.completa)
-    .sort((first, second) => new Date(first.prazo) - new Date(second.prazo))
-    .slice(0, 5);
   return `<section class="page dashboard-page">
     <div class="page-heading page-heading--hero">
       <div><span class="eyebrow">VISÃO GERAL</span><h1>Olá, ${name} <span class="wave">✦</span></h1><p>Seu espaço para estudar com mais intenção, ${course} por vez.</p></div>
@@ -77,7 +85,7 @@ export function dashboardView({ record, profile, profiles, nextClass, nextClassC
     </div>
     <section class="dashboard-recent">
       <div class="dashboard-section-title"><div><span class="eyebrow">RECENTES</span><h2>Sua rotina agora</h2></div><span class="soft-status">Perfil em foco</span></div>
-      <div class="dashboard-recent-grid"><div>${nextClassCard(nextClass, nextClassChronogram, isNextClassLoading)}</div><div class="dashboard-recent-side"><section class="dashboard-tasks"><div class="dashboard-tasks__head"><div><span class="eyebrow">PRÓXIMAS ENTREGAS</span><h3>Tarefas a vencer</h3></div><button class="icon-button" type="button" data-add-dashboard-task aria-label="Adicionar tarefa" ${disciplines.length ? "" : "disabled title=\"Cadastre uma disciplina primeiro\""}>${icon("plus", 18)}</button></div>${taskListMarkup(pendingTasks, disciplines, lessons, { compact: true, emptyMessage: "Nenhuma tarefa pendente no momento." })}</section>${dashboardExams(exams, disciplines, chronograms)}</div></div>
+      <div class="dashboard-recent-grid"><div>${nextClassCard(nextClass, nextClassChronogram, isNextClassLoading)}</div><div class="dashboard-recent-side">${dashboardCalendar({ tasks, exams, presentations, disciplines, chronograms })}</div></div>
     </section>
     <section class="dashboard-basics"><div class="dashboard-section-title"><div><span class="eyebrow">CADASTROS BÁSICOS</span><h2>Organize sua base</h2></div></div><div class="dashboard-basic-grid">${basicAccess({ action: "teachers", iconName: "users", eyebrow: "PROFESSORES", title: "Professores", description: "Contatos do perfil" })}${basicAccess({ action: "disciplines", iconName: "book", eyebrow: "DISCIPLINAS", title: "Disciplinas", description: "Sua grade de estudo", tone: "dashboard-basic-card--teal" })}${basicAccess({ action: "profiles", iconName: "graduation", eyebrow: "PERFIS", title: "Perfis de estudo", description: "Cursos e semestres", tone: "dashboard-basic-card--olive" })}</div></section>
   </section>`;
