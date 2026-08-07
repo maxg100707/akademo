@@ -154,6 +154,8 @@ body[data-theme="dark"] .nav-item.is-active {
 .sidebar__tip { border-top-color: color-mix(in srgb, var(--sidebar-muted) 22%, transparent); }
 .sidebar__tip svg { color: var(--sidebar-text); }
 
+.sidebar-nav { margin-top: 22px; }
+
 .sidebar__profile-select select {
   color: var(--sidebar-text);
   border-color: color-mix(in srgb, var(--sidebar-muted) 28%, transparent);
@@ -726,6 +728,65 @@ body[data-theme="dark"] .dashboard-calendar__legend span svg { color: var(--on-s
   color: var(--text);
   border-color: var(--surface-deep);
   background: var(--surface-muted);
+}
+
+/* Selects: mesma hierarquia visual e opções sempre legíveis nos dois temas. */
+select {
+  color: var(--text);
+  color-scheme: light;
+  cursor: pointer;
+}
+
+body[data-theme="dark"] select { color-scheme: dark; }
+
+select option,
+select optgroup {
+  color: var(--text) !important;
+  background: var(--menu-surface) !important;
+  font-weight: 600;
+}
+
+select:disabled {
+  color: var(--text-faint);
+  cursor: not-allowed;
+}
+
+.field__control:has(select) {
+  border-color: var(--green-accent);
+  background: var(--surface-contrast);
+}
+
+.field__control:has(select)::after { border-color: var(--green-accent); }
+
+.field__control select,
+.desktop-profile-indicator select,
+.mobile-profile-indicator select,
+.sidebar__profile-select select {
+  color: var(--text) !important;
+  text-shadow: none;
+}
+
+/* No tema claro, o seletor contrasta de forma nítida com o header. */
+body:not([data-theme="dark"]) .desktop-profile-indicator,
+body:not([data-theme="dark"]) .mobile-profile-indicator {
+  color: var(--on-strong);
+  border-color: var(--green-accent);
+  background: var(--surface-deep);
+}
+
+body:not([data-theme="dark"]) .desktop-profile-indicator > span,
+body:not([data-theme="dark"]) .mobile-profile-indicator > span {
+  color: var(--on-green);
+  background: var(--green);
+}
+
+body:not([data-theme="dark"]) .desktop-profile-indicator strong,
+body:not([data-theme="dark"]) .desktop-profile-indicator small,
+body:not([data-theme="dark"]) .desktop-profile-indicator select,
+body:not([data-theme="dark"]) .mobile-profile-indicator strong,
+body:not([data-theme="dark"]) .mobile-profile-indicator small,
+body:not([data-theme="dark"]) .mobile-profile-indicator select {
+  color: var(--on-strong) !important;
 }
 
 /* Desktop: navegacao compacta que revela o conteudo somente no hover. */
