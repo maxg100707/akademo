@@ -23,8 +23,7 @@ export function renderLayout(root, { record, photoUrl, profiles, currentProfile,
       <div class="sidebar__bottom"><button class="mobile-close-menu" data-mobile-close>${icon("close", 18)}<span>Fechar menu</span></button><div class="sidebar__tip">${icon("sparkles", 18)}<span>Faça hoje valer a pena.</span></div></div>
     </aside>
     <div class="mobile-menu-overlay" data-mobile-close></div>
-    <main class="main-area"><header class="mobile-topbar"><a href="#" class="mobile-brand"><img class="brand-icon" src="icon.png" alt=""/> AKADEMO</a><div class="mobile-profile-indicator" title="${course}"><span>${icon("graduation", 16)}</span><div>${profiles.length > 1 ? `<small>PERFIL ATIVO</small><select data-profile-select aria-label="Selecionar perfil de estudo">${profiles.map((profile) => `<option value="${profile.id}" ${profile.id === currentProfile?.id ? "selected" : ""}>${escapeHtml(profile.curso)}</option>`).join("")}</select>` : `<strong>${course}</strong><small>${currentProfile?.semestre}º semestre</small>`}</div></div></header>${content}</main>
-    <button class="floating-menu-button" data-mobile-open aria-label="Abrir menu">${icon("bars", 22)}</button>
+    <main class="main-area"><header class="mobile-topbar"><button class="mobile-menu-button" data-mobile-open aria-label="Abrir menu">${icon("bars", 20)}</button><a href="#" class="mobile-brand"><img class="brand-icon" src="icon.png" alt=""/> AKADEMO</a><div class="mobile-profile-indicator" title="${course}"><span>${icon("graduation", 16)}</span><div>${profiles.length > 1 ? `<small>PERFIL ATIVO</small><select data-profile-select aria-label="Selecionar perfil de estudo">${profiles.map((profile) => `<option value="${profile.id}" ${profile.id === currentProfile?.id ? "selected" : ""}>${escapeHtml(profile.curso)}</option>`).join("")}</select>` : `<strong>${course}</strong><small>${currentProfile?.semestre}º semestre</small>`}</div></div></header>${content}</main>
   </div>`;
 }
 
@@ -32,8 +31,25 @@ export function bindLayout(root, actions) {
   root.querySelector("[data-collapse]")?.addEventListener("click", actions.onCollapse);
   root.querySelectorAll("[data-mobile-open]").forEach((button) => button.addEventListener("click", () => root.querySelector(".app-shell").classList.add("mobile-menu-open")));
   root.querySelectorAll("[data-mobile-close]").forEach((button) => button.addEventListener("click", () => root.querySelector(".app-shell").classList.remove("mobile-menu-open")));
-  const profileMenu = root.querySelector("[data-profile-menu]");
   const profileWrapper = root.querySelector(".sidebar__profile-wrap");
+  const sidebar = root.querySelector(".sidebar");
+  const mobileTopbar = root.querySelector(".mobile-topbar");
+  const profileViewport = window.matchMedia("(max-width: 760px)");
+  const placeProfileMenu = () => {
+    if (!profileWrapper) return;
+    if (profileViewport.matches) mobileTopbar?.append(profileWrapper);
+    else sidebar?.querySelector(".sidebar__top")?.after(profileWrapper);
+  };
+
+  if (root.profileViewportQuery && root.profileViewportHandler) {
+    root.profileViewportQuery.removeEventListener("change", root.profileViewportHandler);
+  }
+  root.profileViewportQuery = profileViewport;
+  root.profileViewportHandler = placeProfileMenu;
+  profileViewport.addEventListener("change", placeProfileMenu);
+  placeProfileMenu();
+
+  const profileMenu = root.querySelector("[data-profile-menu]");
   const closeProfileMenu = () => {
     profileWrapper?.classList.remove("is-open");
     profileMenu?.setAttribute("aria-expanded", "false");

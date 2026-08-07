@@ -728,6 +728,49 @@ body[data-theme="dark"] .dashboard-calendar__legend span svg { color: var(--on-s
 
 /* Menos movimento e menos decoração preservam foco durante o uso contínuo. */
 @media (max-width: 760px) {
+  .sidebar__top,
+  .sidebar-collapsed .sidebar__top {
+    justify-content: center;
+    min-height: 42px;
+    padding: 0;
+  }
+
+  .sidebar__profile-wrap,
+  .sidebar-collapsed .sidebar__profile-wrap { margin-top: 0; }
+
+  .mobile-topbar > .sidebar__profile-wrap {
+    position: relative;
+    flex: 0 0 auto;
+    margin-left: auto;
+  }
+
+  .mobile-topbar .sidebar-profile {
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    padding: 0;
+  }
+
+  .mobile-topbar .sidebar-profile__details,
+  .mobile-topbar .sidebar-profile > .icon { display: none; }
+
+  .mobile-topbar > .sidebar__profile-wrap .profile-popover {
+    top: 69px !important;
+    right: 12px;
+    left: auto !important;
+  }
+
+  .mobile-topbar .mobile-brand { display: none; }
+
+  .mobile-profile-indicator {
+    position: absolute;
+    left: 50%;
+    max-width: min(170px, calc(100vw - 150px));
+    margin-left: 0;
+    transform: translateX(-50%);
+  }
+
   .mobile-topbar {
     position: fixed;
     z-index: 13;
