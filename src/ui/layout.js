@@ -32,7 +32,18 @@ export function bindLayout(root, actions) {
   root.querySelector("[data-collapse]")?.addEventListener("click", actions.onCollapse);
   root.querySelectorAll("[data-mobile-open]").forEach((button) => button.addEventListener("click", () => root.querySelector(".app-shell").classList.add("mobile-menu-open")));
   root.querySelectorAll("[data-mobile-close]").forEach((button) => button.addEventListener("click", () => root.querySelector(".app-shell").classList.remove("mobile-menu-open")));
-  root.querySelector("[data-profile-menu]").addEventListener("click", (event) => { event.stopPropagation(); root.querySelector(".sidebar__profile-wrap").classList.toggle("is-open"); });
+  const profileMenu = root.querySelector("[data-profile-menu]");
+  const profileWrapper = root.querySelector(".sidebar__profile-wrap");
+  const closeProfileMenu = () => {
+    profileWrapper?.classList.remove("is-open");
+    profileMenu?.setAttribute("aria-expanded", "false");
+  };
+
+  profileMenu?.addEventListener("click", (event) => {
+    event.stopPropagation();
+    const isOpen = profileWrapper?.classList.toggle("is-open");
+    profileMenu.setAttribute("aria-expanded", String(Boolean(isOpen)));
+  });
   root.querySelector("[data-personal]").addEventListener("click", actions.onPersonal);
   root.querySelector("[data-profiles]").addEventListener("click", actions.onProfiles);
   root.querySelector("[data-teachers]").addEventListener("click", actions.onTeachers);
@@ -41,8 +52,9 @@ export function bindLayout(root, actions) {
   root.querySelector("[data-theme-toggle]").addEventListener("change", actions.onTheme);
   root.querySelectorAll("[data-nav]").forEach((button) => button.addEventListener("click", () => actions.onNavigate(button.dataset.nav)));
   root.querySelectorAll("[data-profile-select]").forEach((select) => select.addEventListener("change", (event) => actions.onProfileChange(event.target.value)));
-  document.addEventListener("click", (event) => {
-    const wrapper = root.querySelector(".sidebar__profile-wrap");
-    if (wrapper && !wrapper.contains(event.target)) wrapper.classList.remove("is-open");
-  }, { once: true });
+  if (root.profileOutsideClickHandler) document.removeEventListener("click", root.profileOutsideClickHandler);
+  root.profileOutsideClickHandler = (event) => {
+    if (profileWrapper && !profileWrapper.contains(event.target)) closeProfileMenu();
+  };
+  document.addEventListener("click", root.profileOutsideClickHandler);
 }

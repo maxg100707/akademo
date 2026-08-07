@@ -189,7 +189,7 @@ function applyTheme(theme) {
   document.body.dataset.theme = theme;
   document
     .querySelector('meta[name="theme-color"]')
-    ?.setAttribute("content", theme === "dark" ? "#1b2d22" : "#eef4ef");
+    ?.setAttribute("content", theme === "dark" ? "#1e2320" : "#f8faf9");
   localStorage.setItem(APP_STORAGE_KEYS.theme, theme);
 }
 
@@ -2388,7 +2388,6 @@ function renderWithinLayout(content) {
     },
     onTheme: (event) => {
       applyTheme(event.target.checked ? "dark" : "light");
-      renderCurrent();
     },
     onLogout: handleLogout,
   });

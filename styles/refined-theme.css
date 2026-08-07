@@ -1,0 +1,744 @@
+/*
+  Sistema visual AKADEMO
+  Plano de fundo neutro, superfícies verdes e elevação contida. Esta camada é
+  carregada por último para eliminar as variações visuais antigas sem alterar
+  a estrutura ou o comportamento das telas.
+*/
+
+::selection { color: var(--on-green); background: var(--green); }
+
+body { background: var(--page); }
+
+button:focus-visible,
+a:focus-visible,
+select:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* Ações: uma cor sólida facilita reconhecimento e contraste. */
+.button {
+  border-radius: var(--radius-sm);
+  box-shadow: none;
+}
+
+.button--primary,
+body[data-theme="dark"] .button--primary {
+  color: var(--on-green);
+  background: var(--green);
+  box-shadow: 0 6px 14px color-mix(in srgb, var(--green) 20%, transparent);
+}
+
+.button--primary:hover:not(:disabled) {
+  background: var(--green-dark);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--green) 26%, transparent);
+}
+
+.button--secondary {
+  color: var(--text);
+  border-color: var(--green-soft);
+  background: var(--surface-contrast);
+}
+
+.button--secondary:hover:not(:disabled),
+.button--ghost:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--green);
+  background: var(--surface-contrast);
+}
+
+.text-button,
+.back-link,
+.back-link:hover { color: var(--text); }
+
+.eyebrow { color: var(--text); }
+
+.icon-button:hover {
+  color: var(--green-dark);
+  border-color: var(--green-soft);
+  background: var(--green-pale);
+}
+
+.icon-button:not(.icon-button--danger),
+.field__control > .icon,
+.field__control .icon,
+.back-link,
+.mobile-menu-button,
+.collapse-button {
+  color: var(--icon);
+}
+
+.icon-button:not(.icon-button--danger) {
+  border-color: var(--line);
+  background: var(--surface-muted);
+}
+
+.icon-button:not(.icon-button--danger):hover {
+  color: var(--icon);
+  border-color: var(--green-accent);
+  background: var(--surface-contrast);
+}
+
+.field__control,
+.field__control:has(select),
+.field--readonly .field__control {
+  border-color: var(--line);
+  background: var(--surface-muted);
+}
+
+.field__control:focus-within {
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.field__control:has(select)::after { border-color: var(--green); }
+.field__control select,
+.field__control select:focus { color: var(--text); }
+
+.avatar { background: var(--green); box-shadow: inset 0 0 0 2px rgba(255,255,255,.5); }
+
+.field > small,
+.form-note,
+.divider,
+.auth-panel__intro,
+.auth-switch,
+.page-heading p { color: var(--text-soft); }
+
+/* Navegação: o verde é a âncora do produto, sem degradê. */
+.sidebar {
+  color: var(--sidebar-text);
+  border-right-color: transparent;
+  background: var(--sidebar);
+}
+
+.sidebar .brand,
+.sidebar-profile { color: var(--sidebar-text); }
+
+.sidebar .brand-icon {
+  background: var(--surface);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, .12);
+}
+
+.sidebar .collapse-button {
+  color: var(--green-dark);
+  border-color: var(--line);
+  background: var(--surface);
+  box-shadow: 0 3px 9px rgba(0, 0, 0, .12);
+}
+
+.sidebar-profile__details small,
+.sidebar-profile > .icon,
+.sidebar-nav__label,
+.sidebar__tip { color: var(--sidebar-muted); }
+
+.sidebar-profile:hover,
+.sidebar__profile-wrap.is-open .sidebar-profile,
+.nav-item:hover {
+  color: var(--sidebar-text);
+  background: var(--sidebar-hover);
+}
+
+.nav-item { color: var(--sidebar-muted); border-radius: 9px; }
+
+.nav-item.is-active,
+body[data-theme="dark"] .nav-item.is-active {
+  color: var(--sidebar-text);
+  background: var(--sidebar-hover);
+  box-shadow: inset 3px 0 var(--green);
+}
+
+.sidebar__tip { border-top-color: color-mix(in srgb, var(--sidebar-muted) 22%, transparent); }
+.sidebar__tip svg { color: var(--sidebar-text); }
+
+.sidebar__profile-select select {
+  color: var(--sidebar-text);
+  border-color: color-mix(in srgb, var(--sidebar-muted) 28%, transparent);
+  background: var(--sidebar-hover);
+}
+
+.sidebar__profile-select span,
+.sidebar__profile-select em,
+.sidebar__profile-select::after { color: var(--sidebar-text); }
+
+.profile-popover {
+  color: var(--text);
+  border-color: var(--line);
+  background: var(--menu-surface);
+}
+
+.profile-popover > button:hover,
+.profile-popover > button:nth-of-type(2):hover {
+  color: var(--text);
+  background: var(--menu-hover);
+}
+
+.theme-control > span svg { color: var(--icon); }
+
+.sidebar .mobile-close-menu {
+  color: var(--sidebar-text);
+  border-color: color-mix(in srgb, var(--sidebar-text) 38%, transparent);
+  background: transparent;
+}
+
+/* Cards e painéis: tons de verde, borda discreta e sombra leve. */
+.settings-card,
+.settings-aside,
+.profiles-aside,
+.teachers-panel,
+.teachers-aside,
+.disciplines-panel,
+.disciplines-aside,
+.schedule-panel,
+.lesson-summary-card,
+.lesson-setup-card,
+.study-editor,
+.modal,
+.onboarding-card,
+.config-hint {
+  border-color: var(--line);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.settings-aside,
+.profiles-aside,
+.teachers-aside,
+.disciplines-aside {
+  border-color: var(--green-soft);
+  background: var(--green-pale);
+  box-shadow: none;
+}
+
+.active-profile-summary,
+.dashboard-teachers-link,
+.tasks-toolbar,
+.lesson-tool-context,
+.lessons-week-navigation,
+.teacher-setup__form,
+.discipline-setup__form,
+.time-wheel,
+.schedule-panel__top {
+  border-color: var(--green-soft);
+  background: var(--surface-alt);
+  box-shadow: none;
+}
+
+.active-profile-summary,
+.active-profile-summary strong,
+.active-profile-summary select,
+.active-profile-summary select:focus { color: var(--text); }
+
+.active-profile-summary__details > span,
+.active-profile-summary small { color: var(--text-soft); }
+
+.active-profile-summary__select-wrap::after { color: var(--green); }
+
+.active-profile-summary__icon,
+.section-icon,
+.settings-aside__icon,
+.teachers-panel__intro > span,
+.teachers-aside__icon,
+.disciplines-aside__icon,
+.dashboard-teachers-link__icon,
+.lesson-tool-context > span {
+  color: var(--green-accent);
+  background: var(--surface-deep);
+}
+
+.study-profile-card,
+.teacher-card,
+.discipline-card,
+.chronogram-discipline-card,
+.chronogram-entry,
+.lesson-content-card,
+.coming-card,
+.task-card {
+  border-color: var(--green-soft);
+  background: var(--surface-alt);
+  box-shadow: none;
+}
+
+.study-profile-card:hover,
+.teacher-card:hover,
+.discipline-card:hover,
+.chronogram-discipline-card:hover,
+.chronogram-entry:hover,
+.lesson-content-card:hover,
+.coming-card:hover,
+.task-card:hover {
+  border-color: var(--green-accent);
+  background: var(--surface-contrast);
+  box-shadow: var(--shadow);
+}
+
+.study-profile-card.is-current {
+  border-color: var(--green);
+  box-shadow: inset 3px 0 var(--green);
+}
+
+.teacher-card__badge,
+.discipline-card__badge,
+.study-profile-card__badge,
+.chronogram-discipline-card > span,
+.chronogram-entry__date,
+.lesson-content-card__icon,
+.coming-card__icon,
+.task-card__mark.is-complete,
+.task-detail__mark.is-complete {
+  color: var(--green-accent);
+  background: var(--surface-deep);
+}
+
+.teacher-card:nth-child(3n + 2) .teacher-card__badge,
+.teacher-card:nth-child(3n) .teacher-card__badge,
+.discipline-card:nth-child(3n + 2) .discipline-card__badge,
+.discipline-card:nth-child(3n) .discipline-card__badge,
+.study-profile-card:nth-child(3n + 2) .study-profile-card__badge,
+.study-profile-card:nth-child(3n) .study-profile-card__badge,
+.chronogram-discipline-card--1 > span,
+.chronogram-discipline-card--2 > span {
+  color: var(--green-accent);
+  background: var(--surface-deep);
+}
+
+/* Destaques continuam verdes, agora sólidos e bem pontuais. */
+.welcome-card,
+.auth-art,
+.lesson-detail-hero,
+.exam-detail-hero,
+.presentation-detail-hero {
+  color: var(--on-strong);
+  background: var(--green-strong);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--green-strong) 24%, transparent);
+}
+
+.welcome-card__glow,
+.auth-art::before,
+.onboarding-page::after { display: none; }
+
+.welcome-card__label,
+.auth-art .eyebrow { color: color-mix(in srgb, #ffffff 72%, var(--green)); }
+
+.lesson-detail-hero .eyebrow,
+.exam-detail-hero .eyebrow,
+.presentation-detail-hero .eyebrow { color: var(--on-strong); }
+
+.welcome-card p,
+.auth-art__copy p,
+.auth-art__quote,
+.lesson-detail-hero p,
+.exam-detail-hero p,
+.presentation-detail-hero p { color: var(--on-strong); }
+
+.welcome-card__line { background: var(--green); }
+
+.exam-card,
+.exam-topic-card,
+.presentation-card,
+.dashboard-exams {
+  color: var(--on-green);
+  border: 1px solid color-mix(in srgb, var(--green) 55%, transparent);
+  background: var(--green);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--green-forest) 20%, transparent);
+}
+
+.exam-card:hover,
+.exam-topic-card:hover,
+.presentation-card:hover { filter: none; background: var(--green-dark); }
+
+.exam-card > span,
+.exam-topic-card > span,
+.presentation-card > span,
+.lesson-detail-hero > span,
+.exam-detail-hero > span,
+.presentation-detail-hero > span {
+  color: var(--on-green);
+  background: color-mix(in srgb, var(--on-green) 12%, transparent);
+}
+
+.exam-card > div,
+.exam-topic-card > div,
+.presentation-card > div { color: var(--on-green); }
+
+.exam-card small,
+.exam-topic-card small,
+.presentation-card small,
+.exam-topic-card p,
+.presentation-card p,
+.exam-topic-card em,
+.presentation-card em { color: color-mix(in srgb, var(--on-green) 76%, transparent); }
+
+.exams-empty,
+.presentations-empty,
+.lesson-setup-card,
+.dashboard-tasks,
+.dashboard-tasks--work,
+.dashboard-calendar,
+.dashboard-basic-card,
+.dashboard-basic-card--teal,
+.dashboard-basic-card--olive,
+.lesson-tool-card,
+.lesson-tool-card--tasks {
+  border-color: var(--green-soft);
+  background: var(--surface-alt);
+  box-shadow: var(--shadow);
+}
+
+.dashboard-calendar { background: var(--surface); }
+
+.dashboard-calendar__event {
+  border: 1px solid var(--surface-deep);
+  background: var(--surface-contrast);
+  box-shadow: none;
+}
+
+.dashboard-calendar__event:nth-child(even) { background: var(--surface-muted); }
+
+.dashboard-calendar__event:hover {
+  border-color: var(--green-accent);
+  background: var(--green);
+  filter: none;
+  box-shadow: var(--shadow);
+}
+
+/* Dashboard: os ícones e categorias usam uma superfície própria de alto contraste. */
+.dashboard-basic-card > span,
+.dashboard-basic-card--teal > span,
+.dashboard-basic-card--olive > span {
+  color: var(--green-accent);
+  background: var(--surface-deep);
+}
+
+.dashboard-basic-card > .icon { color: var(--icon); }
+
+.dashboard-calendar__legend span,
+.dashboard-calendar__legend span:nth-child(2),
+.dashboard-calendar__legend span:nth-child(3) {
+  color: var(--on-strong);
+  border: 1px solid var(--green-accent);
+  background: var(--surface-deep);
+}
+
+.dashboard-calendar__legend span:nth-child(2) { box-shadow: inset 3px 0 var(--danger); }
+.dashboard-calendar__legend span:nth-child(3) { box-shadow: inset 3px 0 var(--green-accent); }
+
+.dashboard-calendar__legend span svg { color: var(--on-strong); }
+
+.dashboard-calendar__type,
+.dashboard-calendar__event--exam .dashboard-calendar__type,
+.dashboard-calendar__event--presentation .dashboard-calendar__type,
+.dashboard-calendar__event--exam .dashboard-calendar__meta > small,
+.dashboard-calendar__event--presentation .dashboard-calendar__meta > small {
+  color: var(--text);
+}
+
+.dashboard-calendar__date,
+.dashboard-calendar__event--exam .dashboard-calendar__date,
+.dashboard-calendar__event--presentation .dashboard-calendar__date {
+  color: var(--green-accent);
+  background: var(--surface-deep);
+}
+
+.next-class-card,
+.next-class-card.is-live,
+.mobile-topbar,
+.mobile-profile-indicator,
+.floating-menu-button {
+  border-color: var(--green-soft);
+  background: var(--surface-alt);
+  box-shadow: none;
+}
+
+.next-class-card:hover,
+.next-class-card.is-live:hover {
+  background: var(--surface-contrast);
+  box-shadow: var(--shadow);
+}
+
+.next-class-card__icon,
+.mobile-profile-indicator > span,
+.mobile-menu-button {
+  color: var(--green-accent);
+  background: var(--surface-deep);
+}
+
+.floating-menu-button {
+  color: var(--on-green);
+  border: 0;
+  background: var(--green);
+  box-shadow: 0 6px 14px color-mix(in srgb, var(--green) 25%, transparent);
+}
+
+.mobile-profile-indicator strong,
+.mobile-profile-indicator select,
+.mobile-profile-indicator div:has(select)::after { color: var(--green-dark); }
+
+.mobile-profile-indicator small { color: var(--text-soft); }
+
+/* Rótulos e ícones em superfícies verdes recebem um nível próprio de contraste. */
+.soft-status,
+.study-profile-card__title span,
+.schedule-panel__top > span,
+.teacher-setup__list > div:first-child span,
+.discipline-setup__list > div:first-child span,
+.exam-setup-topics > div > span {
+  color: var(--green-accent);
+  background: var(--surface-deep);
+}
+
+.teacher-card__contacts svg,
+.discipline-card small svg,
+.next-class-card > em,
+.next-class-card__status,
+.chronogram-entry__kind,
+.task-card__main > span,
+.dashboard-calendar__event > .icon {
+  color: var(--icon-muted);
+}
+
+.exam-detail-summary > span,
+.exam-topic-header > span,
+.exam-topic-content > span,
+.exam-links-grid a > span,
+.presentation-instructions > div > span,
+.presentation-content-card > span,
+.presentation-links-grid a > span {
+  color: var(--green-accent);
+  background: var(--surface-deep);
+}
+
+/* Textos contextuais não dependem do tom decorativo do componente. */
+.teacher-setup__profile,
+.teacher-setup__form-title,
+.discipline-setup__form-title,
+.schedule-needs-discipline,
+.chronogram-needs-schedule,
+.lesson-form__tip,
+.dashboard-teachers-link small,
+.next-class-card > div > small:first-child,
+.next-class-card__status,
+.chronogram-discipline-card small,
+.lesson-setup-card__intro small,
+.lesson-summary-card small,
+.dashboard-basic-card small,
+.lesson-tool-card small,
+.lesson-tool-card em,
+.lesson-tool-context small,
+.tasks-toolbar p,
+.task-card__main > span,
+.task-detail__description > span,
+.dashboard-calendar__legend span,
+.dashboard-calendar__meta > small,
+.exam-detail-summary small,
+.exam-topic-header small,
+.dashboard-exam-card small,
+.presentation-instructions small { color: var(--text); }
+
+.teacher-setup__profile > svg,
+.teacher-setup__form-title > span,
+.discipline-setup__form-title > span,
+.schedule-needs-discipline > svg,
+.chronogram-needs-schedule > svg,
+.lesson-form__tip > svg,
+.dashboard-teachers-link small > svg,
+.next-class-card__status > svg,
+.chronogram-discipline-card small > svg,
+.lesson-tool-card em > svg,
+.lesson-tool-context small > svg,
+.dashboard-calendar__legend span > svg { color: var(--icon); }
+
+/* Legenda do calendário: preto sobre verde vivo no claro e branco no escuro. */
+.dashboard-calendar__legend span,
+.dashboard-calendar__legend span:nth-child(2),
+.dashboard-calendar__legend span:nth-child(3) {
+  color: var(--on-green);
+  border-color: var(--surface-deep);
+  background: var(--green);
+}
+
+.dashboard-calendar__legend span svg { color: var(--on-green); }
+
+body[data-theme="dark"] .dashboard-calendar__legend span,
+body[data-theme="dark"] .dashboard-calendar__legend span:nth-child(2),
+body[data-theme="dark"] .dashboard-calendar__legend span:nth-child(3) {
+  color: var(--on-strong);
+  border-color: var(--green-accent);
+  background: var(--surface-deep);
+}
+
+body[data-theme="dark"] .dashboard-calendar__legend span svg { color: var(--on-strong); }
+
+/* Planejamento: o verde diferencia blocos interativos sem criar outra paleta. */
+.schedule-board__head .is-today,
+.schedule-day.is-today,
+.lessons-day.is-today > header,
+.week-lesson,
+.week-lesson.is-planned,
+.week-lesson.is-complete,
+.schedule-block,
+.schedule-block--1,
+.schedule-block--2,
+.schedule-block--3,
+.chronogram-discipline-card--1,
+.chronogram-discipline-card--2,
+.chronogram-entry,
+.chronogram-entry--presentation {
+  color: var(--text);
+  border-color: var(--green-soft);
+  background: var(--surface-contrast);
+}
+
+.schedule-block,
+.schedule-block--1,
+.schedule-block--2,
+.schedule-block--3 {
+  color: var(--on-strong);
+  border-color: var(--green-accent);
+  background: var(--surface-deep);
+}
+
+.schedule-block strong,
+.schedule-block small,
+.schedule-block em { color: var(--on-strong); }
+
+.schedule-block em,
+.week-lesson > span,
+.week-lesson > .icon,
+.lessons-week-navigation strong { color: var(--green-dark); }
+
+.schedule-block em { color: var(--green-accent); }
+
+.lessons-day.is-today > header,
+.lessons-day.is-today > header span,
+.lessons-day.is-today > header strong,
+.lessons-day.is-today > header small { color: var(--text); }
+
+.schedule-block__edit {
+  color: var(--green-accent);
+  background: color-mix(in srgb, var(--green-accent) 12%, transparent);
+}
+
+.chronogram-entry--holiday,
+.week-lesson.is-holiday { background: color-mix(in srgb, var(--warm) 12%, var(--surface)); }
+.chronogram-entry--exam { background: color-mix(in srgb, var(--danger) 9%, var(--surface)); }
+
+.onboarding-page { background: var(--page); }
+.auth-art__orb { border-color: rgba(255, 255, 255, .16); box-shadow: none; }
+
+/* Hierarquia de superficies: painel, item e controle nao se confundem. */
+.settings-card,
+.study-editor,
+.teachers-panel,
+.disciplines-panel,
+.schedules-panel,
+.chronogram-panel,
+.lesson-summary-card,
+.modal {
+  border-color: var(--green-soft);
+  background: var(--surface);
+}
+
+:is(.profiles-list, .teachers-list, .disciplines-list, .tasks-list, .lesson-content-list, .chronogram-timeline) > :is(.study-profile-card, .teacher-card, .discipline-card, .task-card, .lesson-content-card, .chronogram-entry),
+.exam-setup-topics > article {
+  border-color: var(--surface-deep);
+  background: var(--surface-alt);
+}
+
+:is(.profiles-list, .teachers-list, .disciplines-list, .tasks-list, .lesson-content-list, .chronogram-timeline) > :nth-child(even),
+.exam-setup-topics > article:nth-child(even) {
+  background: var(--surface-muted);
+}
+
+:is(.profiles-list, .teachers-list, .disciplines-list, .tasks-list, .lesson-content-list, .chronogram-timeline) > :is(.study-profile-card, .teacher-card, .discipline-card, .task-card, .lesson-content-card, .chronogram-entry):hover,
+.exam-setup-topics > article:hover {
+  border-color: var(--green-accent);
+  background: var(--surface-contrast);
+}
+
+/* Formularios: campos recebem verde proprio, selects outro tom e acoes tem hierarquia. */
+.field__control,
+.field__textarea {
+  color: var(--text);
+  border-color: var(--surface-deep);
+  background: var(--surface-contrast);
+}
+
+.field__control:has(select) {
+  border-color: var(--green);
+  background: var(--surface-alt);
+}
+
+.field--readonly .field__control {
+  border-color: var(--green-soft);
+  background: var(--surface-muted);
+}
+
+.field__control input,
+.field__control select,
+.field__textarea,
+.field__control input::placeholder,
+.field__textarea::placeholder { color: var(--text); }
+
+.field__control input::placeholder,
+.field__textarea::placeholder { opacity: .68; }
+
+.field__control:focus-within,
+.field__textarea:focus {
+  border-color: var(--green-accent);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.button--primary {
+  color: var(--on-green);
+  border-color: var(--surface-deep);
+  background: var(--green);
+}
+
+.button--secondary {
+  color: var(--on-strong);
+  border-color: var(--surface-deep);
+  background: var(--surface-deep);
+}
+
+.button--secondary:hover:not(:disabled) {
+  color: var(--on-strong);
+  border-color: var(--green-accent);
+  background: var(--green-strong);
+}
+
+.button--ghost {
+  color: var(--text);
+  border-color: var(--surface-deep);
+  background: var(--surface-muted);
+}
+
+.button--ghost:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--green-accent);
+  background: var(--surface-alt);
+}
+
+.icon-button:not(.icon-button--danger) {
+  color: var(--text);
+  border-color: var(--surface-deep);
+  background: var(--surface-muted);
+}
+
+/* Menos movimento e menos decoração preservam foco durante o uso contínuo. */
+@media (max-width: 760px) {
+  .mobile-topbar {
+    position: fixed;
+    z-index: 13;
+    inset: 0 0 auto;
+    width: 100%;
+    box-shadow: 0 5px 16px color-mix(in srgb, var(--green-forest) 18%, transparent);
+  }
+
+  .main-area { padding-top: 61px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
+}
