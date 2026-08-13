@@ -111,11 +111,11 @@ function presentationValues(form) {
   }));
   if (links.some((link) => Boolean(link.titulo) !== Boolean(link.url)))
     throw new Error("Preencha título e URL de cada link de apoio.");
-  return {
-    instructions: data.get("instructions"),
-    links: links.filter((link) => link.titulo),
-    contents: data.getAll("contentId"),
-  };
+  const values = {};
+  if (form.elements.instructions) values.instructions = data.get("instructions");
+  if (form.elements.linkTitle) values.links = links.filter((link) => link.titulo);
+  if (form.elements.contentId) values.contents = data.getAll("contentId");
+  return values;
 }
 
 function presentationEditorModal(presentation, contents) {
@@ -124,17 +124,28 @@ function presentationEditorModal(presentation, contents) {
   return `<div class="modal-backdrop" data-presentation-editor-backdrop><section class="modal modal--presentation-setup" role="dialog" aria-modal="true" aria-labelledby="presentation-editor-title"><form class="presentation-setup" data-presentation-editor-form novalidate><div class="presentation-editor__head"><div><span class="eyebrow">CONFIGURAR APRESENTAÇÃO</span><h2 id="presentation-editor-title">${escapeHtml(presentation.titulo)}</h2><p>Registre instruções, links de apoio e materiais que serão usados.</p></div><button class="icon-button" type="button" data-close-presentation-editor aria-label="Fechar">${icon("close", 19)}</button></div><label class="field"><span>Instruções <em>opcional</em></span><textarea class="field__textarea" name="instructions" maxlength="5000" placeholder="Descreva orientações, critérios, divisão de assuntos e observações importantes.">${escapeHtml(presentation.instrucao || "")}</textarea></label><div class="presentation-setup__block"><div><strong>Links de apoio <em>opcional</em></strong><button class="text-button" type="button" data-add-presentation-link>${icon("plus", 14)} Adicionar link</button></div><div data-presentation-links>${(links.length ? links : [{}]).map(linkRow).join("")}</div></div><div class="presentation-setup__block"><div><strong>Conteúdos da disciplina <em>opcional</em></strong><small>Selecione os arquivos que ajudam nesta apresentação.</small></div>${contentChoices(contents, selected)}</div><div class="presentation-editor__actions"><button class="button button--ghost" type="button" data-close-presentation-editor>Cancelar</button><button class="button button--primary" type="submit">${icon("save", 16)} Salvar apresentação</button></div></form></section></div>`;
 }
 
+function presentationLinksEditorModal(presentation) {
+  const links = asArray(presentation.links);
+  return `<div class="modal-backdrop" data-presentation-editor-backdrop><section class="modal modal--presentation-setup" role="dialog" aria-modal="true" aria-labelledby="presentation-editor-title"><form class="presentation-setup" data-presentation-editor-form novalidate><div class="presentation-editor__head"><div><span class="eyebrow">LINKS DE APOIO</span><h2 id="presentation-editor-title">${escapeHtml(presentation.titulo)}</h2><p>Guarde referências úteis para preparar esta apresentação.</p></div><button class="icon-button" type="button" data-close-presentation-editor aria-label="Fechar">${icon("close", 19)}</button></div><div class="presentation-setup__block"><div><strong>Links de apoio <em>opcional</em></strong><button class="text-button" type="button" data-add-presentation-link>${icon("plus", 14)} Adicionar link</button></div><div data-presentation-links>${(links.length ? links : [{}]).map(linkRow).join("")}</div></div><div class="presentation-editor__actions"><button class="button button--ghost" type="button" data-close-presentation-editor>Cancelar</button><button class="button button--primary" type="submit">${icon("save", 16)} Salvar links</button></div></form></section></div>`;
+}
+
+function presentationInstructionsEditorModal(presentation) {
+  return `<div class="modal-backdrop" data-presentation-editor-backdrop><section class="modal modal--presentation-setup" role="dialog" aria-modal="true" aria-labelledby="presentation-editor-title"><form class="presentation-setup" data-presentation-editor-form novalidate><div class="presentation-editor__head"><div><span class="eyebrow">INSTRUÇÕES</span><h2 id="presentation-editor-title">${escapeHtml(presentation.titulo)}</h2><p>Registre orientações, critérios e observações importantes.</p></div><button class="icon-button" type="button" data-close-presentation-editor aria-label="Fechar">${icon("close", 19)}</button></div><label class="field"><span>Instruções <em>opcional</em></span><textarea class="field__textarea" name="instructions" maxlength="5000" placeholder="Descreva orientações, critérios, divisão de assuntos e observações importantes.">${escapeHtml(presentation.instrucao || "")}</textarea></label><div class="presentation-editor__actions"><button class="button button--ghost" type="button" data-close-presentation-editor>Cancelar</button><button class="button button--primary" type="submit">${icon("save", 16)} Salvar instruções</button></div></form></section></div>`;
+}
+
 function bindPresentationForm(root, onSave) {
   const linksRoot = root.querySelector("[data-presentation-links]");
-  const bindRemove = () => linksRoot.querySelectorAll("[data-remove-presentation-link]").forEach((button) => button.addEventListener("click", () => {
-    if (linksRoot.children.length > 1) button.closest("[data-presentation-link-row]").remove();
-    else button.closest("[data-presentation-link-row]").querySelectorAll("input").forEach((input) => { input.value = ""; });
-  }));
-  bindRemove();
-  root.querySelector("[data-add-presentation-link]").addEventListener("click", () => {
-    linksRoot.insertAdjacentHTML("beforeend", linkRow());
+  if (linksRoot) {
+    const bindRemove = () => linksRoot.querySelectorAll("[data-remove-presentation-link]").forEach((button) => button.addEventListener("click", () => {
+      if (linksRoot.children.length > 1) button.closest("[data-presentation-link-row]").remove();
+      else button.closest("[data-presentation-link-row]").querySelectorAll("input").forEach((input) => { input.value = ""; });
+    }));
     bindRemove();
-  });
+    root.querySelector("[data-add-presentation-link]")?.addEventListener("click", () => {
+      linksRoot.insertAdjacentHTML("beforeend", linkRow());
+      bindRemove();
+    });
+  }
   root.querySelector("[data-presentation-editor-form]").addEventListener("submit", async (event) => {
     event.preventDefault();
     const form = event.currentTarget;
@@ -150,9 +161,13 @@ function bindPresentationForm(root, onSave) {
   });
 }
 
-export function openPresentationEditor({ presentation, contents, onSave, onClose }) {
+export function openPresentationEditor({ presentation, contents, mode = "setup", onSave, onClose }) {
   const modalRoot = document.querySelector("#modal-root");
-  modalRoot.innerHTML = presentationEditorModal(presentation, contents);
+  modalRoot.innerHTML = mode === "links"
+    ? presentationLinksEditorModal(presentation)
+    : mode === "instructions"
+      ? presentationInstructionsEditorModal(presentation)
+      : presentationEditorModal(presentation, contents);
   let unbindKeydown = null;
   const close = () => {
     unbindKeydown?.();
@@ -214,9 +229,12 @@ export function bindPresentations(root, { disciplines, occurrencesByDiscipline, 
   );
 }
 
-export function bindPresentationDetail(root, { presentation, contents, onBack, onEdit, onOpenMaterials, onOpenMindMaps, onOpenVideos, onOpenContent, onUpload }) {
+export function bindPresentationDetail(root, { presentation, contents, onBack, onEditInstructions, onEditLinks, onOpenMaterials, onOpenMindMaps, onOpenVideos, onOpenTasks, onOpenContent, onUpload }) {
   root.querySelector("[data-presentation-back]").addEventListener("click", onBack);
-  root.querySelector("[data-edit-presentation]").addEventListener("click", onEdit);
+  root.querySelector("[data-edit-presentation-instructions]")?.addEventListener("click", onEditInstructions);
+  root.querySelector("[data-edit-presentation-links]")?.addEventListener("click", onEditLinks);
+  root.querySelector("[data-edit-presentation]")?.addEventListener("click", onEditLinks);
+  root.querySelector("[data-open-presentation-tasks]")?.addEventListener("click", onOpenTasks);
   root.querySelector("[data-open-presentation-mindmaps]").addEventListener("click", onOpenMindMaps);
   root.querySelector("[data-open-presentation-videos]").addEventListener("click", onOpenVideos);
   root.querySelector("[data-open-presentation-materials]").addEventListener("click", onOpenMaterials);

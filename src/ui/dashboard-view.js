@@ -72,13 +72,9 @@ function dashboardCalendar({ tasks, exams, presentations, disciplines, chronogra
 
 export function dashboardView({ record, profile, nextClass, nextClassChronogram, isNextClassLoading, tasks = [], disciplines = [], lessons = [], exams = [], presentations = [], chronograms = [] }) {
   const name = escapeHtml(firstName(record?.nome));
-  const course = escapeHtml(profile?.curso || "seu curso");
   return `<section class="page dashboard-page">
-    <div class="page-heading page-heading--hero">
-      <div><span class="eyebrow">VISÃO GERAL</span><h1>Olá, ${name} <span class="wave">✦</span></h1><p>Seu espaço para estudar com mais intenção, ${course} por vez.</p></div>
-    </div>
+    <p class="dashboard-welcome">Olá, ${name}. Que bom ter você por aqui.</p>
     <section class="dashboard-recent">
-      <div class="dashboard-section-title"><div><span class="eyebrow">RECENTES</span><h2>Sua rotina agora</h2></div><span class="soft-status">Perfil em foco</span></div>
       <div class="dashboard-recent-grid"><div>${nextClassCard(nextClass, nextClassChronogram, isNextClassLoading)}</div><div class="dashboard-recent-side">${dashboardCalendar({ tasks, exams, presentations, disciplines, chronograms })}</div></div>
     </section>
   </section>`;

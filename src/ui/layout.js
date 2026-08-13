@@ -61,7 +61,11 @@ function navigationGroup({ view, key, label, iconName, modules, isExpanded }) {
 }
 
 function profileMenuSelector(profiles, currentProfile) {
-  return `<label class="profile-popover__profile-select"><span>${icon("graduation", 16)}<small>PERFIL ATIVO</small></span><select data-profile-select aria-label="Selecionar perfil de estudo" ${profiles.length < 2 ? "disabled" : ""}>${profiles.map((profile) => `<option value="${profile.id}" ${profile.id === currentProfile?.id ? "selected" : ""}>${escapeHtml(profile.curso)}</option>`).join("")}</select></label>`;
+  const profileLabel = (profile) => {
+    const semester = String(profile.semestre ?? "").trim();
+    return semester ? `${profile.curso} · ${semester}º semestre` : profile.curso;
+  };
+  return `<label class="profile-popover__profile-select"><span>${icon("graduation", 16)}<small>PERFIL ATIVO</small></span><select data-profile-select aria-label="Selecionar perfil de estudo" ${profiles.length < 2 ? "disabled" : ""}>${profiles.map((profile) => `<option value="${profile.id}" ${profile.id === currentProfile?.id ? "selected" : ""}>${escapeHtml(profileLabel(profile))}</option>`).join("")}</select></label>`;
 }
 
 export function renderLayout(root, { record, photoUrl, profiles, currentProfile, view, content, theme, basicRegistrationExpanded = false, organizationExpanded = false, contentExpanded = false }) {

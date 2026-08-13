@@ -189,6 +189,10 @@ export function examDetailView({ exam, discipline, topics, contents }) {
   return `<section class="page exam-detail-page"><button class="back-link" data-exam-back>${icon("arrowLeft", 18)} Provas</button><section class="exam-detail-hero"><div><span class="eyebrow">PROVA PROGRAMADA</span><h1>${escapeHtml(exam.titulo)}</h1><p>${escapeHtml(discipline?.nome_disciplina || "Disciplina")} \u00b7 ${formatDate(exam.data)}</p></div><span>${icon("check", 24)}</span></section><section class="exam-detail-summary"><span>${icon("book", 18)}</span><div><small>RESUMO DA REVIS\u00c3O</small><p>${proofSummary(topics)}</p></div></section><section class="lesson-tools exam-resources"><div class="lesson-tools__heading"><div><span class="eyebrow">RECURSOS</span><h2>Recursos desta prova</h2><p>Organize seu plano de estudo, materiais e conteúdos de apoio em um só lugar.</p></div></div><div class="lesson-tools-grid"><button class="lesson-tool-card lesson-tool-card--exam-topics" data-open-exam-topics><span>${icon("book", 24)}</span><div><small>PLANO DE ESTUDOS</small><strong>Temas</strong><p>${topicLabel} para revisar antes da avaliação.</p></div><em>Abrir ${icon("arrowRight", 17)}</em></button><button class="lesson-tool-card lesson-tool-card--exam-materials" data-open-exam-materials><span>${icon("file", 24)}</span><div><small>ARQUIVOS</small><strong>Materiais</strong><p>Documentos e conteúdos separados por tema.</p></div><em>Abrir ${icon("arrowRight", 17)}</em></button><button class="lesson-tool-card lesson-tool-card--mindmaps" data-open-exam-mindmaps><span>${icon("mindMap", 24)}</span><div><small>CONTE\u00daDO VISUAL</small><strong>Mapas mentais</strong><p>Conecte os conceitos que serão cobrados.</p></div><em>Abrir ${icon("arrowRight", 17)}</em></button><button class="lesson-tool-card lesson-tool-card--videos" data-open-exam-videos><span>${icon("video", 24)}</span><div><small>CONTE\u00daDO EM V\u00cdDEO</small><strong>Vídeos</strong><p>Reúna explicações e revisões para a prova.</p></div><em>Abrir ${icon("arrowRight", 17)}</em></button></div></section><section class="exam-topics" data-exam-topics-section><div class="lesson-contents__heading"><div><span class="eyebrow">TEMAS</span><h2>Plano de estudos</h2><p>Acesse um tema para revisar materiais e links de apoio.</p></div><div class="exam-detail-actions"><button class="button button--primary" data-add-exam-topic>${icon("plus", 17)} Adicionar tema</button></div></div><div class="exam-topic-grid">${topics.length ? topics.map((topic) => examTopicCard(topic, contents)).join("") : `<div class="exams-empty"><span>${icon("book", 27)}</span><h3>Comece pelos temas</h3><p>Adicione assuntos para montar sua revis\u00e3o.</p></div>`}</div></section></section>`;
 }
 
+export function examTopicsView({ exam, discipline, topics, contents }) {
+  return `<section class="page exam-topics-page"><button class="back-link" data-exam-topics-back>${icon("arrowLeft", 18)} ${escapeHtml(exam.titulo)}</button><header class="lesson-tool-context"><span>${icon("exam", 15)}</span><div><small>TEMAS DA PROVA</small><strong>${escapeHtml(discipline?.nome_disciplina || "Disciplina")}</strong></div><p>${escapeHtml(exam.titulo)}</p></header><section class="exam-topics"><div class="lesson-contents__heading"><div><span class="eyebrow">PLANO DE ESTUDOS</span><h1>Temas para revisar</h1><p>Organize resumos, links e materiais de cada tema da prova.</p></div><button class="button button--primary" data-add-exam-topic>${icon("plus", 17)} Adicionar tema</button></div><div class="exam-topic-grid">${topics.length ? topics.map((topic) => examTopicCard(topic, contents)).join("") : `<div class="exams-empty"><span>${icon("book", 27)}</span><h3>Comece pelos temas</h3><p>Adicione assuntos para montar sua revisão.</p></div>`}</div></section></section>`;
+}
+
 function topicContentCards(topic, contents) {
   const linked = asArray(topic.conteudos).map((id) => contents.find((content) => content.id === id)).filter(Boolean);
   return linked.length ? `<div class="exam-topic-content-grid">${linked.map((content) => `<button class="exam-topic-content" data-open-exam-content="${escapeHtml(content.id)}"><span>${icon("file", 18)}</span><strong>${escapeHtml(contentName(content))}</strong>${icon("arrowRight", 15)}</button>`).join("")}</div>` : `<p class="exam-form-note">Nenhum arquivo foi associado a este tema.</p>`;
@@ -228,14 +232,21 @@ export function bindExams(root, { disciplines, occurrencesByDiscipline, onCreate
   root.querySelectorAll("[data-open-exam]").forEach((button) => button.addEventListener("click", () => onOpen(button.dataset.openExam)));
 }
 
-export function bindExamDetail(root, { exam, topics, contents, onBack, onOpenTopic, onOpenMaterials, onOpenMindMaps, onOpenVideos, onCreateTopic }) {
+export function bindExamDetail(root, { onBack, onOpenTopics, onOpenMaterials, onOpenMindMaps, onOpenVideos }) {
   root.querySelector("[data-exam-back]").addEventListener("click", onBack);
   root.querySelector("[data-open-exam-materials]").addEventListener("click", onOpenMaterials);
   root.querySelector("[data-open-exam-mindmaps]").addEventListener("click", onOpenMindMaps);
   root.querySelector("[data-open-exam-videos]").addEventListener("click", onOpenVideos);
-  root.querySelector("[data-open-exam-topics]").addEventListener("click", () => root.querySelector("[data-exam-topics-section]")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  root.querySelector("[data-open-exam-topics]").addEventListener("click", onOpenTopics);
+}
+
+export function bindExamTopics(root, { contents, topics, onBack, onOpenTopic, onCreateTopic }) {
+  root.querySelector("[data-exam-topics-back]").addEventListener("click", onBack);
   root.querySelector("[data-add-exam-topic]").addEventListener("click", () => openExamTopicEditor({ topic: { tema: "", resumo: "", links: [], conteudos: [] }, contents, onUpdate: async (_topic, values) => onCreateTopic(values) }));
-  root.querySelectorAll("[data-open-exam-topic]").forEach((button) => button.addEventListener("click", () => onOpenTopic(button.dataset.openExamTopic)));
+  root.querySelectorAll("[data-open-exam-topic]").forEach((button) => button.addEventListener("click", () => {
+    const topic = topics.find((item) => item.id === button.dataset.openExamTopic);
+    if (topic) onOpenTopic(topic);
+  }));
 }
 
 export function bindExamTopic(root, { exam, topic, contents, onBack, onOpenMaterials, onOpenContent, onUpdate, onDelete }) {

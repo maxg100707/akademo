@@ -57,6 +57,7 @@ import {
   uploadExamContent,
   uploadProfileContent,
   uploadPresentationContent,
+  updateLessonSummary,
   updateProfileContent,
 } from "./services/lessons.js";
 import {
@@ -128,14 +129,17 @@ import {
   lessonFormView,
   lessonMaterialsView,
   lessonsWeekView,
+  openLessonSummaryEditor,
   openLessonTopicEditor,
 } from "./ui/lessons-view.js";
 import {
   bindLessonTasks,
+  bindRecordTasks,
   bindTasks,
   lessonTasksView,
   openTaskDetail,
   openTaskEditor,
+  recordTasksView,
   tasksView,
 } from "./ui/tasks-view.js";
 import {
@@ -143,8 +147,10 @@ import {
   bindExamMaterials,
   bindExams,
   bindExamTopic,
+  bindExamTopics,
   examDetailView,
   examMaterialsView,
+  examTopicsView,
   examsView,
   examTopicView,
   openExamThemeSetup,
@@ -180,6 +186,7 @@ import { readRoute, writeRoute } from "./utils/router.js";
 import { icon } from "./utils/icons.js";
 
 const root = document.querySelector("#app");
+let lastRenderedRouteKey = "";
 const state = {
   user: null,
   record: null,
@@ -341,8 +348,8 @@ function selectStoredProfile(route = {}) {
 const routeViews = new Set([
   "dashboard", "personal", "profiles", "teachers", "disciplines", "schedules",
   "chronogram", "tasks", "files", "mindmaps", "mindmap-editor", "videos",
-  "exams", "exam-detail", "exam-topic", "exam-materials", "presentations",
-  "presentation-detail", "presentation-materials", "lessons", "lesson-chronogram",
+  "exams", "exam-detail", "exam-topics", "exam-topic", "exam-materials", "exam-tasks", "presentations",
+  "presentation-detail", "presentation-materials", "presentation-tasks", "lessons", "lesson-chronogram",
   "lesson-form", "lesson-detail", "lesson-materials", "lesson-tasks",
 ]);
 
@@ -519,6 +526,8 @@ async function restoreExamRoute(route, targetView) {
     return renderExamDetail();
   }
   if (targetView === "exam-materials") return renderExamMaterials();
+  if (targetView === "exam-topics") return renderExamTopics();
+  if (targetView === "exam-tasks") return renderExamTasks();
   if (targetView === "exam-topic") return renderExamTopic();
   return renderExamDetail();
 }
@@ -536,7 +545,9 @@ async function restorePresentationRoute(route, targetView) {
   state.activePresentation = presentation;
   state.activePresentationContents = await getContentsByDiscipline(profile.id, presentation.disciplina);
   state.view = targetView;
-  return targetView === "presentation-materials" ? renderPresentationMaterials() : renderPresentationDetail();
+  if (targetView === "presentation-materials") return renderPresentationMaterials();
+  if (targetView === "presentation-tasks") return renderPresentationTasks();
+  return renderPresentationDetail();
 }
 
 async function restoreMindMapRoute(route) {
@@ -659,11 +670,14 @@ function renderCurrent() {
   if (state.view === "videos") return renderVideos();
   if (state.view === "exams") return renderExams();
   if (state.view === "exam-detail") return renderExamDetail();
+  if (state.view === "exam-topics") return renderExamTopics();
   if (state.view === "exam-topic") return renderExamTopic();
   if (state.view === "exam-materials") return renderExamMaterials();
+  if (state.view === "exam-tasks") return renderExamTasks();
   if (state.view === "presentations") return renderPresentations();
   if (state.view === "presentation-detail") return renderPresentationDetail();
   if (state.view === "presentation-materials") return renderPresentationMaterials();
+  if (state.view === "presentation-tasks") return renderPresentationTasks();
   if (state.view === "lessons") return renderLessons();
   if (state.view === "lesson-chronogram") return renderLessonChronogram();
   if (state.view === "lesson-form") return renderLessonForm();
@@ -780,6 +794,8 @@ function mountDashboard() {
       openTaskEditor({
         disciplines: state.disciplines,
         lessons: state.lessons,
+        exams: state.exams,
+        presentations: state.presentations,
         ...taskActions,
       }),
     );
@@ -792,6 +808,8 @@ function mountDashboard() {
           task,
           disciplines: state.disciplines,
           lessons: state.lessons,
+          exams: state.exams,
+          presentations: state.presentations,
           ...taskActions,
         });
     };
@@ -1300,6 +1318,17 @@ function mountDisciplines() {
       mountDisciplines();
       showToast("Disciplina removida.");
     },
+    onCreateTeacher: async (values) => {
+      const teacher = await createTeacher(
+        state.user,
+        state.currentProfile,
+        values,
+      );
+      state.teachers = [...state.teachers, teacher];
+      mountDisciplines();
+      showToast("Professor adicionado com sucesso.");
+      return teacher;
+    },
   });
 }
 
@@ -1494,15 +1523,19 @@ async function renderTasks() {
   if (!profile) return showOnboarding();
   state.view = "tasks";
   try {
-    const [disciplines, lessons, tasks] = await Promise.all([
+    const [disciplines, lessons, exams, presentations, tasks] = await Promise.all([
       getDisciplines(profile.id),
       getLessons(profile.id),
+      getExams(profile.id),
+      getPresentations(profile.id),
       getTasks(profile.id),
     ]);
     if (state.view !== "tasks" || state.currentProfile?.id !== profile.id)
       return;
     state.disciplines = disciplines;
     state.lessons = lessons;
+    state.exams = exams;
+    state.presentations = presentations;
     state.tasks = tasks;
     if (
       state.taskDisciplineFilter &&
@@ -1526,6 +1559,8 @@ function mountTasks() {
       profile: state.currentProfile,
       disciplines: state.disciplines,
       lessons: state.lessons,
+      exams: state.exams,
+      presentations: state.presentations,
       tasks: state.tasks,
       filterDisciplineId: state.taskDisciplineFilter,
     }),
@@ -1534,6 +1569,8 @@ function mountTasks() {
     tasks: state.tasks,
     disciplines: state.disciplines,
     lessons: state.lessons,
+    exams: state.exams,
+    presentations: state.presentations,
     onFilter: (disciplineId) => {
       state.taskDisciplineFilter = disciplineId;
       mountTasks();
@@ -1931,30 +1968,39 @@ function renderExamDetail() {
       contents: state.activeExamContents,
     }),
   );
+  root.querySelector(".exam-detail-page .lesson-tools-grid")?.insertAdjacentHTML(
+    "beforeend",
+    `<button class="lesson-tool-card lesson-tool-card--tasks" data-open-exam-tasks><span>${icon("check", 24)}</span><div><small>ORGANIZAÇÃO</small><strong>Tarefas</strong><p>Entregas e pendências para preparar esta prova.</p></div><em>Abrir ${icon("arrowRight", 17)}</em></button>`,
+  );
   bindExamDetail(root, {
-    exam,
-    topics: state.examTopics,
-    contents: state.activeExamContents,
     onBack: examBack,
+    onOpenTopics: () => renderExamTopics(),
     onOpenMindMaps: () => renderMindMaps(scopeForMindMaps("exam", exam)),
     onOpenVideos: () => renderVideos(scopeForVideos("exam", exam)),
-    onOpenTopic: (id) => {
-      const topic = state.examTopics.find((item) => item.id === id);
-      if (!topic) return;
+    onOpenMaterials: () => renderExamMaterials(),
+  });
+  root.querySelector("[data-open-exam-tasks]")?.addEventListener("click", () => renderExamTasks().catch((error) => showToast(error.message || "Não foi possível abrir as tarefas.", "error")));
+}
+
+function renderExamTopics() {
+  const exam = state.activeExam;
+  if (!exam) return renderExamDetail();
+  const discipline = state.disciplines.find((item) => item.id === exam.disciplina);
+  state.view = "exam-topics";
+  renderWithinLayout(examTopicsView({ exam, discipline, topics: state.examTopics, contents: state.activeExamContents }));
+  bindExamTopics(root, {
+    contents: state.activeExamContents,
+    topics: state.examTopics,
+    onBack: renderExamDetail,
+    onOpenTopic: (topic) => {
       state.activeExamTopic = topic;
       state.view = "exam-topic";
       renderExamTopic();
     },
-    onOpenMaterials: () => renderExamMaterials(),
     onCreateTopic: async (values) => {
-      const topic = await createExamTopic(
-        state.user,
-        state.currentProfile,
-        exam,
-        values,
-      );
+      const topic = await createExamTopic(state.user, state.currentProfile, exam, values);
       replaceExamTopic(topic);
-      renderExamDetail();
+      renderExamTopics();
       showToast("Tema adicionado à prova.");
       return topic;
     },
@@ -1964,7 +2010,7 @@ function renderExamDetail() {
 function renderExamTopic() {
   const exam = state.activeExam;
   const topic = state.activeExamTopic;
-  if (!exam || !topic) return renderExamDetail();
+  if (!exam || !topic) return renderExamTopics();
   state.view = "exam-topic";
   renderWithinLayout(
     examTopicView({
@@ -1977,7 +2023,7 @@ function renderExamTopic() {
     exam,
     topic,
     contents: state.activeExamContents,
-    onBack: renderExamDetail,
+    onBack: renderExamTopics,
     onOpenMaterials: () => renderExamMaterials(),
     onOpenContent: (content) => openContent(content),
     onUpdate: async (_topic, values) => {
@@ -1997,7 +2043,7 @@ function renderExamTopic() {
       await deleteExamTopic(item.id, state.currentProfile.id, exam.id);
       state.examTopics = state.examTopics.filter((entry) => entry.id !== item.id);
       state.activeExamTopic = null;
-      renderExamDetail();
+      renderExamTopics();
       showToast("Tema removido da prova.");
     },
   });
@@ -2087,6 +2133,24 @@ function renderExamMaterials() {
       renderExamMaterials();
       showToast("Arquivo desvinculado da prova.");
     },
+  });
+}
+
+async function renderExamTasks() {
+  const exam = state.activeExam;
+  if (!exam) return renderExamDetail();
+  const discipline = state.disciplines.find((item) => item.id === exam.disciplina);
+  state.tasks = await getTasks(state.currentProfile.id);
+  const tasks = state.tasks.filter((task) => task.prova === exam.id);
+  state.view = "exam-tasks";
+  renderWithinLayout(recordTasksView({ type: "exam", record: exam, discipline, tasks }));
+  bindRecordTasks(root, {
+    type: "exam",
+    record: exam,
+    discipline,
+    tasks,
+    onBack: renderExamDetail,
+    ...taskCallbacks(() => renderExamTasks()),
   });
 }
 
@@ -2236,7 +2300,7 @@ async function openPresentation(presentation) {
   renderPresentationDetail();
 }
 
-async function configurePresentation(presentation = state.activePresentation) {
+async function configurePresentation(presentation = state.activePresentation, mode = "setup") {
   if (!presentation || !state.currentProfile) return;
   const profileId = state.currentProfile.id;
   state.activePresentation = presentation;
@@ -2253,6 +2317,7 @@ async function configurePresentation(presentation = state.activePresentation) {
   openPresentationEditor({
     presentation,
     contents,
+    mode,
     onSave: async (values) => {
       const updated = await updatePresentation(
         presentation.id,
@@ -2325,6 +2390,20 @@ function renderPresentationDetail() {
       contents: state.activePresentationContents,
     }),
   );
+  root.querySelector(".presentation-detail-hero")?.insertAdjacentHTML(
+    "beforeend",
+    `<button class="icon-button presentation-detail-hero__edit" type="button" data-edit-presentation-instructions aria-label="Editar instruções">${icon("edit", 18)}</button>`,
+  );
+  const supportCard = root.querySelector("[data-edit-presentation]");
+  if (supportCard) {
+    supportCard.removeAttribute("data-edit-presentation");
+    supportCard.dataset.editPresentationLinks = "";
+    supportCard.innerHTML = `<span>${icon("file", 24)}</span><div><small>PREPARAÇÃO</small><strong>Links de apoio</strong><p>${Array.isArray(presentation.links) ? presentation.links.length : 0} links de referência cadastrados.</p></div><em>Configurar ${icon("arrowRight", 17)}</em>`;
+  }
+  root.querySelector(".presentation-detail-page .lesson-tools-grid")?.insertAdjacentHTML(
+    "beforeend",
+    `<button class="lesson-tool-card lesson-tool-card--tasks" data-open-presentation-tasks><span>${icon("check", 24)}</span><div><small>ORGANIZAÇÃO</small><strong>Tarefas</strong><p>Organize entregas e próximos passos desta apresentação.</p></div><em>Abrir ${icon("arrowRight", 17)}</em></button>`,
+  );
   bindPresentationDetail(root, {
     presentation,
     contents: state.activePresentationContents,
@@ -2334,8 +2413,16 @@ function renderPresentationDetail() {
       renderMindMaps(scopeForMindMaps("presentation", presentation)),
     onOpenVideos: () =>
       renderVideos(scopeForVideos("presentation", presentation)),
-    onEdit: () =>
-      configurePresentation(presentation).catch((error) =>
+    onEditLinks: () =>
+      configurePresentation(presentation, "links").catch((error) =>
+        showToast(error.message || "Não foi possível editar os links.", "error"),
+      ),
+    onOpenTasks: () =>
+      renderPresentationTasks().catch((error) =>
+        showToast(error.message || "Não foi possível abrir as tarefas.", "error"),
+      ),
+    onEditInstructions: () =>
+      configurePresentation(presentation, "instructions").catch((error) =>
         showToast(
           error.message || "Não foi possível editar a apresentação.",
           "error",
@@ -2396,6 +2483,14 @@ function renderPresentationMaterials() {
     presentation,
     contents: state.activePresentationContents,
     onBack: renderPresentationDetail,
+    onEditLinks: () =>
+      configurePresentation(presentation, "links").catch((error) =>
+        showToast(error.message || "Não foi possível editar os links.", "error"),
+      ),
+    onOpenTasks: () =>
+      renderPresentationTasks().catch((error) =>
+        showToast(error.message || "Não foi possível abrir as tarefas.", "error"),
+      ),
     onOpenContent: (content) => openContent(content),
     onUpload: async ({ title, file }) => {
       const content = await uploadPresentationContent(
@@ -2430,6 +2525,35 @@ function renderPresentationMaterials() {
       renderPresentationMaterials();
       showToast("Arquivo enviado e associado à apresentação.");
     },
+  });
+}
+
+async function renderPresentationTasks() {
+  const presentation = state.activePresentation;
+  if (!presentation) return renderPresentationDetail();
+  const discipline = state.disciplines.find(
+    (item) => item.id === presentation.disciplina,
+  );
+  state.tasks = await getTasks(state.currentProfile.id);
+  const tasks = state.tasks.filter(
+    (task) => task.apresentacao === presentation.id,
+  );
+  state.view = "presentation-tasks";
+  renderWithinLayout(
+    recordTasksView({
+      type: "presentation",
+      record: presentation,
+      discipline,
+      tasks,
+    }),
+  );
+  bindRecordTasks(root, {
+    type: "presentation",
+    record: presentation,
+    discipline,
+    tasks,
+    onBack: renderPresentationDetail,
+    ...taskCallbacks(() => renderPresentationTasks()),
   });
 }
 
@@ -2723,6 +2847,24 @@ function renderLessonDetail() {
           showToast("Tema atualizado no cronograma e na aula.");
         },
       }),
+    onEditSummary: () =>
+      openLessonSummaryEditor({
+        lesson,
+        onSave: async (summary) => {
+          const updated = await updateLessonSummary(
+            lesson.id,
+            state.currentProfile.id,
+            summary,
+          );
+          state.lessons = state.lessons.map((item) =>
+            item.id === updated.id ? updated : item,
+          );
+          state.activeLesson = updated;
+          renderLessonDetail();
+          showToast("Resumo da aula atualizado.");
+          return updated;
+        },
+      }),
   });
 }
 
@@ -2821,6 +2963,8 @@ function mindMapReferences() {
   return {
     disciplines: state.disciplines,
     lessons: state.lessons,
+    exams: state.exams,
+    presentations: state.presentations,
     exams: state.exams,
     presentations: state.presentations,
   };
@@ -3037,8 +3181,21 @@ async function renderVideos(scope = state.videoScope) {
 }
 
 function renderWithinLayout(content) {
+  const routeKey = JSON.stringify(routeForState());
+  const shouldResetScroll = routeKey !== lastRenderedRouteKey;
+  lastRenderedRouteKey = routeKey;
   renderLayout(root, { ...state, content });
   syncRoute();
+  if (shouldResetScroll) {
+    const resetScroll = () => {
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+      root.querySelector(".main-area")?.scrollTo?.(0, 0);
+    };
+    resetScroll();
+    requestAnimationFrame(resetScroll);
+  }
   bindLayout(root, {
     onMenuGroupToggle: (group, isExpanded) => {
       const groups = {

@@ -68,7 +68,7 @@ function teacherEditorModal(teacher) {
   </section></div>`;
 }
 
-function openTeacherEditor(teacher, onSave, onDelete) {
+export function openTeacherEditor(teacher, onSave, onDelete, { onSaved } = {}) {
   const modalRoot = document.querySelector("#modal-root");
   modalRoot.innerHTML = teacherEditorModal(teacher);
   const close = () => {
@@ -100,8 +100,9 @@ function openTeacherEditor(teacher, onSave, onDelete) {
     const button = form.querySelector("[type=submit]");
     try {
       setButtonLoading(button, true);
-      await onSave(teacherFormValues(form));
+      const savedTeacher = await onSave(teacherFormValues(form));
       close();
+      onSaved?.(savedTeacher);
     } catch (error) {
       setButtonLoading(button, false);
       showToast(error.message || "Não foi possível salvar o professor.", "error");
@@ -127,7 +128,7 @@ export function teachersView({ profile, teachers, disciplines = [] }) {
   return `<section class="page teachers-page">
     <button class="back-link" data-back>${icon("arrowLeft", 18)} Voltar</button>
     <div class="page-heading page-heading--row"><div><span class="eyebrow">CORPO DOCENTE</span><h1>Professores</h1><p>Organize os contatos do perfil <strong>${course}</strong>.</p></div><button class="button button--primary" data-add-teacher>${icon("plus", 18)} Adicionar professor</button></div>
-    <div class="teachers-layout"><section class="teachers-panel">${teachersList(teachers, disciplines)}</section><aside class="teachers-aside"><span class="teachers-aside__icon">${icon("book", 23)}</span><h3>Contato à mão.</h3><p>Guarde informações úteis para falar com cada professor quando precisar.</p></aside></div>
+    <div class="teachers-layout"><section class="teachers-panel">${teachersList(teachers, disciplines)}</section></div>
   </section>`;
 }
 

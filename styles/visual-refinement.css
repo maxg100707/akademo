@@ -1,0 +1,194 @@
+/* Superfícies sólidas: o sistema não utiliza mais degradês de cor. */
+body *, body *::before, body *::after {
+  background-image: none !important;
+  mask-image: none !important;
+}
+
+.auth-art { background-color: var(--green-forest) !important; }
+.onboarding-page { background-color: var(--page) !important; }
+.sidebar { background-color: var(--sidebar) !important; }
+.welcome-card { background-color: var(--green-forest) !important; }
+.button--primary,
+.floating-menu-button { background-color: var(--green) !important; }
+.avatar { background-color: var(--green-forest) !important; }
+.field__control:has(select) { background-color: var(--surface-alt) !important; }
+.settings-aside,
+.profiles-aside,
+.teachers-aside,
+.disciplines-aside,
+.active-profile-summary,
+.mobile-topbar,
+.mobile-profile-indicator { background-color: var(--surface) !important; }
+.teacher-setup__form,
+.discipline-setup__form,
+.lessons-week-navigation,
+.tasks-toolbar,
+.files-toolbar { background-color: var(--surface-alt) !important; }
+.dashboard-teachers-link,
+.dashboard-basic-card,
+.dashboard-basic-card--teal,
+.dashboard-basic-card--olive,
+.dashboard-tasks,
+.dashboard-tasks--work,
+.dashboard-calendar,
+.lesson-tool-card,
+.lesson-tool-context,
+.lesson-setup-card { background-color: var(--surface-alt) !important; }
+.schedule-panel__top,
+.schedule-board__head .is-today,
+.schedule-block,
+.time-wheel { background-color: var(--surface-contrast) !important; }
+.chronogram-discipline-card,
+.chronogram-entry,
+.upload-wizard__dropzone,
+.files-card,
+.exams-empty,
+.presentations-empty { background-color: var(--surface-muted) !important; }
+.chronogram-entry--holiday { background-color: color-mix(in srgb, var(--warm) 25%, var(--surface)) !important; }
+.chronogram-entry--exam { background-color: color-mix(in srgb, var(--danger) 25%, var(--surface)) !important; }
+.chronogram-entry--presentation { background-color: color-mix(in srgb, var(--green-teal) 27%, var(--surface)) !important; }
+.exam-detail-hero { background-color: var(--green-forest) !important; }
+.presentation-detail-hero {
+  position: relative;
+  background-color: var(--green-forest) !important;
+}
+.presentation-detail-page .presentation-instructions,
+.exam-detail-page [data-exam-topics-section] { display: none !important; }
+.presentation-detail-hero__edit {
+  position: absolute;
+  inset: 1rem 1rem auto auto;
+  background-color: var(--surface-contrast) !important;
+  color: var(--text) !important;
+}
+.exam-topic-card,
+.dashboard-exams { background-color: var(--green-jade) !important; }
+.video-card__cover, .videos-context { background-color: var(--green-forest) !important; }
+.lesson-tool-card--tasks { background-color: var(--green-jade-pale) !important; }
+.lesson-tool-card--videos { background-color: var(--surface-alt) !important; }
+.mindmap-card__art { background-color: var(--green-teal) !important; }
+.mindmap-node { background-color: var(--node-color) !important; }
+.mindmap-node--diamond::before { background-color: var(--node-color) !important; }
+.mindmap-node--sticky { background-color: color-mix(in srgb, var(--node-color) 32%, #fff5b2) !important; }
+
+/* Provas e apresentações permanecem verdes, porém descansam os olhos no tema escuro. */
+.exam-card,
+.presentation-card {
+  color: var(--text) !important;
+  border: 1px solid var(--line) !important;
+  background-color: var(--surface-deep) !important;
+  box-shadow: var(--shadow) !important;
+}
+
+.exam-card > span,
+.presentation-card > span {
+  color: var(--text) !important;
+  border-color: var(--line) !important;
+  background-color: var(--surface-contrast) !important;
+}
+
+.exam-card strong,
+.presentation-card strong { color: var(--text) !important; }
+.exam-card small,
+.exam-card p,
+.presentation-card small,
+.presentation-card p { color: var(--text-soft) !important; }
+
+body .exam-card:hover,
+body .presentation-card:hover {
+  filter: none !important;
+  border-color: var(--green-soft) !important;
+  background-color: color-mix(in srgb, var(--surface-deep) 84%, var(--green)) !important;
+  box-shadow: var(--shadow-high) !important;
+}
+
+body[data-theme="dark"] .exam-card,
+body[data-theme="dark"] .presentation-card {
+  background-color: #0a6144 !important;
+  border-color: #16835c !important;
+}
+
+body[data-theme="dark"] .exam-card:hover,
+body[data-theme="dark"] .presentation-card:hover {
+  background-color: #0d704d !important;
+  border-color: #29bd7d !important;
+}
+
+/* Hovers preservam a família de cor do componente, sem flashes claros. */
+body button:hover,
+body [role="button"]:hover,
+body a:hover { filter: none !important; }
+
+body .dashboard-calendar__event:hover {
+  border-color: var(--green-soft) !important;
+  background-color: color-mix(in srgb, var(--surface-contrast) 86%, var(--green)) !important;
+  box-shadow: var(--shadow) !important;
+}
+
+body .dashboard-calendar__event:nth-child(even):hover {
+  background-color: color-mix(in srgb, var(--surface-muted) 86%, var(--green)) !important;
+}
+
+body .teacher-card:hover,
+body .discipline-card:hover,
+body .study-profile-card:hover,
+body .task-card:hover,
+body .chronogram-discipline-card:hover,
+body .chronogram-entry:hover,
+body .lesson-content-card:hover,
+body .coming-card:hover,
+body .dashboard-exam-card:hover,
+body .video-card:hover,
+body .files-card:hover,
+body .mindmap-card:hover {
+  filter: none !important;
+  background-color: color-mix(in srgb, var(--surface-muted) 86%, var(--green)) !important;
+}
+
+body .exam-topic-card:hover,
+body .presentation-content-card:hover,
+body .exam-topic-content:hover,
+body .exam-links-grid a:hover,
+body .presentation-links-grid a:hover {
+  filter: none !important;
+  background-color: color-mix(in srgb, var(--surface-alt) 86%, var(--green)) !important;
+}
+
+body .video-card:hover .video-card__cover { background-color: var(--green-forest) !important; }
+
+/* A área útil acompanha a largura disponível, sem painéis decorativos vazios. */
+.page:not(.mindmap-editor-page) {
+  max-width: none !important;
+  padding: clamp(24px, 3.4vw, 52px) clamp(20px, 4vw, 68px);
+}
+
+.profiles-layout,
+.teachers-layout,
+.disciplines-layout { display: block; }
+
+.profiles-list,
+.teachers-panel,
+.disciplines-panel { width: 100%; }
+
+.page-heading__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 9px; }
+.discipline-fields__create-teacher { justify-self: start; margin-top: -4px; }
+.dashboard-welcome { margin: 0 0 18px; color: var(--text); font: 700 clamp(18px, 2vw, 24px)/1.25 "Outfit", sans-serif; letter-spacing: -.025em; }
+.dashboard-recent { margin-top: 0; }
+
+@media (min-width: 860px) {
+  .profiles-list,
+  .teachers-list,
+  .disciplines-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (min-width: 1460px) {
+  .profiles-list,
+  .teachers-list,
+  .disciplines-list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 620px) {
+  .page:not(.mindmap-editor-page) { padding: 21px 16px 28px; }
+  .page-heading__actions { width: 100%; }
+  .page-heading__actions .button { flex: 1 1 170px; }
+  .dashboard-welcome { margin-bottom: 14px; font-size: 19px; }
+}

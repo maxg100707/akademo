@@ -11,14 +11,20 @@ function deadlineIso(value) {
 
 function taskPayload(user, profile, values) {
   const title = String(values.title || "").trim();
-  const disciplineId = String(values.disciplineId || "").trim();
+  const disciplineId = String(values.disciplineId || "").trim() || null;
+  const lessonId = String(values.lessonId || "").trim() || null;
+  const examId = String(values.examId || "").trim() || null;
+  const presentationId = String(values.presentationId || "").trim() || null;
   if (!title) throw new Error("Informe o t\u00edtulo da tarefa.");
-  if (!disciplineId) throw new Error("Selecione uma disciplina.");
+  if ([lessonId, examId, presentationId].filter(Boolean).length > 1)
+    throw new Error("Vincule a tarefa a apenas uma aula, prova ou apresentação.");
   return {
     email_user: user.email,
     perfil: profile.id,
     disciplina: disciplineId,
-    aula: String(values.lessonId || "").trim() || null,
+    aula: lessonId,
+    prova: examId,
+    apresentacao: presentationId,
     titulo: title,
     descricao: normalizeOptional(values.description),
     prazo: deadlineIso(values.deadline),

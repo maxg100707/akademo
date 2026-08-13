@@ -1,17 +1,19 @@
 import { icon } from "../utils/icons.js";
 import { escapeHtml } from "../utils/formatters.js";
 import { closeModal, setButtonLoading, showToast } from "./components.js";
+import { openTeacherEditor } from "./teachers-view.js";
 
 const emptyDiscipline = () => ({ name: "", summary: "", teacherId: "" });
 const disciplineValues = (discipline) => discipline
   ? { name: discipline.nome_disciplina || "", summary: discipline.resumo_disciplina || "", teacherId: discipline.professor_id || "" }
   : emptyDiscipline();
 
-function disciplineFields(values, teachers) {
+function disciplineFields(values, teachers, allowTeacherCreation = false) {
   return `<div class="discipline-fields">
     <label class="field"><span>Nome da disciplina</span><span class="field__control">${icon("book", 17)}<input name="name" maxlength="120" value="${escapeHtml(values.name)}" placeholder="Ex.: Cálculo I" required autofocus /></span></label>
     <label class="field"><span>Resumo <em>opcional</em></span><textarea class="field__textarea" name="summary" maxlength="500" placeholder="Um breve lembrete sobre a disciplina">${escapeHtml(values.summary)}</textarea></label>
     <label class="field"><span>Professor</span><span class="field__control">${icon("users", 17)}<select name="teacherId" required><option value="" disabled ${!values.teacherId ? "selected" : ""}>Selecione o professor</option>${teachers.map((teacher) => `<option value="${escapeHtml(teacher.id)}" ${teacher.id === values.teacherId ? "selected" : ""}>${escapeHtml(teacher.nome_professor)}</option>`).join("")}</select></span></label>
+    ${allowTeacherCreation ? `<button class="text-button discipline-fields__create-teacher" type="button" data-create-teacher-from-discipline>${icon("users", 16)} Adicionar novo professor</button>` : ""}
   </div>`;
 }
 
@@ -27,23 +29,39 @@ function disciplinesList(disciplines, teachers) {
   </article>`).join("")}</div>`;
 }
 
-function disciplineEditorModal(discipline, teachers) {
+function disciplineEditorModal(discipline, teachers, values = disciplineValues(discipline)) {
   const editing = Boolean(discipline);
   return `<div class="modal-backdrop" data-discipline-editor-backdrop><section class="modal modal--discipline-editor" role="dialog" aria-modal="true" aria-labelledby="discipline-editor-title"><form class="discipline-editor" data-discipline-editor novalidate>
     <div class="discipline-editor__head"><div><span class="eyebrow">${editing ? "EDITAR DISCIPLINA" : "NOVA DISCIPLINA"}</span><h2 id="discipline-editor-title">${editing ? "Atualize a disciplina" : "Adicionar disciplina"}</h2><p>Vincule a disciplina a um professor deste perfil.</p></div><button class="icon-button" type="button" data-close-discipline-editor aria-label="Fechar">${icon("close", 19)}</button></div>
-    ${disciplineFields(disciplineValues(discipline), teachers)}
+    ${disciplineFields(values, teachers, !editing)}
     <div class="discipline-editor__actions">${editing ? `<button class="button button--danger" type="button" data-delete-discipline-editor>${icon("trash", 16)} Excluir</button>` : ""}<span></span><button class="button button--ghost" type="button" data-close-discipline-editor>Cancelar</button><button class="button button--primary" type="submit">${icon("save", 16)} ${editing ? "Salvar disciplina" : "Adicionar disciplina"}</button></div>
   </form></section></div>`;
 }
 
-function openDisciplineEditor(discipline, teachers, onSave, onDelete) {
+function openDisciplineEditor(discipline, teachers, onSave, onDelete, onCreateTeacher, values = disciplineValues(discipline)) {
   const modalRoot = document.querySelector("#modal-root");
-  modalRoot.innerHTML = disciplineEditorModal(discipline, teachers);
+  modalRoot.innerHTML = disciplineEditorModal(discipline, teachers, values);
   const close = () => { document.removeEventListener("keydown", onKeydown); closeModal(); };
   const onKeydown = (event) => { if (event.key === "Escape") close(); };
   document.addEventListener("keydown", onKeydown);
   modalRoot.querySelectorAll("[data-close-discipline-editor]").forEach((button) => button.addEventListener("click", close));
   modalRoot.querySelector("[data-discipline-editor-backdrop]").addEventListener("click", (event) => { if (event.target === event.currentTarget) close(); });
+  modalRoot.querySelector("[data-create-teacher-from-discipline]")?.addEventListener("click", () => {
+    if (!onCreateTeacher) return;
+    const form = modalRoot.querySelector("[data-discipline-editor]");
+    const draft = Object.fromEntries(new FormData(form));
+    close();
+    openTeacherEditor(null, onCreateTeacher, undefined, {
+      onSaved: (teacher) => openDisciplineEditor(
+        discipline,
+        [...teachers, teacher],
+        onSave,
+        onDelete,
+        onCreateTeacher,
+        { ...draft, teacherId: teacher.id },
+      ),
+    });
+  });
   modalRoot.querySelector("[data-delete-discipline-editor]")?.addEventListener("click", async (event) => {
     if (!discipline || !onDelete || !window.confirm(`Excluir ${discipline.nome_disciplina}? Esta ação não pode ser desfeita.`)) return;
     const button = event.currentTarget;
@@ -79,19 +97,19 @@ export function disciplinesView({ profile, teachers, disciplines }) {
   const course = escapeHtml(profile?.curso || "Perfil de estudo");
   const hasTeachers = teachers.length > 0;
   return `<section class="page disciplines-page"><button class="back-link" data-back>${icon("arrowLeft", 18)} Voltar</button>
-    <div class="page-heading page-heading--row"><div><span class="eyebrow">GRADE ACADÊMICA</span><h1>Disciplinas</h1><p>Organize as disciplinas do perfil <strong>${course}</strong>.</p></div><button class="button button--primary" data-add-discipline ${hasTeachers ? "" : "disabled title=\"Cadastre um professor antes\""}>${icon("plus", 18)} Adicionar disciplina</button></div>
-    <div class="disciplines-layout"><section class="disciplines-panel">${hasTeachers ? disciplinesList(disciplines, teachers) : `<div class="disciplines-empty"><span>${icon("users", 26)}</span><h3>Cadastre um professor primeiro</h3><p>As disciplinas precisam ser vinculadas a um professor deste perfil.</p></div>`}</section><aside class="disciplines-aside"><span class="disciplines-aside__icon">${icon("graduation", 23)}</span><h3>Uma grade mais clara.</h3><p>Associe cada disciplina ao professor responsável e mantenha seus estudos organizados.</p></aside></div>
+    <div class="page-heading page-heading--row"><div><span class="eyebrow">GRADE ACADÊMICA</span><h1>Disciplinas</h1><p>Organize as disciplinas do perfil <strong>${course}</strong>.</p></div><button class="button button--primary" data-add-discipline>${icon("plus", 18)} Adicionar disciplina</button></div>
+    <div class="disciplines-layout"><section class="disciplines-panel">${hasTeachers ? disciplinesList(disciplines, teachers) : `<div class="disciplines-empty"><span>${icon("users", 26)}</span><h3>Comece pela primeira disciplina</h3><p>Dentro do formulário você poderá cadastrar e selecionar o professor responsável.</p></div>`}</section></div>
   </section>`;
 }
 
-export function bindDisciplines(root, { teachers, disciplines, onBack, onCreate, onUpdate, onDelete }) {
+export function bindDisciplines(root, { teachers, disciplines, onBack, onCreate, onUpdate, onDelete, onCreateTeacher }) {
   root.querySelector("[data-back]").addEventListener("click", onBack);
   root.querySelector("[data-add-discipline]")?.addEventListener("click", () => {
-    if (teachers.length) openDisciplineEditor(null, teachers, onCreate);
+    openDisciplineEditor(null, teachers, onCreate, undefined, onCreateTeacher);
   });
   bindDisciplineCards(root, (id) => {
     const discipline = disciplines.find((item) => item.id === id);
-    if (discipline) openDisciplineEditor(discipline, teachers, (values) => onUpdate(discipline.id, values), onDelete);
+    if (discipline) openDisciplineEditor(discipline, teachers, (values) => onUpdate(discipline.id, values), onDelete, onCreateTeacher);
   });
 }
 

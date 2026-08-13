@@ -60,13 +60,13 @@ export async function createPresentation(user, profile, values) {
 }
 
 export async function updatePresentation(id, user, profile, presentation, values) {
+  const payload = {};
+  if (Object.hasOwn(values, "instructions")) payload.instrucao = optional(values.instructions);
+  if (Object.hasOwn(values, "links")) payload.links = normalizeLinks(values.links);
+  if (Object.hasOwn(values, "contents")) payload.conteudos = normalizeContentIds(values.contents);
   const { data, error } = await requireSupabase()
     .from("apresentacoes")
-    .update({
-      instrucao: optional(values.instructions),
-      links: normalizeLinks(values.links),
-      conteudos: normalizeContentIds(values.contents),
-    })
+    .update(payload)
     .eq("id", id)
     .eq("perfil", profile.id)
     .eq("disciplina", presentation.disciplina)
