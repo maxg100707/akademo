@@ -1058,7 +1058,10 @@ body:not([data-theme="dark"]) .mobile-profile-indicator select {
 .nav-group {
   display: grid;
   gap: 5px;
-  padding: 6px;
+  box-sizing: border-box;
+  height: 42px;
+  min-height: 42px;
+  padding: 0;
   border: 1px solid rgba(255, 255, 255, .14);
   border-radius: 13px;
   background: rgba(5, 44, 31, .11);
@@ -1071,13 +1074,20 @@ body:not([data-theme="dark"]) .mobile-profile-indicator select {
   background: rgba(255, 255, 255, .1);
 }
 
+.nav-group.is-expanded {
+  height: auto;
+  padding: 5px;
+}
+
 .nav-group__trigger {
   width: 100%;
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr) 18px;
   align-items: center;
   gap: 8px;
-  padding: 7px 5px 7px 0;
+  box-sizing: border-box;
+  min-height: 40px;
+  padding: 6px 5px 6px 0;
   color: var(--sidebar-text);
   border: 0;
   border-radius: 9px;
@@ -1099,10 +1109,11 @@ body:not([data-theme="dark"]) .mobile-profile-indicator select {
   color: var(--sidebar-muted);
   border-radius: 8px;
   background: transparent;
+  margin-left: 4px;
 }
 
 .nav-group__copy { display: grid; min-width: 0; gap: 2px; }
-.nav-group__copy strong { overflow: hidden; color: var(--sidebar-text); text-overflow: ellipsis; white-space: nowrap; font: 700 11px/1.2 "Outfit", sans-serif; }
+.nav-group__copy strong { overflow: hidden; color: var(--sidebar-text); text-overflow: ellipsis; white-space: nowrap; font: 700 11px/1.2 "Outfit", sans-serif;margin-left: 4px; }
 .nav-group__trigger > .icon-chevronDown { justify-self: end; color: var(--sidebar-muted); transition: transform .2s ease; }
 .nav-group.is-expanded .nav-group__trigger > .icon-chevronDown { transform: rotate(180deg); }
 
@@ -1119,6 +1130,7 @@ body:not([data-theme="dark"]) .mobile-profile-indicator select {
 
 .nav-group.is-expanded .nav-group__items {
   max-height: 430px;
+  margin-left: 20px;
   margin-bottom: 3px;
   opacity: 1;
 }
@@ -1140,8 +1152,8 @@ body:not([data-theme="dark"]) .mobile-profile-indicator select {
     border-color: transparent;
     background: transparent;
   }
-  .sidebar .nav-group__trigger { grid-template-columns: 1fr; justify-items: center; height: 42px; padding: 4px; }
-  .sidebar .nav-group__icon { width: 34px; height: 34px; }
+  .sidebar .nav-group__trigger { grid-template-columns: 1fr; justify-items: center; height: 40px; min-height: 40px; padding: 4px; }
+  .sidebar .nav-group__icon { width: 30px; height: 30px; }
   .sidebar .nav-group__icon > .icon { width: 26px; height: 26px; }
   .sidebar .nav-group__copy,
   .sidebar .nav-group__trigger > .icon-chevronDown {
@@ -1172,19 +1184,22 @@ body:not([data-theme="dark"]) .mobile-profile-indicator select {
   }
 
   .sidebar:hover .nav-group,
-  .sidebar:hover .nav-group.has-active,
+  .sidebar:hover .nav-group.has-active {
+    display: block;
+    height: 42px;
+    padding: 0;
+    overflow: hidden;
+  }
   .sidebar:hover .nav-group.is-expanded {
     display: grid;
     gap: 5px;
     height: auto;
     padding: 5px;
     overflow: visible;
-    border-color: rgba(255, 255, 255, .27);
-    background: rgba(255, 255, 255, .1);
   }
   .sidebar:hover .nav-item { justify-content: initial; gap: 12px; padding: 11px 10px 11px 9px; }
   .sidebar:hover .nav-item > .icon { width: 20px; height: 20px; }
-  .sidebar:hover .nav-group__trigger { grid-template-columns: 28px minmax(0, 1fr) 18px; justify-items: initial; height: auto; padding: 7px 5px 7px 0; }
+  .sidebar:hover .nav-group__trigger { grid-template-columns: 28px minmax(0, 1fr) 18px; justify-items: initial; height: 40px; min-height: 40px; padding: 6px 5px 6px 0; }
   .sidebar:hover .nav-group__icon { width: 28px; height: 28px; }
   .sidebar:hover .nav-group__icon > .icon { width: 20px; height: 20px; }
   .sidebar:hover .nav-group__copy,
@@ -1198,6 +1213,6 @@ body:not([data-theme="dark"]) .mobile-profile-indicator select {
     pointer-events: auto;
   }
   .sidebar:hover .nav-group__items { display: grid; margin-right: 5px; margin-left: 0; padding-left: 0; }
-  .sidebar:hover .nav-group.is-expanded .nav-group__items { max-height: 430px; height: auto; margin-bottom: 3px; opacity: 1; pointer-events: auto; }
+  .sidebar:hover .nav-group.is-expanded .nav-group__items { max-height: 430px; height: auto; margin-bottom: 3px; margin-left: 20px; opacity: 1; pointer-events: auto; }
   .sidebar:hover .nav-group__items .nav-item { min-height: 37px; padding: 9px 5px 9px 4px; }
 }
