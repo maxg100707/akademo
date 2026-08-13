@@ -93,7 +93,14 @@
     padding: 0 14px;
   }
 
-  .mobile-menu-button { display: none; }
+  /* O acesso ao menu permanece sempre alcançável, mesmo com um título de módulo longo. */
+  .mobile-menu-button {
+    position: absolute;
+    z-index: 2;
+    left: 14px;
+    display: grid;
+    flex: 0 0 auto;
+  }
 
   .mobile-module-context {
     flex: 1 1 auto;
@@ -120,8 +127,8 @@
 
   .mobile-module-context {
     position: absolute;
-    left: 14px;
-    width: calc(50% - 105px);
+    left: 56px;
+    width: max(0px, calc(50% - 151px));
   }
 
   .main-area { padding-top: 68px; }
@@ -142,4 +149,5 @@
 @media (max-width: 430px) {
   .mobile-module-context > span { display: none; }
   .mobile-module-context p { display: none; }
+  .mobile-module-context strong { font-size: 11px; }
 }
