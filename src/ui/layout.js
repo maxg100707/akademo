@@ -22,6 +22,34 @@ const contentModules = [
   { view: "mindmaps", iconName: "mindMap", label: "Mapas mentais", isActive: (currentView) => currentView === "mindmaps" || currentView === "mindmap-editor" },
 ];
 
+const moduleContexts = {
+  dashboard: { iconName: "dashboard", title: "Dashboard", description: "Acompanhe sua rotina acadêmica em um só lugar." },
+  profiles: { iconName: "graduation", title: "Perfis de estudo", description: "Organize cada etapa da sua jornada acadêmica." },
+  personal: { iconName: "info", title: "Informações pessoais", description: "Mantenha os dados da sua conta atualizados." },
+  disciplines: { iconName: "book", title: "Disciplinas", description: "Organize as disciplinas do seu perfil de estudo." },
+  teachers: { iconName: "users", title: "Professores", description: "Centralize os contatos do seu corpo docente." },
+  schedules: { iconName: "calendar", title: "Horários", description: "Visualize e organize as aulas da sua semana." },
+  chronogram: { iconName: "file", title: "Cronograma", description: "Planeje os temas e situações de cada aula." },
+  tasks: { iconName: "check", title: "Tarefas", description: "Acompanhe prazos e priorize suas entregas." },
+  files: { iconName: "folder", title: "Arquivos", description: "Encontre e organize todos os seus materiais." },
+  lessons: { iconName: "book", title: "Aulas", description: "Selecione uma aula para registrar o que foi estudado e guardar seus conteúdos." },
+  exams: { iconName: "exam", title: "Provas", description: "Planeje suas avaliações e materiais de revisão." },
+  presentations: { iconName: "presentation", title: "Apresentações", description: "Prepare orientações, materiais e referências." },
+  mindmaps: { iconName: "mindMap", title: "Mapas mentais", description: "Conecte ideias e desenvolva seus estudos visualmente." },
+};
+
+function contextForView(view) {
+  if (view?.startsWith("lesson-")) return moduleContexts.lessons;
+  if (view?.startsWith("exam-")) return moduleContexts.exams;
+  if (view?.startsWith("presentation-")) return moduleContexts.presentations;
+  if (view === "mindmap-editor") return moduleContexts.mindmaps;
+  return moduleContexts[view] || moduleContexts.dashboard;
+}
+
+function moduleContext(context, className) {
+  return `<div class="${className}"><span>${icon(context.iconName, 17)}</span><div><strong>${escapeHtml(context.title)}</strong><p>${escapeHtml(context.description)}</p></div></div>`;
+}
+
 function navigationGroup({ view, key, label, iconName, modules, isExpanded }) {
   const hasActiveModule = modules.some((module) => module.isActive(view));
   const items = modules.map((module) => `<button class="nav-item ${module.isActive(view) ? "is-active" : ""}" data-nav="${module.view}">${icon(module.iconName, 19)}<span>${module.label}</span></button>`).join("");
@@ -31,6 +59,7 @@ function navigationGroup({ view, key, label, iconName, modules, isExpanded }) {
 
 export function renderLayout(root, { record, photoUrl, profiles, currentProfile, view, content, theme, basicRegistrationExpanded = false, organizationExpanded = false, contentExpanded = false }) {
   const course = escapeHtml(currentProfile?.curso || "Perfil de estudo");
+  const currentContext = contextForView(view);
   root.innerHTML = `<div class="app-shell" data-theme="${theme}">
     <aside class="sidebar" aria-label="Menu principal">
       <div class="sidebar__top"><a href="#" class="brand"><img class="brand-icon" src="icon.png" alt=""/><span class="brand__text">AKADEMO</span></a></div>
@@ -52,11 +81,15 @@ export function renderLayout(root, { record, photoUrl, profiles, currentProfile,
     <div class="mobile-menu-overlay" data-mobile-close></div>
     <main class="main-area"><header class="mobile-topbar"><button class="mobile-menu-button" data-mobile-open aria-label="Abrir menu">${icon("bars", 20)}</button><a href="#" class="mobile-brand"><img class="brand-icon" src="icon.png" alt=""/> AKADEMO</a><div class="mobile-profile-indicator" title="${course}"><span>${icon("graduation", 16)}</span><div>${profiles.length > 1 ? `<small>PERFIL ATIVO</small><select data-profile-select aria-label="Selecionar perfil de estudo">${profiles.map((profile) => `<option value="${profile.id}" ${profile.id === currentProfile?.id ? "selected" : ""}>${escapeHtml(profile.curso)}</option>`).join("")}</select>` : `<strong>${course}</strong><small>${currentProfile?.semestre}º semestre</small>`}</div></div></header>${content}</main>
   </div>`;
+  root.querySelector(".mobile-brand")?.insertAdjacentHTML("afterend", moduleContext(currentContext, "mobile-module-context"));
   root.querySelector(".main-area").insertAdjacentHTML("afterbegin", `
     <header class="desktop-topbar">
+      <div class="desktop-header-content">
+      ${moduleContext(currentContext, "desktop-module-context")}
       <div class="desktop-profile-indicator" title="${course}">
         <span>${icon("graduation", 16)}</span>
         <div>${profiles.length > 1 ? `<small>PERFIL ATIVO</small><select data-profile-select aria-label="Selecionar perfil de estudo">${profiles.map((profile) => `<option value="${profile.id}" ${profile.id === currentProfile?.id ? "selected" : ""}>${escapeHtml(profile.curso)}</option>`).join("")}</select>` : `<strong>${course}</strong><small>${currentProfile?.semestre}º semestre</small>`}</div>
+      </div>
       </div>
     </header>`);
 }

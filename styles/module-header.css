@@ -1,0 +1,145 @@
+/* Contexto do módulo no cabeçalho: a página fica livre para o conteúdo útil. */
+.desktop-header-content {
+  position: relative;
+  width: 100%;
+  height: 78px;
+}
+
+.desktop-module-context,
+.mobile-module-context {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.desktop-module-context > span,
+.mobile-module-context > span {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  color: var(--on-green);
+  border-radius: 10px;
+  background: var(--green);
+}
+
+.desktop-module-context > div,
+.mobile-module-context > div { min-width: 0; }
+
+.desktop-module-context strong,
+.mobile-module-context strong {
+  display: block;
+  overflow: hidden;
+  color: var(--text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 700 14px/1.15 "Outfit", sans-serif;
+}
+
+.desktop-module-context p,
+.mobile-module-context p {
+  margin: 3px 0 0;
+  overflow: hidden;
+  color: var(--text-soft);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+@media (min-width: 761px) {
+  .desktop-topbar { justify-content: initial; }
+
+  .desktop-profile-indicator {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: min(360px, 42vw);
+    min-width: 220px;
+    transform: translate(-50%, -50%);
+  }
+
+  .desktop-module-context {
+    position: absolute;
+    top: 50%;
+    left: clamp(25px, 4vw, 64px);
+    max-width: min(390px, calc(50% - 245px));
+    transform: translateY(-50%);
+  }
+}
+
+/* As apresentações das telas de módulo passam a existir apenas no cabeçalho. */
+.page:not(.chronogram-detail-page):not(.lesson-detail-page):not(.exam-detail-page):not(.presentation-detail-page):not(.mindmap-editor-page) > .page-heading:not(.page-heading--row),
+.page:not(.chronogram-detail-page):not(.lesson-detail-page):not(.exam-detail-page):not(.presentation-detail-page):not(.mindmap-editor-page) > .page-heading--hero {
+  display: none;
+}
+
+.page:not(.chronogram-detail-page):not(.lesson-detail-page):not(.exam-detail-page):not(.presentation-detail-page):not(.mindmap-editor-page) > .page-heading--row {
+  justify-content: flex-end;
+  min-height: 0;
+  margin-bottom: 22px;
+}
+
+.page:not(.chronogram-detail-page):not(.lesson-detail-page):not(.exam-detail-page):not(.presentation-detail-page):not(.mindmap-editor-page) > .page-heading--row > div:first-child {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  .mobile-topbar {
+    min-height: 68px;
+    gap: 8px;
+    padding: 0 14px;
+  }
+
+  .mobile-menu-button { display: none; }
+
+  .mobile-module-context {
+    flex: 1 1 auto;
+    overflow: hidden;
+  }
+
+  .mobile-module-context > span {
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+  }
+
+  .mobile-module-context strong { font-size: 12px; }
+  .mobile-module-context p { font-size: 9px; }
+
+  .mobile-profile-indicator {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    max-width: min(170px, calc(100vw - 150px));
+    margin-left: 0;
+    transform: translate(-50%, -50%);
+  }
+
+  .mobile-module-context {
+    position: absolute;
+    left: 14px;
+    width: calc(50% - 105px);
+  }
+
+  .main-area { padding-top: 68px; }
+  .page { min-height: calc(100vh - 68px); }
+
+  .page:not(.chronogram-detail-page):not(.lesson-detail-page):not(.exam-detail-page):not(.presentation-detail-page):not(.mindmap-editor-page) > .page-heading--row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+
+  .page:not(.chronogram-detail-page):not(.lesson-detail-page):not(.exam-detail-page):not(.presentation-detail-page):not(.mindmap-editor-page) > .page-heading--row .button {
+    width: auto;
+    margin-top: 0;
+  }
+}
+
+@media (max-width: 430px) {
+  .mobile-module-context > span { display: none; }
+  .mobile-module-context p { display: none; }
+}
