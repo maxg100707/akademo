@@ -86,6 +86,12 @@ import {
   updateMindMap,
 } from "./services/mindmaps.js";
 import {
+  createVideo,
+  deleteVideo,
+  getVideoUrl,
+  getVideos,
+} from "./services/videos.js";
+import {
   applyPendingAvatar,
   ensureUserRecord,
   getUserRecord,
@@ -157,12 +163,18 @@ import {
   mindMapEditorView,
   mindMapsView,
 } from "./ui/mindmaps-view.js";
+import {
+  bindVideosCatalog,
+  openVideoPlayer,
+  videosView,
+} from "./ui/videos-view.js";
 import { showToast } from "./ui/components.js";
 import {
   getStoredProfile,
   removeStoredProfile,
   storeProfile,
 } from "./utils/formatters.js";
+import { icon } from "./utils/icons.js";
 
 const root = document.querySelector("#app");
 const state = {
@@ -195,6 +207,8 @@ const state = {
   mindMaps: [],
   activeMindMap: null,
   mindMapScope: null,
+  videos: [],
+  videoScope: null,
   profileContents: [],
   dashboardLoadedProfileId: null,
   view: "dashboard",
@@ -385,6 +399,7 @@ function renderCurrent() {
   if (state.view === "files") return renderFiles();
   if (state.view === "mindmaps") return renderMindMaps();
   if (state.view === "mindmap-editor") return renderMindMapEditor();
+  if (state.view === "videos") return renderVideos();
   if (state.view === "exams") return renderExams();
   if (state.view === "exam-detail") return renderExamDetail();
   if (state.view === "exam-topic") return renderExamTopic();
@@ -1658,6 +1673,15 @@ function renderExamDetail() {
       contents: state.activeExamContents,
     }),
   );
+  root
+    .querySelector(".exam-detail-actions")
+    ?.insertAdjacentHTML(
+      "afterbegin",
+      `<button class="button button--secondary" data-open-exam-videos>${icon("video", 17)} Vídeos</button>`,
+    );
+  root
+    .querySelector("[data-open-exam-videos]")
+    ?.addEventListener("click", () => renderVideos(scopeForVideos("exam", exam)));
   bindExamDetail(root, {
     exam,
     topics: state.examTopics,
@@ -2051,6 +2075,17 @@ function renderPresentationDetail() {
       contents: state.activePresentationContents,
     }),
   );
+  root
+    .querySelector(".presentation-instructions__actions")
+    ?.insertAdjacentHTML(
+      "afterbegin",
+      `<button class="button button--secondary" data-open-presentation-videos>${icon("video", 16)} Vídeos</button>`,
+    );
+  root
+    .querySelector("[data-open-presentation-videos]")
+    ?.addEventListener("click", () =>
+      renderVideos(scopeForVideos("presentation", presentation)),
+    );
   bindPresentationDetail(root, {
     presentation,
     contents: state.activePresentationContents,
@@ -2335,6 +2370,15 @@ function renderLessonDetail() {
       occurrence: state.lessonOccurrence,
     }),
   );
+  root
+    .querySelector(".lesson-tools-grid")
+    ?.insertAdjacentHTML(
+      "beforeend",
+      `<button class="lesson-tool-card lesson-tool-card--videos" data-open-lesson-videos><span>${icon("video", 24)}</span><div><small>CONTEÚDO EM VÍDEO</small><strong>Vídeos</strong><p>Reúna explicações, gravações e revisões desta aula.</p></div><em>Abrir ${icon("arrowRight", 17)}</em></button>`,
+    );
+  root
+    .querySelector("[data-open-lesson-videos]")
+    ?.addEventListener("click", () => renderVideos(scopeForVideos("lesson", lesson)));
   bindLessonDetail(root, {
     onBack: lessonBack,
     onOpenMindMaps: () => renderMindMaps(scopeForMindMaps("lesson", lesson)),
@@ -2585,6 +2629,116 @@ function renderMindMapEditor() {
   });
 }
 
+function videoReferences() {
+  return {
+    disciplines: state.disciplines,
+    lessons: state.lessons,
+    exams: state.exams,
+    presentations: state.presentations,
+  };
+}
+
+function scopeForVideos(type, record) {
+  return {
+    type,
+    field:
+      type === "lesson"
+        ? "aula"
+        : type === "exam"
+          ? "prova"
+          : "apresentacao",
+    record,
+    disciplineId: record.disciplina,
+  };
+}
+
+async function loadVideoData() {
+  const profile = state.currentProfile;
+  if (!profile) return;
+  const [videos, disciplines, lessons, exams, presentations] = await Promise.all([
+    getVideos(profile.id),
+    getDisciplines(profile.id),
+    getLessons(profile.id),
+    getExams(profile.id),
+    getPresentations(profile.id),
+  ]);
+  if (state.currentProfile?.id !== profile.id) return;
+  state.videos = videos;
+  state.disciplines = disciplines;
+  state.lessons = lessons;
+  state.exams = exams;
+  state.presentations = presentations;
+}
+
+function videosBack() {
+  const scope = state.videoScope;
+  state.videoScope = null;
+  if (scope?.type === "lesson") return renderLessonDetail();
+  if (scope?.type === "exam") return renderExamDetail();
+  if (scope?.type === "presentation") return renderPresentationDetail();
+  state.view = state.returnView || "dashboard";
+  renderCurrent();
+}
+
+function mountVideos() {
+  renderWithinLayout(
+    videosView({
+      videos: state.videos,
+      references: videoReferences(),
+      scope: state.videoScope,
+    }),
+  );
+  bindVideosCatalog(root, {
+    videos: state.videos,
+    references: videoReferences(),
+    scope: state.videoScope,
+    onBack: videosBack,
+    onCreate: async (values) => {
+      const video = await createVideo(state.user, state.currentProfile, values);
+      state.videos = [video, ...state.videos];
+      mountVideos();
+      showToast("Vídeo salvo na sua biblioteca.");
+      return video;
+    },
+    onOpen: async (video) => {
+      try {
+        openVideoPlayer({
+          video,
+          source: await getVideoUrl(state.user, video),
+          references: videoReferences(),
+        });
+      } catch (error) {
+        showToast(error.message || "Não foi possível abrir o vídeo.", "error");
+      }
+    },
+    onDelete: async (video) => {
+      try {
+        await deleteVideo(state.user, video);
+        state.videos = state.videos.filter((item) => item.id !== video.id);
+        mountVideos();
+        showToast("Vídeo apagado.");
+      } catch (error) {
+        showToast(error.message || "Não foi possível apagar o vídeo.", "error");
+      }
+    },
+  });
+}
+
+async function renderVideos(scope = state.videoScope) {
+  const profile = state.currentProfile;
+  if (!profile) return showOnboarding();
+  state.view = "videos";
+  state.videoScope = scope || null;
+  try {
+    await loadVideoData();
+    if (state.view !== "videos" || state.currentProfile?.id !== profile.id) return;
+    mountVideos();
+  } catch (error) {
+    showToast(error.message || "Não foi possível carregar os vídeos.", "error");
+    videosBack();
+  }
+}
+
 function renderWithinLayout(content) {
   renderLayout(root, { ...state, content });
   bindLayout(root, {
@@ -2639,6 +2793,10 @@ function renderWithinLayout(content) {
         state.mindMapScope = null;
         state.activeMindMap = null;
       }
+      if (view === "videos") {
+        state.returnView = state.view;
+        state.videoScope = null;
+      }
       state.view = view;
       renderCurrent();
     },
@@ -2674,6 +2832,8 @@ function renderWithinLayout(content) {
       state.mindMaps = [];
       state.activeMindMap = null;
       state.mindMapScope = null;
+      state.videos = [];
+      state.videoScope = null;
       state.scheduleEditing = false;
       state.chronogramDisciplineId = null;
       state.lessonWeekOffset = 0;

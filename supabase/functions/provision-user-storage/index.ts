@@ -10,7 +10,12 @@ const BUCKET_ALLOWED_TYPES = [
   "application/vnd.ms-powerpoint", "application/vnd.openxmlformats-officedocument.presentationml.presentation",
   "application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   "application/zip", "application/x-zip-compressed", "application/octet-stream",
+  "video/mp4", "video/webm", "video/quicktime", "video/x-msvideo", "video/x-matroska", "video/mpeg", "video/ogg",
 ];
+
+// O limite precisa respeitar o limite global padrão do Supabase Storage.
+// 50 MB permite vídeos de estudo sem fazer o updateBucket falhar em projetos padrão.
+const BUCKET_FILE_SIZE_LIMIT = "50MB";
 
 function fileExtension(contentType: string) {
   if (contentType.includes("png")) return "png";
@@ -40,7 +45,7 @@ Deno.serve(async (request) => {
     if (!existingBucket) {
       const { error: bucketError } = await admin.storage.createBucket(bucketId, {
         public: false,
-        fileSizeLimit: "20MB",
+        fileSizeLimit: BUCKET_FILE_SIZE_LIMIT,
         allowedMimeTypes: BUCKET_ALLOWED_TYPES,
       });
       // Duas requisições simultâneas podem tentar criar o mesmo bucket; isso é seguro.
@@ -48,7 +53,7 @@ Deno.serve(async (request) => {
     } else {
       const { error: bucketUpdateError } = await admin.storage.updateBucket(bucketId, {
         public: false,
-        fileSizeLimit: "20MB",
+        fileSizeLimit: BUCKET_FILE_SIZE_LIMIT,
         allowedMimeTypes: BUCKET_ALLOWED_TYPES,
       });
       if (bucketUpdateError) throw bucketUpdateError;
