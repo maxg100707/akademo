@@ -2,6 +2,12 @@ import { icon } from "../utils/icons.js";
 import { escapeHtml } from "../utils/formatters.js";
 import { avatar } from "./components.js";
 
+const basicRegistrationModules = [
+  { view: "profiles", iconName: "graduation", label: "Perfis de estudo", isActive: (currentView) => currentView === "profiles" },
+  { view: "disciplines", iconName: "book", label: "Disciplinas", isActive: (currentView) => currentView === "disciplines" },
+  { view: "teachers", iconName: "users", label: "Professores", isActive: (currentView) => currentView === "teachers" },
+];
+
 const organizationModules = [
   { view: "schedules", iconName: "calendar", label: "Hor&aacute;rios", isActive: (currentView) => currentView === "schedules" },
   { view: "lessons", iconName: "book", label: "Aulas", isActive: (currentView) => currentView === "lessons" || currentView.startsWith("lesson-") },
@@ -12,13 +18,14 @@ const organizationModules = [
   { view: "chronogram", iconName: "file", label: "Cronograma", isActive: (currentView) => currentView === "chronogram" },
 ];
 
-function organizationGroup(view, isExpanded) {
-  const hasActiveModule = organizationModules.some((module) => module.isActive(view));
-  const items = organizationModules.map((module) => `<button class="nav-item ${module.isActive(view) ? "is-active" : ""}" data-nav="${module.view}">${icon(module.iconName, 19)}<span>${module.label}</span></button>`).join("");
-  return `<section class="nav-group ${isExpanded ? "is-expanded" : ""} ${hasActiveModule ? "has-active" : ""}" aria-label="Organiza&ccedil;&atilde;o B&aacute;sica"><button class="nav-group__trigger" type="button" data-organization-toggle aria-expanded="${isExpanded}" aria-controls="organization-basic-modules"><span class="nav-group__icon">${icon("organize", 18)}</span><span class="nav-group__copy"><strong>Organiza&ccedil;&atilde;o B&aacute;sica</strong></span>${icon("chevronDown", 17)}</button><div class="nav-group__items" id="organization-basic-modules">${items}</div></section>`;
+function navigationGroup({ view, key, label, iconName, modules, isExpanded }) {
+  const hasActiveModule = modules.some((module) => module.isActive(view));
+  const items = modules.map((module) => `<button class="nav-item ${module.isActive(view) ? "is-active" : ""}" data-nav="${module.view}">${icon(module.iconName, 19)}<span>${module.label}</span></button>`).join("");
+  const contentId = `menu-group-${key}`;
+  return `<section class="nav-group ${isExpanded ? "is-expanded" : ""} ${hasActiveModule ? "has-active" : ""}" aria-label="${label}"><button class="nav-group__trigger" type="button" data-menu-group-toggle="${key}" aria-expanded="${isExpanded}" aria-controls="${contentId}"><span class="nav-group__icon">${icon(iconName, 18)}</span><span class="nav-group__copy"><strong>${label}</strong></span>${icon("chevronDown", 17)}</button><div class="nav-group__items" id="${contentId}">${items}</div></section>`;
 }
 
-export function renderLayout(root, { record, photoUrl, profiles, currentProfile, view, content, theme, organizationExpanded = false }) {
+export function renderLayout(root, { record, photoUrl, profiles, currentProfile, view, content, theme, basicRegistrationExpanded = false, organizationExpanded = false }) {
   const course = escapeHtml(currentProfile?.curso || "Perfil de estudo");
   root.innerHTML = `<div class="app-shell" data-theme="${theme}">
     <aside class="sidebar" aria-label="Menu principal">
@@ -35,7 +42,7 @@ export function renderLayout(root, { record, photoUrl, profiles, currentProfile,
           <button class="profile-popover__logout" data-logout>${icon("logout", 18)}<span>Sair da conta</span></button>
         </div>
       </div>
-      <nav class="sidebar-nav"><span class="sidebar-nav__label">MENU</span><button class="nav-item ${view === "dashboard" ? "is-active" : ""}" data-nav="dashboard">${icon("dashboard", 20)}<span>Dashboard</span></button>${organizationGroup(view, organizationExpanded)}</nav>
+      <nav class="sidebar-nav"><span class="sidebar-nav__label">MENU</span><button class="nav-item ${view === "dashboard" ? "is-active" : ""}" data-nav="dashboard">${icon("dashboard", 20)}<span>Dashboard</span></button>${navigationGroup({ view, key: "basic", label: "Cadastros B&aacute;sicos", iconName: "idCard", modules: basicRegistrationModules, isExpanded: basicRegistrationExpanded })}${navigationGroup({ view, key: "organization", label: "Organiza&ccedil;&atilde;o B&aacute;sica", iconName: "organize", modules: organizationModules, isExpanded: organizationExpanded })}</nav>
       <div class="sidebar__bottom"><button class="mobile-close-menu" data-mobile-close>${icon("close", 18)}<span>Fechar menu</span></button><div class="sidebar__tip">${icon("sparkles", 18)}<span>Faça hoje valer a pena.</span></div></div>
     </aside>
     <div class="mobile-menu-overlay" data-mobile-close></div>
@@ -88,12 +95,20 @@ export function bindLayout(root, actions) {
   root.querySelector("[data-disciplines]").addEventListener("click", actions.onDisciplines);
   root.querySelector("[data-logout]").addEventListener("click", actions.onLogout);
   root.querySelector("[data-theme-toggle]").addEventListener("change", actions.onTheme);
-  root.querySelector("[data-organization-toggle]")?.addEventListener("click", (event) => {
+  root.querySelectorAll("[data-menu-group-toggle]").forEach((button) => button.addEventListener("click", (event) => {
     const group = event.currentTarget.closest(".nav-group");
     const isExpanded = group?.classList.toggle("is-expanded");
     event.currentTarget.setAttribute("aria-expanded", String(Boolean(isExpanded)));
-    actions.onOrganizationToggle?.(Boolean(isExpanded));
-  });
+    if (isExpanded) {
+      root.querySelectorAll(".nav-group.is-expanded").forEach((otherGroup) => {
+        if (otherGroup === group) return;
+        otherGroup.classList.remove("is-expanded");
+        otherGroup.querySelector("[data-menu-group-toggle]")?.setAttribute("aria-expanded", "false");
+        actions.onMenuGroupToggle?.(otherGroup.querySelector("[data-menu-group-toggle]")?.dataset.menuGroupToggle, false);
+      });
+    }
+    actions.onMenuGroupToggle?.(event.currentTarget.dataset.menuGroupToggle, Boolean(isExpanded));
+  }));
   root.querySelectorAll("[data-nav]").forEach((button) => button.addEventListener("click", () => actions.onNavigate(button.dataset.nav)));
   root.querySelectorAll("[data-profile-select]").forEach((select) => select.addEventListener("change", (event) => actions.onProfileChange(event.target.value)));
   if (root.profileOutsideClickHandler) document.removeEventListener("click", root.profileOutsideClickHandler);

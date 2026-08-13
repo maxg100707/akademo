@@ -187,6 +187,7 @@ const state = {
   taskDisciplineFilter: "",
   fileDisciplineFilter: "",
   fileSearch: "",
+  basicRegistrationExpanded: localStorage.getItem("akademo.sidebar.basic-registration-expanded") === "true",
   organizationExpanded: localStorage.getItem("akademo.sidebar.organization-expanded") === "true",
   theme: localStorage.getItem(APP_STORAGE_KEYS.theme) || "light",
 };
@@ -422,20 +423,6 @@ function mountDashboard() {
         state.dashboardLoadedProfileId !== state.currentProfile.id,
     }),
   );
-  root.querySelector("[data-open-teachers]")?.addEventListener("click", () => {
-    state.returnView = "dashboard";
-    renderTeachers();
-  });
-  root
-    .querySelector("[data-open-disciplines]")
-    ?.addEventListener("click", () => {
-      state.returnView = "dashboard";
-      renderDisciplines();
-    });
-  root.querySelector("[data-open-profiles]")?.addEventListener("click", () => {
-    state.returnView = "dashboard";
-    renderProfiles();
-  });
   root.querySelectorAll("[data-open-dashboard-exam]").forEach((button) =>
     button.addEventListener("click", () => {
       const exam = state.exams.find(
@@ -2470,9 +2457,22 @@ async function renderLessonTasks() {
 function renderWithinLayout(content) {
   renderLayout(root, { ...state, content });
   bindLayout(root, {
-    onOrganizationToggle: (isExpanded) => {
+    onMenuGroupToggle: (group, isExpanded) => {
+      if (group === "basic") {
+        state.basicRegistrationExpanded = isExpanded;
+        localStorage.setItem("akademo.sidebar.basic-registration-expanded", isExpanded);
+        if (isExpanded) {
+          state.organizationExpanded = false;
+          localStorage.setItem("akademo.sidebar.organization-expanded", "false");
+        }
+        return;
+      }
       state.organizationExpanded = isExpanded;
-      localStorage.setItem("akademo.sidebar.organization-expanded", state.organizationExpanded);
+      localStorage.setItem("akademo.sidebar.organization-expanded", isExpanded);
+      if (isExpanded) {
+        state.basicRegistrationExpanded = false;
+        localStorage.setItem("akademo.sidebar.basic-registration-expanded", "false");
+      }
     },
     onNavigate: (view) => {
       if (view === "schedules") {
