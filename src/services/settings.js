@@ -29,6 +29,7 @@ export const DASHBOARD_WIDGETS = [
 ];
 
 const WIDGET_IDS = new Set(DASHBOARD_WIDGETS.map((widget) => widget.id));
+const PALETTE_IDS = new Set(["forest", "flames"]);
 const MODULE_IDS = new Set([
   "schedules",
   "lessons",
@@ -85,6 +86,9 @@ function defaultWidgets() {
 export function defaultSettings() {
   return {
     version: 1,
+    appearance: {
+      palette: "forest",
+    },
     dashboard: {
       widgets: defaultWidgets(),
       favorites: [],
@@ -92,8 +96,15 @@ export function defaultSettings() {
   };
 }
 
+export function normalizePalette(value) {
+  return PALETTE_IDS.has(value) ? value : "forest";
+}
+
 export function normalizeSettings(input) {
   const source = input && typeof input === "object" ? input : {};
+  const appearance = source.appearance && typeof source.appearance === "object"
+    ? source.appearance
+    : {};
   const dashboard = source.dashboard && typeof source.dashboard === "object"
     ? source.dashboard
     : {};
@@ -121,6 +132,9 @@ export function normalizeSettings(input) {
 
   return {
     version: 1,
+    appearance: {
+      palette: normalizePalette(appearance.palette),
+    },
     dashboard: {
       widgets: [...orderedKnownWidgets, ...missingWidgets],
       favorites,

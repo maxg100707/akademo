@@ -92,3 +92,96 @@ body[data-theme="dark"] {
   --shadow: 0 10px 28px rgba(2, 71, 50, .3);
   --shadow-high: 0 20px 46px rgba(2, 58, 42, .38);
 }
+
+/* Temática Chamas: mantém os mesmos contratos de cor da interface com vermelhos e laranjas confortáveis. */
+body[data-palette="flames"] {
+  --page: #ebe1dc;
+  --surface: #e0a18d;
+  --surface-alt: #d77a5b;
+  --surface-muted: #e9b8a7;
+  --surface-contrast: #b9543a;
+  --surface-deep: #98432f;
+  --menu-surface: #dfd9d6;
+  --menu-hover: #d2cbc7;
+  --text: #2d1712;
+  --text-soft: #512d24;
+  --text-faint: #623b31;
+  --icon: #2d1712;
+  --icon-muted: #512d24;
+  --line: #bd5a41;
+
+  --green: #dc6a47;
+  --green-accent: #ffdecd;
+  --green-dark: #70291c;
+  --green-deep: #4b1c12;
+  --green-forest: #913d29;
+  --green-strong: #b65036;
+  --green-soft: #df8c70;
+  --green-pale: #f0b6a1;
+  --green-mint: #f29662;
+  --green-mint-pale: #f2b19a;
+  --green-jade: #c75a3d;
+  --green-jade-pale: #efb39c;
+  --green-teal: #b54a32;
+  --green-teal-pale: #e2a088;
+  --green-olive: #a8612d;
+  --green-olive-pale: #dfa265;
+
+  --warm: #aa632f;
+  --danger: #a94440;
+  --on-green: #2c110a;
+  --on-strong: #fff8f3;
+  --sidebar: #ad4d34;
+  --sidebar-hover: #bc5a3e;
+  --sidebar-text: #fff8f3;
+  --sidebar-muted: #ffe4d5;
+  --focus-ring: rgba(203, 86, 55, .42);
+  --shadow: 0 8px 24px rgba(116, 45, 29, .13);
+  --shadow-high: 0 18px 42px rgba(98, 37, 25, .18);
+}
+
+body[data-theme="dark"][data-palette="flames"] {
+  --page: #362e2b;
+  --surface: #774f42;
+  --surface-alt: #9c573f;
+  --surface-muted: #67463e;
+  --surface-contrast: #ad583e;
+  --surface-deep: #713829;
+  --menu-surface: #3a3330;
+  --menu-hover: #4c413d;
+  --text: #fff8f4;
+  --text-soft: #f7ddd3;
+  --text-faint: #efc8ba;
+  --icon: #fff8f4;
+  --icon-muted: #f7ddd3;
+  --line: #da7958;
+
+  --green: #f08b5e;
+  --green-accent: #ffdbc9;
+  --green-dark: #ffdfd0;
+  --green-deep: #fff3ec;
+  --green-forest: #743827;
+  --green-strong: #b75a3d;
+  --green-soft: #a85a44;
+  --green-pale: #854c39;
+  --green-mint: #ffad79;
+  --green-mint-pale: #a55840;
+  --green-jade: #f2774d;
+  --green-jade-pale: #9a4c35;
+  --green-teal: #ffb286;
+  --green-teal-pale: #673d34;
+  --green-olive: #edb15d;
+  --green-olive-pale: #80582f;
+
+  --warm: #efad70;
+  --danger: #ed8d80;
+  --on-green: #2d130d;
+  --on-strong: #fff8f3;
+  --sidebar: #713827;
+  --sidebar-hover: #85432f;
+  --sidebar-text: #fff8f3;
+  --sidebar-muted: #ffe3d5;
+  --focus-ring: rgba(241, 138, 87, .42);
+  --shadow: 0 10px 28px rgba(67, 29, 23, .3);
+  --shadow-high: 0 20px 46px rgba(56, 24, 19, .38);
+}

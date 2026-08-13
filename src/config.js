@@ -8,6 +8,7 @@ export const SUPABASE_ANON_KEY =
 
 export const APP_STORAGE_KEYS = {
   theme: "akademo.theme",
+  palette: "akademo.palette",
   currentProfile: "akademo.current_profile",
   login: "akademo.login",
   pendingAvatar: "akademo.pending_avatar",

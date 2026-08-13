@@ -92,7 +92,7 @@ import {
   getVideoUrl,
   getVideos,
 } from "./services/videos.js";
-import { defaultSettings, getSettings, saveSettings } from "./services/settings.js";
+import { defaultSettings, getSettings, normalizePalette, saveSettings } from "./services/settings.js";
 import {
   applyPendingAvatar,
   ensureUserRecord,
@@ -104,8 +104,10 @@ import {
 import { dashboardView } from "./ui/dashboard-view.js";
 import {
   bindDashboardSettings,
+  bindPersonalization,
   bindSettingsCatalog,
   dashboardSettingsView,
+  personalizationView,
   settingsCatalogView,
 } from "./ui/settings-view.js";
 import { renderAuth } from "./ui/auth-view.js";
@@ -241,6 +243,7 @@ const state = {
   organizationExpanded: localStorage.getItem("akademo.sidebar.organization-expanded") === "true",
   contentExpanded: localStorage.getItem("akademo.sidebar.content-expanded") === "true",
   theme: localStorage.getItem(APP_STORAGE_KEYS.theme) || "light",
+  palette: localStorage.getItem(APP_STORAGE_KEYS.palette) || "forest",
 };
 let hydrationInProgressFor = null;
 let googleAvatarSyncFor = null;
@@ -258,6 +261,12 @@ function applyTheme(theme) {
     .querySelector('meta[name="theme-color"]')
     ?.setAttribute("content", theme === "dark" ? "#1e2320" : "#f8faf9");
   localStorage.setItem(APP_STORAGE_KEYS.theme, theme);
+}
+
+function applyPalette(palette) {
+  state.palette = normalizePalette(palette);
+  document.body.dataset.palette = state.palette;
+  localStorage.setItem(APP_STORAGE_KEYS.palette, state.palette);
 }
 
 function renderLoading() {
@@ -365,7 +374,7 @@ function selectStoredProfile(route = {}) {
 }
 
 const routeViews = new Set([
-  "dashboard", "personal", "settings", "settings-user", "settings-dashboard", "profiles", "teachers", "disciplines", "schedules",
+  "dashboard", "personal", "settings", "settings-user", "settings-dashboard", "settings-personalization", "profiles", "teachers", "disciplines", "schedules",
   "chronogram", "tasks", "files", "mindmaps", "mindmap-editor", "videos",
   "exams", "exam-detail", "exam-topics", "exam-topic", "exam-materials", "exam-tasks", "presentations",
   "presentation-detail", "presentation-materials", "presentation-tasks", "lessons", "lesson-chronogram",
@@ -389,6 +398,7 @@ function resetProfileScopedState() {
   state.settingsSaved = cloneSettings(state.settings);
   state.settingsDirty = false;
   state.settingsLoadedProfileId = null;
+  applyPalette(defaultSettings().appearance.palette);
   state.scheduleEditing = false;
   state.chronogramDisciplineId = null;
   state.lessonWeekOffset = 0;
@@ -687,6 +697,7 @@ function renderCurrent() {
   if (state.view === "settings") return renderSettings();
   if (state.view === "settings-user") return renderSettingsUser();
   if (state.view === "settings-dashboard") return renderDashboardSettings();
+  if (state.view === "settings-personalization") return renderPersonalizationSettings();
   if (state.view === "personal") return renderPersonal();
   if (state.view === "profiles") return renderProfiles();
   if (state.view === "teachers") return renderTeachers();
@@ -946,6 +957,7 @@ async function loadDashboardData(profile) {
     state.settingsSaved = cloneSettings(settings);
     state.settingsDirty = false;
     state.settingsLoadedProfileId = profile.id;
+    applyPalette(settings.appearance?.palette);
     state.dashboardLoadedProfileId = profile.id;
     mountDashboard();
   } catch (error) {
@@ -1012,6 +1024,7 @@ async function loadSettingsForProfile(profile, { notify = false } = {}) {
       state.settingsSaved = cloneSettings(settings);
       state.settingsDirty = false;
       state.settingsLoadedProfileId = profile.id;
+      applyPalette(settings.appearance?.palette);
     }
   } catch (error) {
     if (state.currentProfile?.id === profile.id) {
@@ -1019,23 +1032,29 @@ async function loadSettingsForProfile(profile, { notify = false } = {}) {
       state.settingsSaved = cloneSettings(state.settings);
       state.settingsDirty = false;
       state.settingsLoadedProfileId = profile.id;
+      applyPalette(state.settings.appearance?.palette);
     }
     if (notify) showToast(error.message || "Não foi possível carregar as configurações salvas.", "error");
   }
   return state.settings;
 }
 
-async function finalizeDashboardSettings() {
+function isSettingsEditorView() {
+  return state.view === "settings-dashboard" || state.view === "settings-personalization";
+}
+
+async function finalizeSettingsChanges() {
   if (!state.settingsDirty) return true;
   const choice = await unsavedModal({
     title: "Salvar configurações?",
-    message: "Você alterou os widgets do Dashboard. Deseja salvar antes de sair?",
+    message: "Você alterou suas configurações. Deseja salvar antes de sair?",
     saveLabel: "Salvar e sair",
     discardLabel: "Descartar",
   });
   if (choice === "discard") {
     state.settings = cloneSettings(state.settingsSaved);
     state.settingsDirty = false;
+    applyPalette(state.settings.appearance?.palette);
     return true;
   }
   try {
@@ -1043,7 +1062,8 @@ async function finalizeDashboardSettings() {
     state.settingsSaved = cloneSettings(state.settings);
     state.settingsDirty = false;
     state.settingsLoadedProfileId = state.currentProfile.id;
-    showToast("Configurações do Dashboard salvas.");
+    applyPalette(state.settings.appearance?.palette);
+    showToast("Configurações salvas.");
     return true;
   } catch (error) {
     showToast(error.message || "Não foi possível salvar as configurações.", "error");
@@ -1057,13 +1077,14 @@ function renderSettings() {
     renderWithinLayout(settingsCatalogView());
     bindSettingsCatalog(root, {
       onBack: async () => {
-        if (state.view === "settings-dashboard" && !(await finalizeDashboardSettings())) return;
+        if (isSettingsEditorView() && !(await finalizeSettingsChanges())) return;
         state.view = state.returnView || "dashboard";
         renderCurrent();
       },
       onOpen: (category) => {
         if (category === "user") return renderSettingsUser();
         if (category === "dashboard") return renderDashboardSettings();
+        if (category === "personalization") return renderPersonalizationSettings();
       },
     });
   };
@@ -1098,7 +1119,7 @@ function renderDashboardSettings() {
     bindDashboardSettings(root, {
       settings: state.settings,
       onBack: async () => {
-        if (await finalizeDashboardSettings()) renderSettings();
+        if (await finalizeSettingsChanges()) renderSettings();
       },
       onChange: (nextSettings) => {
         state.settings = nextSettings;
@@ -1119,6 +1140,40 @@ function renderDashboardSettings() {
   if (state.currentProfile && state.settingsLoadedProfileId !== state.currentProfile.id) {
     loadSettingsForProfile(state.currentProfile, { notify: true }).then(() => {
       if (state.view === "settings-dashboard") mount();
+    });
+  }
+}
+
+function renderPersonalizationSettings() {
+  state.view = "settings-personalization";
+  const mount = () => {
+    renderWithinLayout(personalizationView({ settings: state.settings }));
+    bindPersonalization(root, {
+      settings: state.settings,
+      onBack: async () => {
+        if (await finalizeSettingsChanges()) renderSettings();
+      },
+      onChange: (nextSettings) => {
+        state.settings = nextSettings;
+        state.settingsDirty = JSON.stringify(state.settings) !== JSON.stringify(state.settingsSaved);
+        applyPalette(state.settings.appearance?.palette);
+        renderPersonalizationSettings();
+      },
+      onSave: async (settings) => {
+        state.settings = await saveSettings(state.user, state.currentProfile, settings);
+        state.settingsSaved = cloneSettings(state.settings);
+        state.settingsDirty = false;
+        state.settingsLoadedProfileId = state.currentProfile.id;
+        applyPalette(state.settings.appearance?.palette);
+        showToast("Personalização salva.");
+        renderPersonalizationSettings();
+      },
+    });
+  };
+  mount();
+  if (state.currentProfile && state.settingsLoadedProfileId !== state.currentProfile.id) {
+    loadSettingsForProfile(state.currentProfile, { notify: true }).then(() => {
+      if (state.view === "settings-personalization") mount();
     });
   }
 }
@@ -3396,7 +3451,7 @@ function renderWithinLayout(content) {
       });
     },
     onNavigate: async (view) => {
-      if (state.view === "settings-dashboard" && !(await finalizeDashboardSettings())) return;
+      if (isSettingsEditorView() && !(await finalizeSettingsChanges())) return;
       if (view === "schedules") {
         state.returnView = state.view;
         state.scheduleEditing = false;
@@ -3442,12 +3497,12 @@ function renderWithinLayout(content) {
       renderCurrent();
     },
     onSettings: async () => {
-      if (state.view === "settings-dashboard" && !(await finalizeDashboardSettings())) return;
+      if (isSettingsEditorView() && !(await finalizeSettingsChanges())) return;
       state.returnView = state.view;
       renderSettings();
     },
     onPersonal: async () => {
-      if (state.view === "settings-dashboard" && !(await finalizeDashboardSettings())) return;
+      if (isSettingsEditorView() && !(await finalizeSettingsChanges())) return;
       state.returnView = state.view;
       renderPersonal();
     },
@@ -3464,7 +3519,7 @@ function renderWithinLayout(content) {
       renderDisciplines();
     },
     onProfileChange: async (id) => {
-      if (state.view === "settings-dashboard" && !(await finalizeDashboardSettings())) return;
+      if (isSettingsEditorView() && !(await finalizeSettingsChanges())) return;
       state.currentProfile = state.profiles.find(
         (profile) => profile.id === id,
       );
@@ -3502,6 +3557,7 @@ function renderWithinLayout(content) {
       state.settingsSaved = cloneSettings(state.settings);
       state.settingsDirty = false;
       state.settingsLoadedProfileId = null;
+      applyPalette(state.settings.appearance?.palette);
       state.dashboardLoadedProfileId = null;
       storeProfile(state.currentProfile);
       renderCurrent();
@@ -3564,6 +3620,7 @@ async function handleLogout() {
 
 async function boot() {
   applyTheme(state.theme);
+  applyPalette(state.palette);
   // A primeira tela permanece o login mesmo antes da configuração; as ações explicam
   // exatamente o que falta em vez de expor uma tela técnica para quem vai usar o sistema.
   if (!isSupabaseConfigured()) return renderAuthScreen();

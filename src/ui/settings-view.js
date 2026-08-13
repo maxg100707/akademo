@@ -18,6 +18,13 @@ const categories = [
     iconName: "dashboard",
     terms: "dashboard painel widgets próxima aula calendario calendário favoritos horários ultimas últimas aulas ordem grade",
   },
+  {
+    id: "personalization",
+    title: "Personalização",
+    description: "Escolha a temática e as cores do seu espaço.",
+    iconName: "sparkles",
+    terms: "personalizacao personalização aparencia aparência tema tematica temática cores paleta palheta floresta chamas verde vermelho laranja",
+  },
 ];
 
 const settingsSearchEntries = [
@@ -30,6 +37,9 @@ const settingsSearchEntries = [
   { kind: "Widget", target: "dashboard", title: "Miniatura de horários", description: "Mostre uma versão compacta da grade semanal.", terms: "horario horarios horário horários grade semanal semana aulas" },
   { kind: "Widget", target: "dashboard", title: "Últimas aulas", description: "Abra os quatro registros de aula mais recentes.", terms: "ultimas últimas aulas recentes registros estudo resumo" },
   { kind: "Configuração", target: "dashboard", title: "Ordem dos widgets", description: "Organize a posição dos widgets do Dashboard.", terms: "ordem ordenar posicao posição mover setas widgets grade" },
+  { kind: "Categoria", target: "personalization", title: "Personalização", description: "Altere a temática de cores do AKADEMO.", terms: "personalizacao personalização aparencia aparência cores paleta palheta tema tematica temática" },
+  { kind: "Temática", target: "personalization", title: "Floresta", description: "A paleta verde original do AKADEMO.", terms: "floresta verde tema tematica temática paleta cores padrao padrão" },
+  { kind: "Temática", target: "personalization", title: "Chamas", description: "Tons equilibrados de vermelho e laranja.", terms: "chamas vermelho laranja quente tema tematica temática paleta cores" },
 ];
 
 const favoriteModules = [
@@ -64,7 +74,8 @@ function categoryCard(category) {
 }
 
 function searchResult(entry) {
-  return `<button class="settings-search-result" type="button" data-settings-result="${entry.target}"><span>${icon(entry.target === "dashboard" ? "dashboard" : "userRound", 18)}</span><div><small>${escapeHtml(entry.kind)}</small><strong>${escapeHtml(entry.title)}</strong><p>${escapeHtml(entry.description)}</p></div>${icon("arrowRight", 16)}</button>`;
+  const iconName = entry.target === "dashboard" ? "dashboard" : entry.target === "personalization" ? "sparkles" : "userRound";
+  return `<button class="settings-search-result" type="button" data-settings-result="${entry.target}"><span>${icon(iconName, 18)}</span><div><small>${escapeHtml(entry.kind)}</small><strong>${escapeHtml(entry.title)}</strong><p>${escapeHtml(entry.description)}</p></div>${icon("arrowRight", 16)}</button>`;
 }
 
 export function settingsCatalogView() {
@@ -140,6 +151,33 @@ export function dashboardSettingsView({ settings }) {
     <form data-dashboard-settings-form>
       <section class="settings-control-section"><header><div><span class="section-icon">${icon("dashboard", 20)}</span><div><h2>Widgets</h2><p>Os widgets ativados são distribuídos em uma grade que se adapta a qualquer tela.</p></div></div><small>Use as setas para mudar a ordem.</small></header><div class="dashboard-widget-settings-list">${normalized.dashboard.widgets.map((widget, index, widgets) => dashboardWidgetCard(widget, index, widgets)).join("")}</div>${favoritePicker(normalized.dashboard.favorites)}</section>
       <div class="settings-save-bar"><span>${icon("info", 16)} A visualização do Dashboard será atualizada ao salvar.</span><button class="button button--primary" type="submit">${icon("save", 17)} Salvar configurações</button></div>
+    </form>
+  </section>`;
+}
+
+function paletteChoice({ id, name, description, selected, swatches }) {
+  return `<label class="palette-choice ${selected ? "is-selected" : ""}">
+    <input type="radio" name="system-palette" value="${id}" data-palette-choice ${selected ? "checked" : ""}/>
+    <span class="palette-choice__preview palette-choice__preview--${id}">${swatches.map((swatch) => `<i style="--palette-swatch:${swatch}"></i>`).join("")}</span>
+    <span class="palette-choice__copy"><strong>${name}</strong><small>${description}</small></span>
+    <span class="palette-choice__check">${icon("check", 16)}</span>
+  </label>`;
+}
+
+export function personalizationView({ settings }) {
+  const normalized = normalizeSettings(settings);
+  const palette = normalized.appearance.palette;
+  return `<section class="page personalization-settings-page">
+    <button class="back-link" type="button" data-personalization-back>${icon("arrowLeft", 18)} Configurações</button>
+    <form data-personalization-form>
+      <section class="settings-control-section personalization-section">
+        <header><div><span class="section-icon">${icon("sparkles", 20)}</span><div><h2>Temática do sistema</h2><p>Escolha uma paleta que acompanha os modos claro e escuro sem perder contraste.</p></div></div></header>
+        <div class="palette-choice-grid" role="radiogroup" aria-label="Escolher temática do sistema">
+          ${paletteChoice({ id: "forest", name: "Floresta", description: "A identidade verde original do AKADEMO.", selected: palette === "forest", swatches: ["#006333", "#00bb5b", "#4bd39b", "#9ed33e"] })}
+          ${paletteChoice({ id: "flames", name: "Chamas", description: "Vermelho e laranja equilibrados e confortáveis.", selected: palette === "flames", swatches: ["#7d2f21", "#c95638", "#d98245", "#b5672a"] })}
+        </div>
+      </section>
+      <div class="settings-save-bar"><span>${icon("info", 16)} A temática será aplicada em todo o seu espaço.</span><button class="button button--primary" type="submit">${icon("save", 17)} Salvar personalização</button></div>
     </form>
   </section>`;
 }
@@ -245,6 +283,29 @@ export function bindDashboardSettings(root, { settings, onBack, onChange, onSave
     } catch (error) {
       setButtonLoading(button, false);
       showToast(error.message || "Não foi possível salvar as configurações.", "error");
+    }
+  });
+}
+
+export function bindPersonalization(root, { settings, onBack, onChange, onSave }) {
+  const form = root.querySelector("[data-personalization-form]");
+  root.querySelector("[data-personalization-back]")?.addEventListener("click", onBack);
+  root.querySelectorAll("[data-palette-choice]").forEach((input) => input.addEventListener("change", () => {
+    if (!input.checked) return;
+    const next = normalizeSettings(settings);
+    next.appearance.palette = input.value;
+    onChange(normalizeSettings(next));
+  }));
+  form?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const button = form.querySelector("[type=submit]");
+    try {
+      setButtonLoading(button, true);
+      await onSave(normalizeSettings(settings));
+      setButtonLoading(button, false);
+    } catch (error) {
+      setButtonLoading(button, false);
+      showToast(error.message || "Não foi possível salvar a personalização.", "error");
     }
   });
 }

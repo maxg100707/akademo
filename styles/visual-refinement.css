@@ -199,3 +199,67 @@ body .video-card:hover .video-card__cover { background-color: var(--green-forest
   .page-heading__actions .button { flex: 1 1 170px; }
   .dashboard-welcome { margin-bottom: 14px; font-size: 19px; }
 }
+
+/* Chamas: contraste específico para superfícies quentes e cartões de destaque. */
+body[data-palette="flames"] .button--primary,
+body[data-palette="flames"] .button--danger { color: var(--on-green) !important; }
+
+body[data-palette="flames"] .exam-card,
+body[data-palette="flames"] .presentation-card {
+  color: var(--text) !important;
+  border-color: var(--line) !important;
+  background-color: var(--surface-muted) !important;
+}
+
+body[data-palette="flames"] .exam-card > span,
+body[data-palette="flames"] .presentation-card > span {
+  color: var(--green-deep) !important;
+  background-color: var(--green-pale) !important;
+}
+
+body[data-palette="flames"] .exam-card:hover,
+body[data-palette="flames"] .presentation-card:hover {
+  background-color: color-mix(in srgb, var(--surface-muted) 82%, var(--green-pale)) !important;
+  border-color: var(--green-strong) !important;
+}
+
+body[data-palette="flames"] .mindmaps-empty,
+body[data-palette="flames"] .mindmap-fixed-context {
+  color: var(--text) !important;
+  background-color: var(--surface-muted) !important;
+}
+
+body[data-palette="flames"] .mindmaps-empty p,
+body[data-palette="flames"] .mindmap-fixed-context small,
+body[data-palette="flames"] .mindmap-fixed-context p { color: var(--text-soft) !important; }
+
+body[data-palette="flames"] .videos-context { color: var(--on-strong) !important; }
+
+body[data-theme="dark"][data-palette="flames"] .exam-card,
+body[data-theme="dark"][data-palette="flames"] .presentation-card {
+  background-color: var(--surface-deep) !important;
+  border-color: var(--line) !important;
+}
+
+body[data-theme="dark"][data-palette="flames"] .exam-card:hover,
+body[data-theme="dark"][data-palette="flames"] .presentation-card:hover {
+  background-color: color-mix(in srgb, var(--surface-deep) 82%, var(--green-strong)) !important;
+  border-color: var(--green-mint) !important;
+}
+
+body[data-theme="dark"][data-palette="flames"] .exam-topic-card,
+body[data-theme="dark"][data-palette="flames"] .exam-topic-card > div,
+body[data-theme="dark"][data-palette="flames"] .exam-topic-card > span,
+body[data-theme="dark"][data-palette="flames"] .exam-topic-card small,
+body[data-theme="dark"][data-palette="flames"] .exam-topic-card p,
+body[data-theme="dark"][data-palette="flames"] .exam-topic-card em,
+body[data-theme="dark"][data-palette="flames"] .mindmap-card__art,
+body[data-theme="dark"][data-palette="flames"] .mindmap-panel__group > button:hover,
+body[data-theme="dark"][data-palette="flames"] .mindmap-panel__group--style > div > button:hover,
+body[data-theme="dark"][data-palette="flames"] .mindmap-panel__group--style > div > button.is-active,
+body[data-theme="dark"][data-palette="flames"] .mindmap-text-tools button:hover,
+body[data-theme="dark"][data-palette="flames"] .mindmap-text-tools button.is-active,
+body[data-theme="dark"][data-palette="flames"] .mindmap-size-tools button:hover,
+body[data-theme="dark"][data-palette="flames"] .mindmap-size-tools button.is-active,
+body[data-theme="dark"][data-palette="flames"] .mindmap-viewport-tools button:hover,
+body[data-theme="dark"][data-palette="flames"] .mindmap-canvas-actions button { color: var(--on-green) !important; }
