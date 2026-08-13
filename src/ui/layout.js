@@ -18,6 +18,10 @@ const organizationModules = [
   { view: "chronogram", iconName: "file", label: "Cronograma", isActive: (currentView) => currentView === "chronogram" },
 ];
 
+const contentModules = [
+  { view: "mindmaps", iconName: "mindMap", label: "Mapas mentais", isActive: (currentView) => currentView === "mindmaps" || currentView === "mindmap-editor" },
+];
+
 function navigationGroup({ view, key, label, iconName, modules, isExpanded }) {
   const hasActiveModule = modules.some((module) => module.isActive(view));
   const items = modules.map((module) => `<button class="nav-item ${module.isActive(view) ? "is-active" : ""}" data-nav="${module.view}">${icon(module.iconName, 19)}<span>${module.label}</span></button>`).join("");
@@ -25,7 +29,7 @@ function navigationGroup({ view, key, label, iconName, modules, isExpanded }) {
   return `<section class="nav-group ${isExpanded ? "is-expanded" : ""} ${hasActiveModule ? "has-active" : ""}" aria-label="${label}"><button class="nav-group__trigger" type="button" data-menu-group-toggle="${key}" aria-expanded="${isExpanded}" aria-controls="${contentId}"><span class="nav-group__icon">${icon(iconName, 18)}</span><span class="nav-group__copy"><strong>${label}</strong></span>${icon("chevronDown", 17)}</button><div class="nav-group__items" id="${contentId}">${items}</div></section>`;
 }
 
-export function renderLayout(root, { record, photoUrl, profiles, currentProfile, view, content, theme, basicRegistrationExpanded = false, organizationExpanded = false }) {
+export function renderLayout(root, { record, photoUrl, profiles, currentProfile, view, content, theme, basicRegistrationExpanded = false, organizationExpanded = false, contentExpanded = false }) {
   const course = escapeHtml(currentProfile?.curso || "Perfil de estudo");
   root.innerHTML = `<div class="app-shell" data-theme="${theme}">
     <aside class="sidebar" aria-label="Menu principal">
@@ -42,7 +46,7 @@ export function renderLayout(root, { record, photoUrl, profiles, currentProfile,
           <button class="profile-popover__logout" data-logout>${icon("logout", 18)}<span>Sair da conta</span></button>
         </div>
       </div>
-      <nav class="sidebar-nav"><span class="sidebar-nav__label">MENU</span><button class="nav-item ${view === "dashboard" ? "is-active" : ""}" data-nav="dashboard">${icon("dashboard", 20)}<span>Dashboard</span></button>${navigationGroup({ view, key: "basic", label: "Cadastros B&aacute;sicos", iconName: "idCard", modules: basicRegistrationModules, isExpanded: basicRegistrationExpanded })}${navigationGroup({ view, key: "organization", label: "Organiza&ccedil;&atilde;o B&aacute;sica", iconName: "organize", modules: organizationModules, isExpanded: organizationExpanded })}</nav>
+      <nav class="sidebar-nav"><span class="sidebar-nav__label">MENU</span><button class="nav-item ${view === "dashboard" ? "is-active" : ""}" data-nav="dashboard">${icon("dashboard", 20)}<span>Dashboard</span></button>${navigationGroup({ view, key: "basic", label: "Cadastros B&aacute;sicos", iconName: "idCard", modules: basicRegistrationModules, isExpanded: basicRegistrationExpanded })}${navigationGroup({ view, key: "organization", label: "Organiza&ccedil;&atilde;o B&aacute;sica", iconName: "organize", modules: organizationModules, isExpanded: organizationExpanded })}${navigationGroup({ view, key: "content", label: "Conte&uacute;dos", iconName: "mindMap", modules: contentModules, isExpanded: contentExpanded })}</nav>
       <div class="sidebar__bottom"><button class="mobile-close-menu" data-mobile-close>${icon("close", 18)}<span>Fechar menu</span></button><div class="sidebar__tip">${icon("sparkles", 18)}<span>Faça hoje valer a pena.</span></div></div>
     </aside>
     <div class="mobile-menu-overlay" data-mobile-close></div>

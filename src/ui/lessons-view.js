@@ -129,7 +129,7 @@ function lessonTopicCard(lesson) {
 
 export function lessonDetailView({ lesson, occurrence }) {
   const date = occurrence?.startsAt || new Date(lesson.created_at);
-  return `<section class="page lesson-detail-page"><button class="back-link" data-lesson-back>${icon("arrowLeft", 18)} Aulas</button><section class="lesson-detail-hero"><div><span class="eyebrow">AULA REGISTRADA</span><h1>${escapeHtml(lesson.tema)}</h1><p>${escapeHtml(occurrence?.discipline?.nome_disciplina || "Disciplina")} \u00b7 ${escapeHtml(dateLabel(date))}</p></div><span>${icon("check", 23)}</span></section>${lessonTopicCard(lesson)}<section class="lesson-summary-card"><div><span>${icon("book", 18)}</span><div><small>RESUMO DA AULA</small><p>${lesson.resumo ? escapeHtml(lesson.resumo).replace(/\n/g, "<br/>") : "Nenhum resumo foi adicionado para esta aula."}</p></div></div></section><section class="lesson-tools"><div class="lesson-tools__heading"><div><span class="eyebrow">FERRAMENTAS</span><h2>Recursos desta aula</h2><p>Centralize materiais e seus pr\u00f3ximos passos no mesmo lugar.</p></div></div><div class="lesson-tools-grid"><button class="lesson-tool-card" data-open-lesson-materials><span>${icon("file", 24)}</span><div><small>ARQUIVOS</small><strong>Materiais</strong><p>Slides, listas, documentos e outros conte\u00fados.</p></div><em>Abrir ${icon("arrowRight", 17)}</em></button><button class="lesson-tool-card lesson-tool-card--tasks" data-open-lesson-tasks><span>${icon("check", 24)}</span><div><small>ORGANIZA\u00c7\u00c3O</small><strong>Tarefas</strong><p>Entregas e pend\u00eancias que nasceram nesta aula.</p></div><em>Abrir ${icon("arrowRight", 17)}</em></button></div></section></section>`;
+  return `<section class="page lesson-detail-page"><button class="back-link" data-lesson-back>${icon("arrowLeft", 18)} Aulas</button><section class="lesson-detail-hero"><div><span class="eyebrow">AULA REGISTRADA</span><h1>${escapeHtml(lesson.tema)}</h1><p>${escapeHtml(occurrence?.discipline?.nome_disciplina || "Disciplina")} \u00b7 ${escapeHtml(dateLabel(date))}</p></div><span>${icon("check", 23)}</span></section>${lessonTopicCard(lesson)}<section class="lesson-summary-card"><div><span>${icon("book", 18)}</span><div><small>RESUMO DA AULA</small><p>${lesson.resumo ? escapeHtml(lesson.resumo).replace(/\n/g, "<br/>") : "Nenhum resumo foi adicionado para esta aula."}</p></div></div></section><section class="lesson-tools"><div class="lesson-tools__heading"><div><span class="eyebrow">FERRAMENTAS</span><h2>Recursos desta aula</h2><p>Centralize materiais e seus pr\u00f3ximos passos no mesmo lugar.</p></div></div><div class="lesson-tools-grid"><button class="lesson-tool-card" data-open-lesson-materials><span>${icon("file", 24)}</span><div><small>ARQUIVOS</small><strong>Materiais</strong><p>Slides, listas, documentos e outros conte\u00fados.</p></div><em>Abrir ${icon("arrowRight", 17)}</em></button><button class="lesson-tool-card lesson-tool-card--tasks" data-open-lesson-tasks><span>${icon("check", 24)}</span><div><small>ORGANIZA\u00c7\u00c3O</small><strong>Tarefas</strong><p>Entregas e pend\u00eancias que nasceram nesta aula.</p></div><em>Abrir ${icon("arrowRight", 17)}</em></button><button class="lesson-tool-card lesson-tool-card--mindmaps" data-open-lesson-mindmaps><span>${icon("mindMap", 24)}</span><div><small>CONTE\u00daDO VISUAL</small><strong>Mapas mentais</strong><p>Conecte os conceitos e desenvolva suas ideias.</p></div><em>Abrir ${icon("arrowRight", 17)}</em></button></div></section></section>`;
 }
 
 function lessonTopicEditorModal(lesson) {
@@ -251,7 +251,7 @@ export function bindLessonForm(root, { onBack, onSave }) {
 
 export function bindLessonDetail(
   root,
-  { onBack, onOpenMaterials, onOpenTasks, onEditTopic },
+  { onBack, onOpenMaterials, onOpenTasks, onOpenMindMaps, onEditTopic },
 ) {
   root
     .querySelectorAll("[data-lesson-back]")
@@ -262,6 +262,9 @@ export function bindLessonDetail(
   root
     .querySelector("[data-open-lesson-tasks]")
     .addEventListener("click", onOpenTasks);
+  root
+    .querySelector("[data-open-lesson-mindmaps]")
+    .addEventListener("click", onOpenMindMaps);
   root
     .querySelector("[data-edit-lesson-topic]")
     .addEventListener("click", onEditTopic);

@@ -185,7 +185,7 @@ function examTopicCard(topic, contents) {
 }
 
 export function examDetailView({ exam, discipline, topics, contents }) {
-  return `<section class="page exam-detail-page"><button class="back-link" data-exam-back>${icon("arrowLeft", 18)} Provas</button><section class="exam-detail-hero"><div><span class="eyebrow">PROVA PROGRAMADA</span><h1>${escapeHtml(exam.titulo)}</h1><p>${escapeHtml(discipline?.nome_disciplina || "Disciplina")} \u00b7 ${formatDate(exam.data)}</p></div><span>${icon("check", 24)}</span></section><section class="exam-detail-summary"><span>${icon("book", 18)}</span><div><small>RESUMO DA REVIS\u00c3O</small><p>${proofSummary(topics)}</p></div></section><section class="exam-topics"><div class="lesson-contents__heading"><div><span class="eyebrow">TEMAS</span><h2>Plano de estudos</h2><p>Acesse um tema para revisar materiais e links de apoio.</p></div><div class="exam-detail-actions"><button class="button button--secondary" data-open-exam-materials>${icon("file", 17)} Materiais</button><button class="button button--primary" data-add-exam-topic>${icon("plus", 17)} Adicionar tema</button></div></div><div class="exam-topic-grid">${topics.length ? topics.map((topic) => examTopicCard(topic, contents)).join("") : `<div class="exams-empty"><span>${icon("book", 27)}</span><h3>Comece pelos temas</h3><p>Adicione assuntos para montar sua revis\u00e3o.</p></div>`}</div></section></section>`;
+  return `<section class="page exam-detail-page"><button class="back-link" data-exam-back>${icon("arrowLeft", 18)} Provas</button><section class="exam-detail-hero"><div><span class="eyebrow">PROVA PROGRAMADA</span><h1>${escapeHtml(exam.titulo)}</h1><p>${escapeHtml(discipline?.nome_disciplina || "Disciplina")} \u00b7 ${formatDate(exam.data)}</p></div><span>${icon("check", 24)}</span></section><section class="exam-detail-summary"><span>${icon("book", 18)}</span><div><small>RESUMO DA REVIS\u00c3O</small><p>${proofSummary(topics)}</p></div></section><section class="exam-topics"><div class="lesson-contents__heading"><div><span class="eyebrow">TEMAS</span><h2>Plano de estudos</h2><p>Acesse um tema para revisar materiais e links de apoio.</p></div><div class="exam-detail-actions"><button class="button button--secondary" data-open-exam-mindmaps>${icon("mindMap", 17)} Mapas</button><button class="button button--secondary" data-open-exam-materials>${icon("file", 17)} Materiais</button><button class="button button--primary" data-add-exam-topic>${icon("plus", 17)} Adicionar tema</button></div></div><div class="exam-topic-grid">${topics.length ? topics.map((topic) => examTopicCard(topic, contents)).join("") : `<div class="exams-empty"><span>${icon("book", 27)}</span><h3>Comece pelos temas</h3><p>Adicione assuntos para montar sua revis\u00e3o.</p></div>`}</div></section></section>`;
 }
 
 function topicContentCards(topic, contents) {
@@ -227,9 +227,10 @@ export function bindExams(root, { disciplines, occurrencesByDiscipline, onCreate
   root.querySelectorAll("[data-open-exam]").forEach((button) => button.addEventListener("click", () => onOpen(button.dataset.openExam)));
 }
 
-export function bindExamDetail(root, { exam, topics, contents, onBack, onOpenTopic, onOpenMaterials, onCreateTopic }) {
+export function bindExamDetail(root, { exam, topics, contents, onBack, onOpenTopic, onOpenMaterials, onOpenMindMaps, onCreateTopic }) {
   root.querySelector("[data-exam-back]").addEventListener("click", onBack);
   root.querySelector("[data-open-exam-materials]").addEventListener("click", onOpenMaterials);
+  root.querySelector("[data-open-exam-mindmaps]").addEventListener("click", onOpenMindMaps);
   root.querySelector("[data-add-exam-topic]").addEventListener("click", () => openExamTopicEditor({ topic: { tema: "", resumo: "", links: [], conteudos: [] }, contents, onUpdate: async (_topic, values) => onCreateTopic(values) }));
   root.querySelectorAll("[data-open-exam-topic]").forEach((button) => button.addEventListener("click", () => onOpenTopic(button.dataset.openExamTopic)));
 }

@@ -80,6 +80,12 @@ import {
   updatePresentation,
 } from "./services/presentations.js";
 import {
+  createMindMap,
+  deleteMindMap,
+  getMindMaps,
+  updateMindMap,
+} from "./services/mindmaps.js";
+import {
   applyPendingAvatar,
   ensureUserRecord,
   getUserRecord,
@@ -145,6 +151,12 @@ import {
   presentationsView,
 } from "./ui/presentations-view.js";
 import { bindFiles, filesView } from "./ui/files-view.js";
+import {
+  bindMindMapEditor,
+  bindMindMapsCatalog,
+  mindMapEditorView,
+  mindMapsView,
+} from "./ui/mindmaps-view.js";
 import { showToast } from "./ui/components.js";
 import {
   getStoredProfile,
@@ -180,6 +192,9 @@ const state = {
   activeExamContents: [],
   activePresentation: null,
   activePresentationContents: [],
+  mindMaps: [],
+  activeMindMap: null,
+  mindMapScope: null,
   profileContents: [],
   dashboardLoadedProfileId: null,
   view: "dashboard",
@@ -189,6 +204,7 @@ const state = {
   fileSearch: "",
   basicRegistrationExpanded: localStorage.getItem("akademo.sidebar.basic-registration-expanded") === "true",
   organizationExpanded: localStorage.getItem("akademo.sidebar.organization-expanded") === "true",
+  contentExpanded: localStorage.getItem("akademo.sidebar.content-expanded") === "true",
   theme: localStorage.getItem(APP_STORAGE_KEYS.theme) || "light",
 };
 let hydrationInProgressFor = null;
@@ -367,6 +383,8 @@ function renderCurrent() {
   if (state.view === "chronogram") return renderChronogram();
   if (state.view === "tasks") return renderTasks();
   if (state.view === "files") return renderFiles();
+  if (state.view === "mindmaps") return renderMindMaps();
+  if (state.view === "mindmap-editor") return renderMindMapEditor();
   if (state.view === "exams") return renderExams();
   if (state.view === "exam-detail") return renderExamDetail();
   if (state.view === "exam-topic") return renderExamTopic();
@@ -1645,6 +1663,7 @@ function renderExamDetail() {
     topics: state.examTopics,
     contents: state.activeExamContents,
     onBack: examBack,
+    onOpenMindMaps: () => renderMindMaps(scopeForMindMaps("exam", exam)),
     onOpenTopic: (id) => {
       const topic = state.examTopics.find((item) => item.id === id);
       if (!topic) return;
@@ -2036,6 +2055,8 @@ function renderPresentationDetail() {
     presentation,
     contents: state.activePresentationContents,
     onBack: presentationBack,
+    onOpenMindMaps: () =>
+      renderMindMaps(scopeForMindMaps("presentation", presentation)),
     onEdit: () =>
       configurePresentation(presentation).catch((error) =>
         showToast(
@@ -2316,6 +2337,7 @@ function renderLessonDetail() {
   );
   bindLessonDetail(root, {
     onBack: lessonBack,
+    onOpenMindMaps: () => renderMindMaps(scopeForMindMaps("lesson", lesson)),
     onOpenMaterials: () =>
       renderLessonMaterials().catch((error) =>
         showToast(
@@ -2454,25 +2476,130 @@ async function renderLessonTasks() {
   });
 }
 
+function mindMapReferences() {
+  return {
+    disciplines: state.disciplines,
+    lessons: state.lessons,
+    exams: state.exams,
+    presentations: state.presentations,
+  };
+}
+
+async function loadMindMapData() {
+  const profile = state.currentProfile;
+  if (!profile) return;
+  const [maps, disciplines, lessons, exams, presentations] = await Promise.all([
+    getMindMaps(profile.id),
+    getDisciplines(profile.id),
+    getLessons(profile.id),
+    getExams(profile.id),
+    getPresentations(profile.id),
+  ]);
+  if (state.currentProfile?.id !== profile.id) return;
+  state.mindMaps = maps;
+  state.disciplines = disciplines;
+  state.lessons = lessons;
+  state.exams = exams;
+  state.presentations = presentations;
+}
+
+function scopeForMindMaps(type, record) {
+  return {
+    type,
+    field: type === "lesson" ? "aula" : type === "exam" ? "prova" : "apresentacao",
+    record,
+    disciplineId: record.disciplina,
+  };
+}
+
+function mindMapsBack() {
+  const scope = state.mindMapScope;
+  state.mindMapScope = null;
+  state.activeMindMap = null;
+  if (scope?.type === "lesson") return renderLessonDetail();
+  if (scope?.type === "exam") return renderExamDetail();
+  if (scope?.type === "presentation") return renderPresentationDetail();
+  state.view = "dashboard";
+  renderCurrent();
+}
+
+async function renderMindMaps(scope = state.mindMapScope) {
+  const profile = state.currentProfile;
+  if (!profile) return showOnboarding();
+  state.view = "mindmaps";
+  state.mindMapScope = scope || null;
+  try {
+    await loadMindMapData();
+    if (state.view !== "mindmaps" || state.currentProfile?.id !== profile.id) return;
+    renderWithinLayout(mindMapsView({ maps: state.mindMaps, references: mindMapReferences(), scope: state.mindMapScope }));
+    bindMindMapsCatalog(root, {
+      maps: state.mindMaps,
+      references: mindMapReferences(),
+      scope: state.mindMapScope,
+      onBack: mindMapsBack,
+      onCreate: async (values) => {
+        const map = await createMindMap(state.user, profile, values);
+        state.mindMaps = [map, ...state.mindMaps];
+        openMindMap(map, state.mindMapScope);
+        return map;
+      },
+      onOpen: (map) => openMindMap(map, state.mindMapScope),
+    });
+  } catch (error) {
+    showToast(error.message || "Não foi possível carregar os mapas mentais.", "error");
+    mindMapsBack();
+  }
+}
+
+function openMindMap(map, scope = state.mindMapScope) {
+  state.activeMindMap = map;
+  state.mindMapScope = scope || null;
+  state.view = "mindmap-editor";
+  renderMindMapEditor();
+}
+
+function renderMindMapEditor() {
+  const map = state.activeMindMap;
+  if (!map) return renderMindMaps(state.mindMapScope);
+  state.view = "mindmap-editor";
+  renderWithinLayout(mindMapEditorView({ map, scope: state.mindMapScope, references: mindMapReferences() }));
+  bindMindMapEditor(root, {
+    map,
+    onBack: () => renderMindMaps(state.mindMapScope),
+    onSave: async (values) => {
+      const updated = await updateMindMap(map.id, state.user, state.currentProfile, map, values);
+      state.activeMindMap = updated;
+      state.mindMaps = state.mindMaps.map((item) => item.id === updated.id ? updated : item);
+    },
+    onDelete: async () => {
+      try {
+        await deleteMindMap(map.id, state.currentProfile.id);
+        state.mindMaps = state.mindMaps.filter((item) => item.id !== map.id);
+        state.activeMindMap = null;
+        showToast("Mapa mental excluído.");
+        renderMindMaps(state.mindMapScope);
+      } catch (error) {
+        showToast(error.message || "Não foi possível excluir o mapa mental.", "error");
+      }
+    },
+  });
+}
+
 function renderWithinLayout(content) {
   renderLayout(root, { ...state, content });
   bindLayout(root, {
     onMenuGroupToggle: (group, isExpanded) => {
-      if (group === "basic") {
-        state.basicRegistrationExpanded = isExpanded;
-        localStorage.setItem("akademo.sidebar.basic-registration-expanded", isExpanded);
-        if (isExpanded) {
-          state.organizationExpanded = false;
-          localStorage.setItem("akademo.sidebar.organization-expanded", "false");
-        }
-        return;
-      }
-      state.organizationExpanded = isExpanded;
-      localStorage.setItem("akademo.sidebar.organization-expanded", isExpanded);
-      if (isExpanded) {
-        state.basicRegistrationExpanded = false;
-        localStorage.setItem("akademo.sidebar.basic-registration-expanded", "false");
-      }
+      const groups = {
+        basic: ["basicRegistrationExpanded", "akademo.sidebar.basic-registration-expanded"],
+        organization: ["organizationExpanded", "akademo.sidebar.organization-expanded"],
+        content: ["contentExpanded", "akademo.sidebar.content-expanded"],
+      };
+      if (!groups[group]) return;
+      Object.entries(groups).forEach(([key, [stateKey, storageKey]]) => {
+        const value = key === group ? isExpanded : false;
+        state[stateKey] = value;
+        localStorage.setItem(storageKey, String(value));
+      });
     },
     onNavigate: (view) => {
       if (view === "schedules") {
@@ -2507,6 +2634,11 @@ function renderWithinLayout(content) {
         state.fileDisciplineFilter = "";
         state.fileSearch = "";
       }
+      if (view === "mindmaps") {
+        state.returnView = state.view;
+        state.mindMapScope = null;
+        state.activeMindMap = null;
+      }
       state.view = view;
       renderCurrent();
     },
@@ -2539,6 +2671,9 @@ function renderWithinLayout(content) {
       state.exams = [];
       state.examTopics = [];
       state.presentations = [];
+      state.mindMaps = [];
+      state.activeMindMap = null;
+      state.mindMapScope = null;
       state.scheduleEditing = false;
       state.chronogramDisciplineId = null;
       state.lessonWeekOffset = 0;

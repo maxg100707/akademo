@@ -196,7 +196,7 @@ function linkCards(presentation) {
 }
 
 export function presentationDetailView({ presentation, discipline, contents }) {
-  return `<section class="page presentation-detail-page"><button class="back-link" data-presentation-back>${icon("arrowLeft", 18)} Apresentações</button><section class="presentation-detail-hero"><div><span class="eyebrow">APRESENTAÇÃO PROGRAMADA</span><h1>${escapeHtml(presentation.titulo)}</h1><p>${escapeHtml(discipline?.nome_disciplina || "Disciplina")} · ${escapeHtml(formatDate(presentation.data))}</p></div><span>${icon("presentation", 24)}</span></section><section class="presentation-instructions"><div><span>${icon("info", 18)}</span><div><small>INSTRUÇÕES</small><p>${presentation.instrucao ? escapeHtml(presentation.instrucao) : "Ainda não há instruções registradas para esta apresentação."}</p></div></div><button class="button button--secondary" data-edit-presentation>${icon("edit", 16)} Configurar</button></section><section class="presentation-section"><div class="presentation-section__head"><div><span class="eyebrow">MATERIAIS</span><h2>Conteúdos selecionados</h2><p>Abra arquivos da disciplina que foram separados para esta apresentação.</p></div><button class="button button--primary" data-upload-presentation-content>${icon("upload", 16)} Adicionar arquivo</button></div>${contentCards(presentation, contents)}</section><section class="presentation-section"><div><span class="eyebrow">APOIO</span><h2>Links de apoio</h2></div>${linkCards(presentation)}</section></section>`;
+  return `<section class="page presentation-detail-page"><button class="back-link" data-presentation-back>${icon("arrowLeft", 18)} Apresentações</button><section class="presentation-detail-hero"><div><span class="eyebrow">APRESENTAÇÃO PROGRAMADA</span><h1>${escapeHtml(presentation.titulo)}</h1><p>${escapeHtml(discipline?.nome_disciplina || "Disciplina")} · ${escapeHtml(formatDate(presentation.data))}</p></div><span>${icon("presentation", 24)}</span></section><section class="presentation-instructions"><div><span>${icon("info", 18)}</span><div><small>INSTRUÇÕES</small><p>${presentation.instrucao ? escapeHtml(presentation.instrucao) : "Ainda não há instruções registradas para esta apresentação."}</p></div></div><div class="presentation-instructions__actions"><button class="button button--secondary" data-open-presentation-mindmaps>${icon("mindMap", 16)} Mapas mentais</button><button class="button button--secondary" data-edit-presentation>${icon("edit", 16)} Configurar</button></div></section><section class="presentation-section"><div class="presentation-section__head"><div><span class="eyebrow">MATERIAIS</span><h2>Conteúdos selecionados</h2><p>Abra arquivos da disciplina que foram separados para esta apresentação.</p></div><button class="button button--primary" data-upload-presentation-content>${icon("upload", 16)} Adicionar arquivo</button></div>${contentCards(presentation, contents)}</section><section class="presentation-section"><div><span class="eyebrow">APOIO</span><h2>Links de apoio</h2></div>${linkCards(presentation)}</section></section>`;
 }
 
 export function bindPresentations(root, { disciplines, occurrencesByDiscipline, onCreate, onCreated, onOpen }) {
@@ -208,9 +208,10 @@ export function bindPresentations(root, { disciplines, occurrencesByDiscipline, 
   );
 }
 
-export function bindPresentationDetail(root, { presentation, contents, onBack, onEdit, onOpenContent, onUpload }) {
+export function bindPresentationDetail(root, { presentation, contents, onBack, onEdit, onOpenMindMaps, onOpenContent, onUpload }) {
   root.querySelector("[data-presentation-back]").addEventListener("click", onBack);
   root.querySelector("[data-edit-presentation]").addEventListener("click", onEdit);
+  root.querySelector("[data-open-presentation-mindmaps]").addEventListener("click", onOpenMindMaps);
   root
     .querySelector("[data-upload-presentation-content]")
     ?.addEventListener("click", () =>
