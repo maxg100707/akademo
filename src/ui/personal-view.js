@@ -12,7 +12,7 @@ export function personalView({ record, photoUrl, onBack, onSave }) {
       <label class="field field--readonly"><span>E-mail</span><span class="field__control">${icon("userRound", 18)}<input value="${escapeHtml(record?.email || "")}" readonly /></span><small>O e-mail é gerenciado pela sua conta de acesso.</small></label>
       <div class="form-footer"><button class="button button--primary" type="submit">${icon("save", 17)} Salvar alterações</button></div>
     </form></section>
-    <aside class="settings-aside"><span class="settings-aside__icon">${icon("sparkles", 21)}</span><h3>Um perfil que é seu</h3><p>Uma foto e um nome reconhecível tornam o seu espaço mais pessoal.</p></aside></div>
+    </div>
   </section>`;
   const root = document.querySelector("#app");
   // A página é injetada pelo layout; este retorno mantém a construção do conteúdo independente.

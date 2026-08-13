@@ -19,6 +19,13 @@ body *, body *::before, body *::after {
 .active-profile-summary,
 .mobile-topbar,
 .mobile-profile-indicator { background-color: var(--surface) !important; }
+
+/* A edição de dados pessoais permanece centrada e confortável em qualquer largura. */
+.settings-page .settings-grid {
+  grid-template-columns: minmax(0, 620px);
+  justify-content: center;
+}
+.settings-page .settings-card { width: 100%; }
 .teacher-setup__form,
 .discipline-setup__form,
 .lessons-week-navigation,
