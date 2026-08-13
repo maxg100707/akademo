@@ -196,7 +196,13 @@ function linkCards(presentation) {
 }
 
 export function presentationDetailView({ presentation, discipline, contents }) {
-  return `<section class="page presentation-detail-page"><button class="back-link" data-presentation-back>${icon("arrowLeft", 18)} Apresentações</button><section class="presentation-detail-hero"><div><span class="eyebrow">APRESENTAÇÃO PROGRAMADA</span><h1>${escapeHtml(presentation.titulo)}</h1><p>${escapeHtml(discipline?.nome_disciplina || "Disciplina")} · ${escapeHtml(formatDate(presentation.data))}</p></div><span>${icon("presentation", 24)}</span></section><section class="presentation-instructions"><div><span>${icon("info", 18)}</span><div><small>INSTRUÇÕES</small><p>${presentation.instrucao ? escapeHtml(presentation.instrucao) : "Ainda não há instruções registradas para esta apresentação."}</p></div></div><div class="presentation-instructions__actions"><button class="button button--secondary" data-open-presentation-mindmaps>${icon("mindMap", 16)} Mapas mentais</button><button class="button button--secondary" data-edit-presentation>${icon("edit", 16)} Configurar</button></div></section><section class="presentation-section"><div class="presentation-section__head"><div><span class="eyebrow">MATERIAIS</span><h2>Conteúdos selecionados</h2><p>Abra arquivos da disciplina que foram separados para esta apresentação.</p></div><button class="button button--primary" data-upload-presentation-content>${icon("upload", 16)} Adicionar arquivo</button></div>${contentCards(presentation, contents)}</section><section class="presentation-section"><div><span class="eyebrow">APOIO</span><h2>Links de apoio</h2></div>${linkCards(presentation)}</section></section>`;
+  const materialCount = asArray(presentation.conteudos).length;
+  const linkCount = asArray(presentation.links).filter((link) => safeUrl(link?.url) && String(link?.titulo || "").trim()).length;
+  return `<section class="page presentation-detail-page"><button class="back-link" data-presentation-back>${icon("arrowLeft", 18)} Apresentações</button><section class="presentation-detail-hero"><div><span class="eyebrow">APRESENTAÇÃO PROGRAMADA</span><h1>${escapeHtml(presentation.titulo)}</h1><p>${escapeHtml(discipline?.nome_disciplina || "Disciplina")} · ${escapeHtml(formatDate(presentation.data))}</p></div><span>${icon("presentation", 24)}</span></section><section class="presentation-instructions"><div><span>${icon("info", 18)}</span><div><small>INSTRUÇÕES</small><p>${presentation.instrucao ? escapeHtml(presentation.instrucao) : "Ainda não há instruções registradas para esta apresentação."}</p></div></div></section><section class="lesson-tools presentation-resources"><div class="lesson-tools__heading"><div><span class="eyebrow">RECURSOS</span><h2>Recursos desta apresentação</h2><p>Centralize materiais, orientações e conteúdos de apoio para a sua preparação.</p></div></div><div class="lesson-tools-grid"><button class="lesson-tool-card lesson-tool-card--presentation-materials" data-open-presentation-materials><span>${icon("file", 24)}</span><div><small>ARQUIVOS</small><strong>Materiais</strong><p>${materialCount} ${materialCount === 1 ? "conteúdo separado" : "conteúdos separados"} para a apresentação.</p></div><em>Abrir ${icon("arrowRight", 17)}</em></button><button class="lesson-tool-card lesson-tool-card--presentation-support" data-edit-presentation><span>${icon("info", 24)}</span><div><small>PREPARAÇÃO</small><strong>Instruções e links</strong><p>${linkCount} ${linkCount === 1 ? "link de apoio cadastrado" : "links de apoio cadastrados"}.</p></div><em>Configurar ${icon("arrowRight", 17)}</em></button><button class="lesson-tool-card lesson-tool-card--mindmaps" data-open-presentation-mindmaps><span>${icon("mindMap", 24)}</span><div><small>CONTEÚDO VISUAL</small><strong>Mapas mentais</strong><p>Estruture argumentos, tópicos e relações importantes.</p></div><em>Abrir ${icon("arrowRight", 17)}</em></button><button class="lesson-tool-card lesson-tool-card--videos" data-open-presentation-videos><span>${icon("video", 24)}</span><div><small>CONTEÚDO EM VÍDEO</small><strong>Vídeos</strong><p>Reúna referências e materiais audiovisuais.</p></div><em>Abrir ${icon("arrowRight", 17)}</em></button></div></section></section>`;
+}
+
+export function presentationMaterialsView({ presentation, discipline, contents }) {
+  return `<section class="page lesson-materials-page presentation-materials-page"><button class="back-link" data-presentation-materials-back>${icon("arrowLeft", 18)} Recursos</button><header class="lesson-tool-context"><span>${icon("presentation", 15)}</span><div><small>RECURSO DA APRESENTAÇÃO</small><strong>${escapeHtml(discipline?.nome_disciplina || "Disciplina")}</strong></div><p>${escapeHtml(presentation.titulo)}</p></header><section class="lesson-contents"><div class="lesson-contents__heading"><div><span class="eyebrow">MATERIAIS</span><h1>Conteúdos da apresentação</h1><p>Arquivos selecionados ficam organizados neste espaço.</p></div><button class="button button--primary" data-upload-presentation-content>${icon("upload", 17)} Adicionar arquivo</button></div>${contentCards(presentation, contents)}</section></section>`;
 }
 
 export function bindPresentations(root, { disciplines, occurrencesByDiscipline, onCreate, onCreated, onOpen }) {
@@ -208,15 +214,30 @@ export function bindPresentations(root, { disciplines, occurrencesByDiscipline, 
   );
 }
 
-export function bindPresentationDetail(root, { presentation, contents, onBack, onEdit, onOpenMindMaps, onOpenContent, onUpload }) {
+export function bindPresentationDetail(root, { presentation, contents, onBack, onEdit, onOpenMaterials, onOpenMindMaps, onOpenVideos, onOpenContent, onUpload }) {
   root.querySelector("[data-presentation-back]").addEventListener("click", onBack);
   root.querySelector("[data-edit-presentation]").addEventListener("click", onEdit);
   root.querySelector("[data-open-presentation-mindmaps]").addEventListener("click", onOpenMindMaps);
+  root.querySelector("[data-open-presentation-videos]").addEventListener("click", onOpenVideos);
+  root.querySelector("[data-open-presentation-materials]").addEventListener("click", onOpenMaterials);
   root
     .querySelector("[data-upload-presentation-content]")
     ?.addEventListener("click", () =>
       openContentUploadWizard({ context: "presentation", onUpload }),
     );
+  root.querySelectorAll("[data-open-presentation-content]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const content = contents.find((item) => item.id === button.dataset.openPresentationContent);
+      if (content) onOpenContent(content);
+    });
+  });
+}
+
+export function bindPresentationMaterials(root, { presentation, contents, onBack, onOpenContent, onUpload }) {
+  root.querySelector("[data-presentation-materials-back]").addEventListener("click", onBack);
+  root
+    .querySelector("[data-upload-presentation-content]")
+    ?.addEventListener("click", () => openContentUploadWizard({ context: "presentation", onUpload }));
   root.querySelectorAll("[data-open-presentation-content]").forEach((button) => {
     button.addEventListener("click", () => {
       const content = contents.find((item) => item.id === button.dataset.openPresentationContent);

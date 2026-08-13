@@ -151,9 +151,11 @@ import {
 } from "./ui/exams-view.js";
 import {
   bindPresentationDetail,
+  bindPresentationMaterials,
   bindPresentations,
   openPresentationEditor,
   presentationDetailView,
+  presentationMaterialsView,
   presentationsView,
 } from "./ui/presentations-view.js";
 import { bindFiles, filesView } from "./ui/files-view.js";
@@ -406,6 +408,7 @@ function renderCurrent() {
   if (state.view === "exam-materials") return renderExamMaterials();
   if (state.view === "presentations") return renderPresentations();
   if (state.view === "presentation-detail") return renderPresentationDetail();
+  if (state.view === "presentation-materials") return renderPresentationMaterials();
   if (state.view === "lessons") return renderLessons();
   if (state.view === "lesson-chronogram") return renderLessonChronogram();
   if (state.view === "lesson-form") return renderLessonForm();
@@ -1673,21 +1676,13 @@ function renderExamDetail() {
       contents: state.activeExamContents,
     }),
   );
-  root
-    .querySelector(".exam-detail-actions")
-    ?.insertAdjacentHTML(
-      "afterbegin",
-      `<button class="button button--secondary" data-open-exam-videos>${icon("video", 17)} Vídeos</button>`,
-    );
-  root
-    .querySelector("[data-open-exam-videos]")
-    ?.addEventListener("click", () => renderVideos(scopeForVideos("exam", exam)));
   bindExamDetail(root, {
     exam,
     topics: state.examTopics,
     contents: state.activeExamContents,
     onBack: examBack,
     onOpenMindMaps: () => renderMindMaps(scopeForMindMaps("exam", exam)),
+    onOpenVideos: () => renderVideos(scopeForVideos("exam", exam)),
     onOpenTopic: (id) => {
       const topic = state.examTopics.find((item) => item.id === id);
       if (!topic) return;
@@ -2075,23 +2070,15 @@ function renderPresentationDetail() {
       contents: state.activePresentationContents,
     }),
   );
-  root
-    .querySelector(".presentation-instructions__actions")
-    ?.insertAdjacentHTML(
-      "afterbegin",
-      `<button class="button button--secondary" data-open-presentation-videos>${icon("video", 16)} Vídeos</button>`,
-    );
-  root
-    .querySelector("[data-open-presentation-videos]")
-    ?.addEventListener("click", () =>
-      renderVideos(scopeForVideos("presentation", presentation)),
-    );
   bindPresentationDetail(root, {
     presentation,
     contents: state.activePresentationContents,
     onBack: presentationBack,
+    onOpenMaterials: () => renderPresentationMaterials(),
     onOpenMindMaps: () =>
       renderMindMaps(scopeForMindMaps("presentation", presentation)),
+    onOpenVideos: () =>
+      renderVideos(scopeForVideos("presentation", presentation)),
     onEdit: () =>
       configurePresentation(presentation).catch((error) =>
         showToast(
@@ -2131,6 +2118,61 @@ function renderPresentationDetail() {
       );
       replacePresentation(updated);
       renderPresentationDetail();
+      showToast("Arquivo enviado e associado à apresentação.");
+    },
+  });
+}
+
+function renderPresentationMaterials() {
+  const presentation = state.activePresentation;
+  if (!presentation) return renderPresentationDetail();
+  const discipline = state.disciplines.find(
+    (item) => item.id === presentation.disciplina,
+  );
+  state.view = "presentation-materials";
+  renderWithinLayout(
+    presentationMaterialsView({
+      presentation,
+      discipline,
+      contents: state.activePresentationContents,
+    }),
+  );
+  bindPresentationMaterials(root, {
+    presentation,
+    contents: state.activePresentationContents,
+    onBack: renderPresentationDetail,
+    onOpenContent: (content) => openContent(content),
+    onUpload: async ({ title, file }) => {
+      const content = await uploadPresentationContent(
+        state.user,
+        state.currentProfile,
+        presentation,
+        { title, file },
+      );
+      state.activePresentationContents = [
+        content,
+        ...state.activePresentationContents,
+      ];
+      const updated = await updatePresentation(
+        presentation.id,
+        state.user,
+        state.currentProfile,
+        presentation,
+        {
+          instructions: presentation.instrucao || "",
+          links: Array.isArray(presentation.links) ? presentation.links : [],
+          contents: [
+            ...new Set([
+              ...(Array.isArray(presentation.conteudos)
+                ? presentation.conteudos
+                : []),
+              content.id,
+            ]),
+          ],
+        },
+      );
+      replacePresentation(updated);
+      renderPresentationMaterials();
       showToast("Arquivo enviado e associado à apresentação.");
     },
   });
