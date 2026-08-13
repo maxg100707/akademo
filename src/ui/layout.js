@@ -24,6 +24,9 @@ const contentModules = [
 ];
 
 const moduleContexts = {
+  settings: { iconName: "settings", title: "Configurações", description: "Ajuste o AKADEMO para a sua rotina." },
+  "settings-user": { iconName: "userRound", title: "Configurações", description: "Usuário e informações da conta." },
+  "settings-dashboard": { iconName: "dashboard", title: "Configurações", description: "Widgets e organização do Dashboard." },
   dashboard: { iconName: "dashboard", title: "Dashboard", description: "Acompanhe sua rotina acadêmica em um só lugar." },
   profiles: { iconName: "graduation", title: "Perfis de estudo", description: "Organize cada etapa da sua jornada acadêmica." },
   personal: { iconName: "info", title: "Informações pessoais", description: "Mantenha os dados da sua conta atualizados." },
@@ -79,6 +82,7 @@ export function renderLayout(root, { record, photoUrl, profiles, currentProfile,
         <div class="profile-popover" data-profile-popover>
           <div class="profile-popover__head">${avatar(record, photoUrl, "profile-popover__avatar")}<div><strong>${escapeHtml(record?.nome || "Estudante")}</strong><small>${escapeHtml(record?.email || "")}</small></div></div>
           ${profileMenuSelector(profiles, currentProfile)}
+          <button data-settings>${icon("settings", 18)}<span>Configurações</span></button>
           <button data-personal>${icon("info", 18)}<span>Informações</span></button>
           <div class="theme-control"><span>${icon("moon", 18)} Tema escuro</span><label class="switch"><input type="checkbox" data-theme-toggle ${theme === "dark" ? "checked" : ""}/><i></i></label></div>
           <button class="profile-popover__logout" data-logout>${icon("logout", 18)}<span>Sair da conta</span></button>
@@ -131,6 +135,7 @@ export function bindLayout(root, actions) {
     const isOpen = profileWrapper?.classList.toggle("is-open");
     profileMenu.setAttribute("aria-expanded", String(Boolean(isOpen)));
   });
+  root.querySelector("[data-settings]")?.addEventListener("click", actions.onSettings);
   root.querySelector("[data-personal]").addEventListener("click", actions.onPersonal);
   root.querySelector("[data-logout]").addEventListener("click", actions.onLogout);
   root.querySelector("[data-theme-toggle]").addEventListener("change", actions.onTheme);

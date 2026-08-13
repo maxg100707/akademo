@@ -51,18 +51,23 @@ export function confirmModal({ title, message, confirmLabel = "Continuar", tone 
   });
 }
 
-export function unsavedModal() {
+export function unsavedModal({
+  title = "Salvar alterações?",
+  message = "Você tem mudanças que ainda não foram aplicadas às suas informações.",
+  saveLabel = "Salvar alterações",
+  discardLabel = "Descartar",
+} = {}) {
   return new Promise((resolve) => {
     const root = document.querySelector("#modal-root");
     root.innerHTML = `
       <div class="modal-backdrop">
         <section class="modal" role="dialog" aria-modal="true" aria-labelledby="unsaved-title">
           <div class="modal__symbol">${icon("save", 22)}</div>
-          <h2 id="unsaved-title">Salvar alterações?</h2>
-          <p>Você tem mudanças que ainda não foram aplicadas às suas informações.</p>
+          <h2 id="unsaved-title">${escapeHtml(title)}</h2>
+          <p>${escapeHtml(message)}</p>
           <div class="modal__actions modal__actions--stack-mobile">
-            <button class="button button--ghost" type="button" data-modal-discard>Descartar</button>
-            <button class="button button--primary" type="button" data-modal-save>Salvar alterações</button>
+            <button class="button button--ghost" type="button" data-modal-discard>${escapeHtml(discardLabel)}</button>
+            <button class="button button--primary" type="button" data-modal-save>${escapeHtml(saveLabel)}</button>
           </div>
         </section>
       </div>`;

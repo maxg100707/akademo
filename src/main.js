@@ -92,6 +92,7 @@ import {
   getVideoUrl,
   getVideos,
 } from "./services/videos.js";
+import { defaultSettings, getSettings, saveSettings } from "./services/settings.js";
 import {
   applyPendingAvatar,
   ensureUserRecord,
@@ -101,6 +102,12 @@ import {
   updatePersonalInfo,
 } from "./services/users.js";
 import { dashboardView } from "./ui/dashboard-view.js";
+import {
+  bindDashboardSettings,
+  bindSettingsCatalog,
+  dashboardSettingsView,
+  settingsCatalogView,
+} from "./ui/settings-view.js";
 import { renderAuth } from "./ui/auth-view.js";
 import { bindLayout, renderLayout } from "./ui/layout.js";
 import { renderOnboarding } from "./ui/onboarding-view.js";
@@ -176,7 +183,7 @@ import {
   openVideoPlayer,
   videosView,
 } from "./ui/videos-view.js";
-import { showToast } from "./ui/components.js";
+import { showToast, unsavedModal } from "./ui/components.js";
 import {
   getStoredProfile,
   removeStoredProfile,
@@ -220,6 +227,10 @@ const state = {
   videos: [],
   videoScope: null,
   profileContents: [],
+  settings: defaultSettings(),
+  settingsSaved: defaultSettings(),
+  settingsDirty: false,
+  settingsLoadedProfileId: null,
   dashboardLoadedProfileId: null,
   view: "dashboard",
   returnView: "dashboard",
@@ -235,6 +246,10 @@ let hydrationInProgressFor = null;
 let googleAvatarSyncFor = null;
 let restoringRoute = false;
 let routeRestoreSequence = 0;
+
+function cloneSettings(settings) {
+  return JSON.parse(JSON.stringify(settings || defaultSettings()));
+}
 
 function applyTheme(theme) {
   state.theme = theme;
@@ -296,6 +311,10 @@ async function hydrate(user) {
     state.taskDisciplineFilter = "";
     state.fileDisciplineFilter = "";
     state.fileSearch = "";
+    state.settings = defaultSettings();
+    state.settingsSaved = cloneSettings(state.settings);
+    state.settingsDirty = false;
+    state.settingsLoadedProfileId = null;
     state.dashboardLoadedProfileId = null;
     selectStoredProfile(readRoute());
     if (!state.profiles.length) showOnboarding();
@@ -346,7 +365,7 @@ function selectStoredProfile(route = {}) {
 }
 
 const routeViews = new Set([
-  "dashboard", "personal", "profiles", "teachers", "disciplines", "schedules",
+  "dashboard", "personal", "settings", "settings-user", "settings-dashboard", "profiles", "teachers", "disciplines", "schedules",
   "chronogram", "tasks", "files", "mindmaps", "mindmap-editor", "videos",
   "exams", "exam-detail", "exam-topics", "exam-topic", "exam-materials", "exam-tasks", "presentations",
   "presentation-detail", "presentation-materials", "presentation-tasks", "lessons", "lesson-chronogram",
@@ -366,6 +385,10 @@ function resetProfileScopedState() {
   state.mindMaps = [];
   state.videos = [];
   state.profileContents = [];
+  state.settings = defaultSettings();
+  state.settingsSaved = cloneSettings(state.settings);
+  state.settingsDirty = false;
+  state.settingsLoadedProfileId = null;
   state.scheduleEditing = false;
   state.chronogramDisciplineId = null;
   state.lessonWeekOffset = 0;
@@ -631,6 +654,10 @@ function renderAuthScreen() {
   state.taskDisciplineFilter = "";
   state.fileDisciplineFilter = "";
   state.fileSearch = "";
+  state.settings = defaultSettings();
+  state.settingsSaved = cloneSettings(state.settings);
+  state.settingsDirty = false;
+  state.settingsLoadedProfileId = null;
   state.dashboardLoadedProfileId = null;
   renderAuth(root, {
     onLogin: handleLogin,
@@ -657,6 +684,9 @@ function showOnboarding() {
 }
 
 function renderCurrent() {
+  if (state.view === "settings") return renderSettings();
+  if (state.view === "settings-user") return renderSettingsUser();
+  if (state.view === "settings-dashboard") return renderDashboardSettings();
   if (state.view === "personal") return renderPersonal();
   if (state.view === "profiles") return renderProfiles();
   if (state.view === "teachers") return renderTeachers();
@@ -719,10 +749,12 @@ function mountDashboard() {
       nextClassChronogram,
       tasks: state.tasks,
       disciplines: state.disciplines,
+      schedules: state.schedules,
       lessons: state.lessons,
       exams: state.exams,
       presentations: state.presentations,
       chronograms: state.chronograms,
+      settings: state.settings,
       isNextClassLoading:
         state.currentProfile &&
         state.dashboardLoadedProfileId !== state.currentProfile.id,
@@ -833,6 +865,31 @@ function mountDashboard() {
       }
     }),
   );
+  root.querySelectorAll("[data-open-dashboard-schedules]").forEach((button) => button.addEventListener("click", () => {
+    state.returnView = "dashboard";
+    state.scheduleEditing = false;
+    renderSchedules();
+  }));
+  root.querySelectorAll("[data-dashboard-favorite-nav]").forEach((button) => button.addEventListener("click", () => {
+    const view = button.dataset.dashboardFavoriteNav;
+    if (!view) return;
+    state.returnView = "dashboard";
+    state.view = view;
+    renderCurrent();
+  }));
+  root.querySelectorAll("[data-open-dashboard-lesson]").forEach((button) => button.addEventListener("click", async () => {
+    const lesson = state.lessons.find((item) => item.id === button.dataset.openDashboardLesson);
+    if (!lesson) return;
+    try {
+      const chronogram = state.chronograms.find((item) => item.id === lesson.cronograma) || null;
+      const discipline = state.disciplines.find((item) => item.id === lesson.disciplina) || null;
+      const occurrence = occurrenceAt(discipline, state.schedules, chronogram?.data_hora);
+      state.returnView = "dashboard";
+      await showLessonDetail(lesson, occurrence);
+    } catch (error) {
+      showToast(error.message || "Não foi possível abrir a aula.", "error");
+    }
+  }));
   root.querySelector("[data-open-schedules]")?.addEventListener("click", () => {
     state.returnView = "dashboard";
     renderSchedules();
@@ -861,7 +918,7 @@ function mountDashboard() {
 
 async function loadDashboardData(profile) {
   try {
-    const [teachers, disciplines, schedules, chronograms, lessons, tasks, exams, presentations] = await Promise.all([
+    const [teachers, disciplines, schedules, chronograms, lessons, tasks, exams, presentations, settings] = await Promise.all([
       getTeachers(profile.id),
       getDisciplines(profile.id),
       getSchedules(profile.id),
@@ -870,6 +927,10 @@ async function loadDashboardData(profile) {
       getTasks(profile.id),
       getExams(profile.id),
       getPresentations(profile.id),
+      getSettings(state.user, profile.id).catch((error) => {
+        console.warn("Não foi possível carregar as configurações do Dashboard.", error);
+        return defaultSettings();
+      }),
     ]);
     if (state.view !== "dashboard" || state.currentProfile?.id !== profile.id)
       return;
@@ -881,6 +942,10 @@ async function loadDashboardData(profile) {
     state.tasks = tasks;
     state.exams = exams;
     state.presentations = presentations;
+    state.settings = settings;
+    state.settingsSaved = cloneSettings(settings);
+    state.settingsDirty = false;
+    state.settingsLoadedProfileId = profile.id;
     state.dashboardLoadedProfileId = profile.id;
     mountDashboard();
   } catch (error) {
@@ -936,6 +1001,126 @@ function taskCallbacks(refresh) {
       return updated;
     },
   };
+}
+
+async function loadSettingsForProfile(profile, { notify = false } = {}) {
+  if (!profile) return state.settings;
+  try {
+    const settings = await getSettings(state.user, profile.id);
+    if (state.currentProfile?.id === profile.id) {
+      state.settings = settings;
+      state.settingsSaved = cloneSettings(settings);
+      state.settingsDirty = false;
+      state.settingsLoadedProfileId = profile.id;
+    }
+  } catch (error) {
+    if (state.currentProfile?.id === profile.id) {
+      state.settings = defaultSettings();
+      state.settingsSaved = cloneSettings(state.settings);
+      state.settingsDirty = false;
+      state.settingsLoadedProfileId = profile.id;
+    }
+    if (notify) showToast(error.message || "Não foi possível carregar as configurações salvas.", "error");
+  }
+  return state.settings;
+}
+
+async function finalizeDashboardSettings() {
+  if (!state.settingsDirty) return true;
+  const choice = await unsavedModal({
+    title: "Salvar configurações?",
+    message: "Você alterou os widgets do Dashboard. Deseja salvar antes de sair?",
+    saveLabel: "Salvar e sair",
+    discardLabel: "Descartar",
+  });
+  if (choice === "discard") {
+    state.settings = cloneSettings(state.settingsSaved);
+    state.settingsDirty = false;
+    return true;
+  }
+  try {
+    state.settings = await saveSettings(state.user, state.currentProfile, state.settings);
+    state.settingsSaved = cloneSettings(state.settings);
+    state.settingsDirty = false;
+    state.settingsLoadedProfileId = state.currentProfile.id;
+    showToast("Configurações do Dashboard salvas.");
+    return true;
+  } catch (error) {
+    showToast(error.message || "Não foi possível salvar as configurações.", "error");
+    return false;
+  }
+}
+
+function renderSettings() {
+  state.view = "settings";
+  const mount = () => {
+    renderWithinLayout(settingsCatalogView());
+    bindSettingsCatalog(root, {
+      onBack: async () => {
+        if (state.view === "settings-dashboard" && !(await finalizeDashboardSettings())) return;
+        state.view = state.returnView || "dashboard";
+        renderCurrent();
+      },
+      onOpen: (category) => {
+        if (category === "user") return renderSettingsUser();
+        if (category === "dashboard") return renderDashboardSettings();
+      },
+    });
+  };
+  mount();
+  if (state.currentProfile && state.settingsLoadedProfileId !== state.currentProfile.id) {
+    loadSettingsForProfile(state.currentProfile, { notify: true }).then(() => {
+      if (state.view === "settings") mount();
+    });
+  }
+}
+
+function renderSettingsUser() {
+  state.view = "settings-user";
+  renderWithinLayout(personalView({ record: state.record, photoUrl: state.photoUrl }));
+  bindPersonal(root, {
+    record: state.record,
+    photoUrl: state.photoUrl,
+    onBack: renderSettings,
+    onSave: async (values) => {
+      state.record = await updatePersonalInfo(state.user, values);
+      state.photoUrl = await profilePhotoUrl(state.record);
+      renderSettingsUser();
+      showToast("Informações atualizadas com sucesso.");
+    },
+  });
+}
+
+function renderDashboardSettings() {
+  state.view = "settings-dashboard";
+  const mount = () => {
+    renderWithinLayout(dashboardSettingsView({ settings: state.settings }));
+    bindDashboardSettings(root, {
+      settings: state.settings,
+      onBack: async () => {
+        if (await finalizeDashboardSettings()) renderSettings();
+      },
+      onChange: (nextSettings) => {
+        state.settings = nextSettings;
+        state.settingsDirty = JSON.stringify(state.settings) !== JSON.stringify(state.settingsSaved);
+        renderDashboardSettings();
+      },
+      onSave: async (settings) => {
+        state.settings = await saveSettings(state.user, state.currentProfile, settings);
+        state.settingsSaved = cloneSettings(state.settings);
+        state.settingsDirty = false;
+        state.settingsLoadedProfileId = state.currentProfile.id;
+        showToast("Configurações do Dashboard salvas.");
+        renderDashboardSettings();
+      },
+    });
+  };
+  mount();
+  if (state.currentProfile && state.settingsLoadedProfileId !== state.currentProfile.id) {
+    loadSettingsForProfile(state.currentProfile, { notify: true }).then(() => {
+      if (state.view === "settings-dashboard") mount();
+    });
+  }
 }
 
 function renderPersonal() {
@@ -3210,7 +3395,8 @@ function renderWithinLayout(content) {
         localStorage.setItem(storageKey, String(value));
       });
     },
-    onNavigate: (view) => {
+    onNavigate: async (view) => {
+      if (state.view === "settings-dashboard" && !(await finalizeDashboardSettings())) return;
       if (view === "schedules") {
         state.returnView = state.view;
         state.scheduleEditing = false;
@@ -3255,7 +3441,13 @@ function renderWithinLayout(content) {
       state.view = view;
       renderCurrent();
     },
-    onPersonal: () => {
+    onSettings: async () => {
+      if (state.view === "settings-dashboard" && !(await finalizeDashboardSettings())) return;
+      state.returnView = state.view;
+      renderSettings();
+    },
+    onPersonal: async () => {
+      if (state.view === "settings-dashboard" && !(await finalizeDashboardSettings())) return;
       state.returnView = state.view;
       renderPersonal();
     },
@@ -3271,7 +3463,8 @@ function renderWithinLayout(content) {
       state.returnView = state.view;
       renderDisciplines();
     },
-    onProfileChange: (id) => {
+    onProfileChange: async (id) => {
+      if (state.view === "settings-dashboard" && !(await finalizeDashboardSettings())) return;
       state.currentProfile = state.profiles.find(
         (profile) => profile.id === id,
       );
@@ -3305,6 +3498,10 @@ function renderWithinLayout(content) {
       state.taskDisciplineFilter = "";
       state.fileDisciplineFilter = "";
       state.fileSearch = "";
+      state.settings = defaultSettings();
+      state.settingsSaved = cloneSettings(state.settings);
+      state.settingsDirty = false;
+      state.settingsLoadedProfileId = null;
       state.dashboardLoadedProfileId = null;
       storeProfile(state.currentProfile);
       renderCurrent();
