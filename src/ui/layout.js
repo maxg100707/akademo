@@ -2,11 +2,27 @@ import { icon } from "../utils/icons.js";
 import { escapeHtml } from "../utils/formatters.js";
 import { avatar } from "./components.js";
 
-export function renderLayout(root, { record, photoUrl, profiles, currentProfile, view, content, collapsed, theme }) {
+const organizationModules = [
+  { view: "schedules", iconName: "calendar", label: "Hor&aacute;rios", isActive: (currentView) => currentView === "schedules" },
+  { view: "lessons", iconName: "book", label: "Aulas", isActive: (currentView) => currentView === "lessons" || currentView.startsWith("lesson-") },
+  { view: "files", iconName: "folder", label: "Arquivos", isActive: (currentView) => currentView === "files" },
+  { view: "tasks", iconName: "check", label: "Tarefas", isActive: (currentView) => currentView === "tasks" },
+  { view: "exams", iconName: "exam", label: "Provas", isActive: (currentView) => currentView === "exams" || currentView.startsWith("exam-") },
+  { view: "presentations", iconName: "presentation", label: "Apresenta&ccedil;&otilde;es", isActive: (currentView) => currentView === "presentations" || currentView.startsWith("presentation-") },
+  { view: "chronogram", iconName: "file", label: "Cronograma", isActive: (currentView) => currentView === "chronogram" },
+];
+
+function organizationGroup(view, isExpanded) {
+  const hasActiveModule = organizationModules.some((module) => module.isActive(view));
+  const items = organizationModules.map((module) => `<button class="nav-item ${module.isActive(view) ? "is-active" : ""}" data-nav="${module.view}">${icon(module.iconName, 19)}<span>${module.label}</span></button>`).join("");
+  return `<section class="nav-group ${isExpanded ? "is-expanded" : ""} ${hasActiveModule ? "has-active" : ""}" aria-label="Organiza&ccedil;&atilde;o B&aacute;sica"><button class="nav-group__trigger" type="button" data-organization-toggle aria-expanded="${isExpanded}" aria-controls="organization-basic-modules"><span class="nav-group__icon">${icon("organize", 18)}</span><span class="nav-group__copy"><strong>Organiza&ccedil;&atilde;o B&aacute;sica</strong></span>${icon("chevronDown", 17)}</button><div class="nav-group__items" id="organization-basic-modules">${items}</div></section>`;
+}
+
+export function renderLayout(root, { record, photoUrl, profiles, currentProfile, view, content, theme, organizationExpanded = false }) {
   const course = escapeHtml(currentProfile?.curso || "Perfil de estudo");
-  root.innerHTML = `<div class="app-shell ${collapsed ? "sidebar-collapsed" : ""}" data-theme="${theme}">
+  root.innerHTML = `<div class="app-shell" data-theme="${theme}">
     <aside class="sidebar" aria-label="Menu principal">
-      <div class="sidebar__top"><a href="#" class="brand"><img class="brand-icon" src="icon.png" alt=""/><span class="brand__text">AKADEMO</span></a><button class="collapse-button" data-collapse aria-label="${collapsed ? "Expandir menu" : "Recolher menu"}">${icon(collapsed ? "arrowRight" : "arrowLeft", 16)}</button></div>
+      <div class="sidebar__top"><a href="#" class="brand"><img class="brand-icon" src="icon.png" alt=""/><span class="brand__text">AKADEMO</span></a></div>
       <div class="sidebar__profile-wrap">
         <button class="sidebar-profile" data-profile-menu aria-expanded="false">${avatar(record, photoUrl, "sidebar-profile__avatar")}<span class="sidebar-profile__details"><strong>${escapeHtml(record?.nome || "Estudante")}</strong><small>${course}</small></span>${icon("chevronDown", 16)}</button>
         <div class="profile-popover" data-profile-popover>
@@ -19,7 +35,7 @@ export function renderLayout(root, { record, photoUrl, profiles, currentProfile,
           <button class="profile-popover__logout" data-logout>${icon("logout", 18)}<span>Sair da conta</span></button>
         </div>
       </div>
-      <nav class="sidebar-nav"><span class="sidebar-nav__label">MENU</span><button class="nav-item ${view === "dashboard" ? "is-active" : ""}" data-nav="dashboard">${icon("dashboard", 20)}<span>Dashboard</span></button><button class="nav-item ${view === "schedules" ? "is-active" : ""}" data-nav="schedules">${icon("calendar", 20)}<span>Horários</span></button><button class="nav-item ${view === "lessons" || view.startsWith("lesson-") ? "is-active" : ""}" data-nav="lessons">${icon("book", 20)}<span>Aulas</span></button><button class="nav-item ${view === "files" ? "is-active" : ""}" data-nav="files">${icon("folder", 20)}<span>Arquivos</span></button><button class="nav-item ${view === "tasks" ? "is-active" : ""}" data-nav="tasks">${icon("check", 20)}<span>Tarefas</span></button><button class="nav-item ${view === "exams" || view.startsWith("exam-") ? "is-active" : ""}" data-nav="exams">${icon("exam", 20)}<span>Provas</span></button><button class="nav-item ${view === "presentations" || view.startsWith("presentation-") ? "is-active" : ""}" data-nav="presentations">${icon("presentation", 20)}<span>Apresentações</span></button><button class="nav-item ${view === "chronogram" ? "is-active" : ""}" data-nav="chronogram">${icon("file", 20)}<span>Cronograma</span></button></nav>
+      <nav class="sidebar-nav"><span class="sidebar-nav__label">MENU</span><button class="nav-item ${view === "dashboard" ? "is-active" : ""}" data-nav="dashboard">${icon("dashboard", 20)}<span>Dashboard</span></button>${organizationGroup(view, organizationExpanded)}</nav>
       <div class="sidebar__bottom"><button class="mobile-close-menu" data-mobile-close>${icon("close", 18)}<span>Fechar menu</span></button><div class="sidebar__tip">${icon("sparkles", 18)}<span>Faça hoje valer a pena.</span></div></div>
     </aside>
     <div class="mobile-menu-overlay" data-mobile-close></div>
@@ -35,7 +51,6 @@ export function renderLayout(root, { record, photoUrl, profiles, currentProfile,
 }
 
 export function bindLayout(root, actions) {
-  root.querySelector("[data-collapse]")?.addEventListener("click", actions.onCollapse);
   root.querySelectorAll("[data-mobile-open]").forEach((button) => button.addEventListener("click", () => root.querySelector(".app-shell").classList.add("mobile-menu-open")));
   root.querySelectorAll("[data-mobile-close]").forEach((button) => button.addEventListener("click", () => root.querySelector(".app-shell").classList.remove("mobile-menu-open")));
   const profileWrapper = root.querySelector(".sidebar__profile-wrap");
@@ -73,6 +88,12 @@ export function bindLayout(root, actions) {
   root.querySelector("[data-disciplines]").addEventListener("click", actions.onDisciplines);
   root.querySelector("[data-logout]").addEventListener("click", actions.onLogout);
   root.querySelector("[data-theme-toggle]").addEventListener("change", actions.onTheme);
+  root.querySelector("[data-organization-toggle]")?.addEventListener("click", (event) => {
+    const group = event.currentTarget.closest(".nav-group");
+    const isExpanded = group?.classList.toggle("is-expanded");
+    event.currentTarget.setAttribute("aria-expanded", String(Boolean(isExpanded)));
+    actions.onOrganizationToggle?.(Boolean(isExpanded));
+  });
   root.querySelectorAll("[data-nav]").forEach((button) => button.addEventListener("click", () => actions.onNavigate(button.dataset.nav)));
   root.querySelectorAll("[data-profile-select]").forEach((select) => select.addEventListener("change", (event) => actions.onProfileChange(event.target.value)));
   if (root.profileOutsideClickHandler) document.removeEventListener("click", root.profileOutsideClickHandler);

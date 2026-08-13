@@ -187,7 +187,7 @@ const state = {
   taskDisciplineFilter: "",
   fileDisciplineFilter: "",
   fileSearch: "",
-  collapsed: localStorage.getItem("akademo.sidebar.collapsed") === "true",
+  organizationExpanded: localStorage.getItem("akademo.sidebar.organization-expanded") === "true",
   theme: localStorage.getItem(APP_STORAGE_KEYS.theme) || "light",
 };
 let hydrationInProgressFor = null;
@@ -2470,10 +2470,9 @@ async function renderLessonTasks() {
 function renderWithinLayout(content) {
   renderLayout(root, { ...state, content });
   bindLayout(root, {
-    onCollapse: () => {
-      state.collapsed = !state.collapsed;
-      localStorage.setItem("akademo.sidebar.collapsed", state.collapsed);
-      renderCurrent();
+    onOrganizationToggle: (isExpanded) => {
+      state.organizationExpanded = isExpanded;
+      localStorage.setItem("akademo.sidebar.organization-expanded", state.organizationExpanded);
     },
     onNavigate: (view) => {
       if (view === "schedules") {

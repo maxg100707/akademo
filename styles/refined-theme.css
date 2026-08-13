@@ -1053,3 +1053,140 @@ body:not([data-theme="dark"]) .mobile-profile-indicator select {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
 }
+
+/* Grupo de módulos: mantém o menu enxuto sem esconder as áreas acadêmicas. */
+.nav-group {
+  display: grid;
+  gap: 5px;
+  padding: 5px;
+  border: 1px solid rgba(255, 255, 255, .14);
+  border-radius: 13px;
+  background: rgba(5, 44, 31, .11);
+  transition: background .2s ease, border-color .2s ease;
+}
+
+.nav-group.has-active,
+.nav-group.is-expanded {
+  border-color: rgba(255, 255, 255, .27);
+  background: rgba(255, 255, 255, .1);
+}
+
+.nav-group__trigger {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 18px;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 5px;
+  color: var(--sidebar-text);
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background .18s ease;
+}
+
+.nav-group__trigger:hover,
+.nav-group.is-expanded .nav-group__trigger { background: rgba(255, 255, 255, .12); }
+.nav-group__trigger:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+.nav-group__icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  color: var(--green-olive);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .15);
+}
+
+.nav-group__copy { display: grid; min-width: 0; gap: 2px; }
+.nav-group__copy strong { overflow: hidden; color: var(--sidebar-text); text-overflow: ellipsis; white-space: nowrap; font: 700 11px/1.2 "Outfit", sans-serif; }
+.nav-group__trigger > .icon-chevronDown { justify-self: end; color: var(--sidebar-muted); transition: transform .2s ease; }
+.nav-group.is-expanded .nav-group__trigger > .icon-chevronDown { transform: rotate(180deg); }
+
+.nav-group__items {
+  max-height: 0;
+  display: grid;
+  gap: 3px;
+  margin: 0 5px 0 0;
+  padding-left: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: max-height .28s ease, opacity .18s ease, margin .28s ease;
+}
+
+.nav-group.is-expanded .nav-group__items {
+  max-height: 430px;
+  margin-bottom: 3px;
+  opacity: 1;
+}
+
+.nav-group__items .nav-item { min-height: 37px; padding: 9px 5px; font-size: 11px; }
+
+@media (min-width: 761px) {
+  .sidebar .nav-item { padding-top: 9px; padding-bottom: 9px; }
+  .sidebar .nav-item > .icon { width: 24px; height: 24px; }
+
+  .sidebar .nav-group,
+  .sidebar .nav-group.has-active,
+  .sidebar .nav-group.is-expanded {
+    gap: 0;
+    height: 42px;
+    padding: 0;
+    border-color: transparent;
+    background: transparent;
+  }
+  .sidebar .nav-group__trigger { grid-template-columns: 1fr; justify-items: center; padding: 5px 4px; }
+  .sidebar .nav-group__icon { width: 32px; height: 32px; }
+  .sidebar .nav-group__icon > .icon { width: 20px; height: 20px; }
+  .sidebar .nav-group__copy,
+  .sidebar .nav-group__trigger > .icon-chevronDown {
+    width: 0;
+    height: 0;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .sidebar .nav-group.is-expanded .nav-group__items,
+  .sidebar .nav-group__items {
+    max-height: 0;
+    height: 0;
+    margin: 0;
+    padding: 0;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .sidebar .nav-group__items .nav-item { min-height: 34px; padding: 8px 4px; }
+
+  .sidebar:hover .nav-group,
+  .sidebar:hover .nav-group.has-active,
+  .sidebar:hover .nav-group.is-expanded {
+    gap: 5px;
+    height: auto;
+    padding: 5px;
+    border-color: rgba(255, 255, 255, .27);
+    background: rgba(255, 255, 255, .1);
+  }
+  .sidebar:hover .nav-item { padding-top: 11px; padding-bottom: 11px; }
+  .sidebar:hover .nav-item > .icon { width: 20px; height: 20px; }
+  .sidebar:hover .nav-group__trigger { grid-template-columns: 28px minmax(0, 1fr) 18px; justify-items: initial; padding: 7px 5px; }
+  .sidebar:hover .nav-group__icon { width: 28px; height: 28px; }
+  .sidebar:hover .nav-group__icon > .icon { width: 18px; height: 18px; }
+  .sidebar:hover .nav-group__copy,
+  .sidebar:hover .nav-group__trigger > .icon-chevronDown {
+    width: auto;
+    height: auto;
+    margin: initial;
+    padding: initial;
+    overflow: initial;
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .sidebar:hover .nav-group__items { margin-right: 5px; margin-left: 0; padding-left: 0; }
+  .sidebar:hover .nav-group.is-expanded .nav-group__items { max-height: 430px; height: auto; margin-bottom: 3px; opacity: 1; pointer-events: auto; }
+  .sidebar:hover .nav-group__items .nav-item { min-height: 37px; padding: 9px 5px; }
+}
