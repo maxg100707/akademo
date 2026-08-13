@@ -1,0 +1,61 @@
+/* Seletor de perfil dentro do menu da conta, sem competir com o contexto do módulo. */
+.profile-popover__profile-select {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 5px;
+  padding: 9px 7px;
+  border-radius: 10px;
+  background: var(--menu-hover, var(--surface-alt));
+}
+
+.profile-popover__profile-select > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text-soft);
+}
+
+.profile-popover__profile-select > span svg { color: var(--icon, var(--green-accent)); }
+
+.profile-popover__profile-select small {
+  color: inherit;
+  font: 800 8px/1 "Outfit", sans-serif;
+  letter-spacing: .1em;
+}
+
+.profile-popover__profile-select select {
+  width: 100%;
+  padding: 8px 28px 8px 10px;
+  overflow: hidden;
+  color: var(--text);
+  border: 1px solid var(--green-soft);
+  border-radius: 8px;
+  outline: 0;
+  appearance: none;
+  background: var(--surface-contrast, var(--surface));
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 700 12px/1.2 "Outfit", sans-serif;
+  cursor: pointer;
+}
+
+.profile-popover__profile-select::after {
+  position: absolute;
+  right: 17px;
+  bottom: 13px;
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid var(--green-accent);
+  border-bottom: 2px solid var(--green-accent);
+  content: "";
+  pointer-events: none;
+  transform: rotate(45deg);
+}
+
+.profile-popover__profile-select:has(select:disabled) { opacity: .78; }
+.profile-popover__profile-select:has(select:disabled)::after { display: none; }
+
+@media (max-width: 760px) {
+  .mobile-topbar .profile-popover__profile-select { margin-top: 9px; }
+}

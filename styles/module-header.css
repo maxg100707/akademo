@@ -65,7 +65,7 @@
     position: absolute;
     top: 50%;
     left: clamp(25px, 4vw, 64px);
-    max-width: min(390px, calc(50% - 245px));
+    max-width: min(520px, calc(100% - 180px));
     transform: translateY(-50%);
   }
 }
@@ -128,7 +128,8 @@
   .mobile-module-context {
     position: absolute;
     left: 56px;
-    width: max(0px, calc(50% - 151px));
+    right: 64px;
+    width: auto;
   }
 
   .main-area { padding-top: 68px; }

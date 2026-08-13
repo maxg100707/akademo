@@ -60,6 +60,10 @@ function navigationGroup({ view, key, label, iconName, modules, isExpanded }) {
   return `<section class="nav-group ${isExpanded ? "is-expanded" : ""} ${hasActiveModule ? "has-active" : ""}" aria-label="${label}"><button class="nav-group__trigger" type="button" data-menu-group-toggle="${key}" aria-expanded="${isExpanded}" aria-controls="${contentId}"><span class="nav-group__icon">${icon(iconName, 18)}</span><span class="nav-group__copy"><strong>${label}</strong></span>${icon("chevronDown", 17)}</button><div class="nav-group__items" id="${contentId}">${items}</div></section>`;
 }
 
+function profileMenuSelector(profiles, currentProfile) {
+  return `<label class="profile-popover__profile-select"><span>${icon("graduation", 16)}<small>PERFIL ATIVO</small></span><select data-profile-select aria-label="Selecionar perfil de estudo" ${profiles.length < 2 ? "disabled" : ""}>${profiles.map((profile) => `<option value="${profile.id}" ${profile.id === currentProfile?.id ? "selected" : ""}>${escapeHtml(profile.curso)}</option>`).join("")}</select></label>`;
+}
+
 export function renderLayout(root, { record, photoUrl, profiles, currentProfile, view, content, theme, basicRegistrationExpanded = false, organizationExpanded = false, contentExpanded = false }) {
   const course = escapeHtml(currentProfile?.curso || "Perfil de estudo");
   const currentContext = contextForView(view);
@@ -70,10 +74,8 @@ export function renderLayout(root, { record, photoUrl, profiles, currentProfile,
         <button class="sidebar-profile" data-profile-menu aria-expanded="false">${avatar(record, photoUrl, "sidebar-profile__avatar")}<span class="sidebar-profile__details"><strong>${escapeHtml(record?.nome || "Estudante")}</strong><small>${course}</small></span>${icon("chevronDown", 16)}</button>
         <div class="profile-popover" data-profile-popover>
           <div class="profile-popover__head">${avatar(record, photoUrl, "profile-popover__avatar")}<div><strong>${escapeHtml(record?.nome || "Estudante")}</strong><small>${escapeHtml(record?.email || "")}</small></div></div>
+          ${profileMenuSelector(profiles, currentProfile)}
           <button data-personal>${icon("info", 18)}<span>Informações</span></button>
-          <button data-profiles>${icon("graduation", 18)}<span>Perfis de estudo</span></button>
-          <button data-teachers>${icon("users", 18)}<span>Professores</span></button>
-          <button data-disciplines>${icon("book", 18)}<span>Disciplinas</span></button>
           <div class="theme-control"><span>${icon("moon", 18)} Tema escuro</span><label class="switch"><input type="checkbox" data-theme-toggle ${theme === "dark" ? "checked" : ""}/><i></i></label></div>
           <button class="profile-popover__logout" data-logout>${icon("logout", 18)}<span>Sair da conta</span></button>
         </div>
@@ -82,17 +84,13 @@ export function renderLayout(root, { record, photoUrl, profiles, currentProfile,
       <div class="sidebar__bottom"><button class="mobile-close-menu" data-mobile-close>${icon("close", 18)}<span>Fechar menu</span></button><div class="sidebar__tip">${icon("sparkles", 18)}<span>Faça hoje valer a pena.</span></div></div>
     </aside>
     <div class="mobile-menu-overlay" data-mobile-close></div>
-    <main class="main-area"><header class="mobile-topbar"><button class="mobile-menu-button" data-mobile-open aria-label="Abrir menu">${icon("bars", 20)}</button><a href="#" class="mobile-brand"><img class="brand-icon" src="icon.png" alt=""/> AKADEMO</a><div class="mobile-profile-indicator" title="${course}"><span>${icon("graduation", 16)}</span><div>${profiles.length > 1 ? `<small>PERFIL ATIVO</small><select data-profile-select aria-label="Selecionar perfil de estudo">${profiles.map((profile) => `<option value="${profile.id}" ${profile.id === currentProfile?.id ? "selected" : ""}>${escapeHtml(profile.curso)}</option>`).join("")}</select>` : `<strong>${course}</strong><small>${currentProfile?.semestre}º semestre</small>`}</div></div></header>${content}</main>
+    <main class="main-area"><header class="mobile-topbar"><button class="mobile-menu-button" data-mobile-open aria-label="Abrir menu">${icon("bars", 20)}</button><a href="#" class="mobile-brand"><img class="brand-icon" src="icon.png" alt=""/> AKADEMO</a></header>${content}</main>
   </div>`;
   root.querySelector(".mobile-brand")?.insertAdjacentHTML("afterend", moduleContext(currentContext, "mobile-module-context"));
   root.querySelector(".main-area").insertAdjacentHTML("afterbegin", `
     <header class="desktop-topbar">
       <div class="desktop-header-content">
       ${moduleContext(currentContext, "desktop-module-context")}
-      <div class="desktop-profile-indicator" title="${course}">
-        <span>${icon("graduation", 16)}</span>
-        <div>${profiles.length > 1 ? `<small>PERFIL ATIVO</small><select data-profile-select aria-label="Selecionar perfil de estudo">${profiles.map((profile) => `<option value="${profile.id}" ${profile.id === currentProfile?.id ? "selected" : ""}>${escapeHtml(profile.curso)}</option>`).join("")}</select>` : `<strong>${course}</strong><small>${currentProfile?.semestre}º semestre</small>`}</div>
-      </div>
       </div>
     </header>`);
 }
@@ -130,9 +128,6 @@ export function bindLayout(root, actions) {
     profileMenu.setAttribute("aria-expanded", String(Boolean(isOpen)));
   });
   root.querySelector("[data-personal]").addEventListener("click", actions.onPersonal);
-  root.querySelector("[data-profiles]").addEventListener("click", actions.onProfiles);
-  root.querySelector("[data-teachers]").addEventListener("click", actions.onTeachers);
-  root.querySelector("[data-disciplines]").addEventListener("click", actions.onDisciplines);
   root.querySelector("[data-logout]").addEventListener("click", actions.onLogout);
   root.querySelector("[data-theme-toggle]").addEventListener("change", actions.onTheme);
   root.querySelectorAll("[data-menu-group-toggle]").forEach((button) => button.addEventListener("click", (event) => {
