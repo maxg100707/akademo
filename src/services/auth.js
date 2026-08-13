@@ -1,7 +1,12 @@
 import { APP_STORAGE_KEYS } from "../config.js";
 import { requireSupabase } from "./supabase.js";
 
-const redirectTo = `${window.location.origin}${window.location.pathname}`;
+function redirectToCurrentRoute() {
+  const url = new URL(window.location.href);
+  ["code", "error", "error_code", "error_description", "scope"].forEach((key) => url.searchParams.delete(key));
+  url.hash = "";
+  return url.toString();
+}
 
 export async function currentSession() {
   const { data, error } = await requireSupabase().auth.getSession();
@@ -36,7 +41,10 @@ export async function completeOAuthCallback() {
 
   if (result.error) throw result.error;
   // Não deixe códigos ou tokens temporários visíveis na URL depois de criar a sessão.
-  window.history.replaceState({}, document.title, window.location.pathname);
+  const cleanUrl = new URL(window.location.href);
+  ["code", "error", "error_code", "error_description", "scope"].forEach((key) => cleanUrl.searchParams.delete(key));
+  cleanUrl.hash = "";
+  window.history.replaceState({}, document.title, `${cleanUrl.pathname}${cleanUrl.search}`);
   return result.data.session;
 }
 
@@ -49,7 +57,7 @@ export async function signUp({ name, email, password }) {
   const { data, error } = await requireSupabase().auth.signUp({
     email,
     password,
-    options: { data: { full_name: name }, emailRedirectTo: redirectTo },
+    options: { data: { full_name: name }, emailRedirectTo: redirectToCurrentRoute() },
   });
   if (error) throw error;
   return data;
@@ -59,7 +67,7 @@ export async function signInWithGoogle() {
   const { error } = await requireSupabase().auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo,
+      redirectTo: redirectToCurrentRoute(),
       // Força a tela de escolha de conta, mesmo quando o navegador já tem uma conta Google ativa.
       queryParams: { access_type: "offline", prompt: "select_account" },
     },

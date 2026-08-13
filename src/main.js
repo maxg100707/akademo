@@ -176,6 +176,7 @@ import {
   removeStoredProfile,
   storeProfile,
 } from "./utils/formatters.js";
+import { readRoute, writeRoute } from "./utils/router.js";
 import { icon } from "./utils/icons.js";
 
 const root = document.querySelector("#app");
@@ -225,6 +226,8 @@ const state = {
 };
 let hydrationInProgressFor = null;
 let googleAvatarSyncFor = null;
+let restoringRoute = false;
+let routeRestoreSequence = 0;
 
 function applyTheme(theme) {
   state.theme = theme;
@@ -287,9 +290,9 @@ async function hydrate(user) {
     state.fileDisciplineFilter = "";
     state.fileSearch = "";
     state.dashboardLoadedProfileId = null;
-    selectStoredProfile();
+    selectStoredProfile(readRoute());
     if (!state.profiles.length) showOnboarding();
-    else renderCurrent();
+    else await restoreRoute(readRoute());
     // O avatar é opcional: sincronizamos depois da interface estar disponível.
     if (shouldSyncGoogleAvatar) syncGoogleAvatarInBackground(user);
   } catch (error) {
@@ -324,14 +327,266 @@ function syncGoogleAvatarInBackground(user) {
   }, 0);
 }
 
-function selectStoredProfile() {
+function selectStoredProfile(route = {}) {
   const stored = getStoredProfile();
   state.currentProfile =
+    state.profiles.find((profile) => profile.id === route.profile) ||
     state.profiles.find((profile) => profile.id === stored?.id) ||
     state.profiles[0] ||
     null;
   if (state.currentProfile) storeProfile(state.currentProfile);
   else removeStoredProfile();
+}
+
+const routeViews = new Set([
+  "dashboard", "personal", "profiles", "teachers", "disciplines", "schedules",
+  "chronogram", "tasks", "files", "mindmaps", "mindmap-editor", "videos",
+  "exams", "exam-detail", "exam-topic", "exam-materials", "presentations",
+  "presentation-detail", "presentation-materials", "lessons", "lesson-chronogram",
+  "lesson-form", "lesson-detail", "lesson-materials", "lesson-tasks",
+]);
+
+function resetProfileScopedState() {
+  state.teachers = [];
+  state.disciplines = [];
+  state.schedules = [];
+  state.chronograms = [];
+  state.lessons = [];
+  state.tasks = [];
+  state.exams = [];
+  state.examTopics = [];
+  state.presentations = [];
+  state.mindMaps = [];
+  state.videos = [];
+  state.profileContents = [];
+  state.scheduleEditing = false;
+  state.chronogramDisciplineId = null;
+  state.lessonWeekOffset = 0;
+  state.lessonOccurrence = null;
+  state.lessonChronogram = null;
+  state.activeLesson = null;
+  state.activeLessonContents = [];
+  state.activeExam = null;
+  state.activeExamTopic = null;
+  state.activeExamContents = [];
+  state.activePresentation = null;
+  state.activePresentationContents = [];
+  state.activeMindMap = null;
+  state.mindMapScope = null;
+  state.videoScope = null;
+  state.taskDisciplineFilter = "";
+  state.fileDisciplineFilter = "";
+  state.fileSearch = "";
+  state.dashboardLoadedProfileId = null;
+}
+
+function routeScope(type, id) {
+  if (!id || !["lesson", "exam", "presentation"].includes(type)) return null;
+  const record = (type === "lesson" ? state.lessons : type === "exam" ? state.exams : state.presentations)
+    .find((item) => item.id === id);
+  return record ? (type === "lesson" ? scopeForVideos("lesson", record) : type === "exam" ? scopeForVideos("exam", record) : scopeForVideos("presentation", record)) : null;
+}
+
+function scopeFromAssociation(record) {
+  if (record?.aula) return routeScope("lesson", record.aula);
+  if (record?.prova) return routeScope("exam", record.prova);
+  if (record?.apresentacao) return routeScope("presentation", record.apresentacao);
+  return null;
+}
+
+function occurrenceAt(discipline, schedules, dateValue) {
+  const startsAt = new Date(dateValue);
+  if (!discipline || Number.isNaN(startsAt.valueOf())) return null;
+  const occurrences = getLessonOccurrences(state.currentProfile, discipline.id, schedules);
+  const matching = occurrences.find(
+    (item) => Math.abs(item.startsAt.valueOf() - startsAt.valueOf()) < 60000,
+  );
+  if (matching) {
+    const endsAt = new Date(matching.startsAt);
+    const [hour = 0, minute = 0] = String(matching.schedule.hora_fim || "").slice(0, 5).split(":").map(Number);
+    endsAt.setHours(hour, minute, 0, 0);
+    return { ...matching, discipline, endsAt };
+  }
+  const schedule = schedules.find((item) => item.disciplina === discipline.id) || null;
+  const endsAt = new Date(startsAt);
+  if (schedule?.hora_fim) {
+    const [hour = 0, minute = 0] = String(schedule.hora_fim).slice(0, 5).split(":").map(Number);
+    endsAt.setHours(hour, minute, 0, 0);
+  } else endsAt.setHours(endsAt.getHours() + 1);
+  return {
+    key: `${schedule?.id || discipline.id}:${startsAt.toISOString()}`,
+    schedule,
+    discipline,
+    startsAt,
+    endsAt,
+  };
+}
+
+function routeForState() {
+  const route = {
+    view: routeViews.has(state.view) ? state.view : "dashboard",
+    profile: state.currentProfile?.id || "",
+  };
+  if (state.view === "schedules" && state.scheduleEditing) route.edit = "1";
+  if (state.view === "chronogram") route.discipline = state.chronogramDisciplineId || "";
+  if (state.view === "tasks") route.discipline = state.taskDisciplineFilter || "";
+  if (state.view === "files") {
+    route.discipline = state.fileDisciplineFilter || "";
+    route.q = state.fileSearch || "";
+  }
+  if (state.view === "lessons" && state.lessonWeekOffset) route.week = String(state.lessonWeekOffset);
+  if (state.view.startsWith("lesson-")) {
+    route.lesson = state.activeLesson?.id || "";
+    route.chronogram = state.lessonChronogram?.id || state.activeLesson?.cronograma || "";
+    route.discipline = state.lessonOccurrence?.discipline?.id || state.activeLesson?.disciplina || "";
+    route.at = state.lessonOccurrence?.startsAt?.toISOString() || "";
+  }
+  if (state.view.startsWith("exam-")) {
+    route.exam = state.activeExam?.id || "";
+    route.topic = state.activeExamTopic?.id || "";
+  }
+  if (state.view.startsWith("presentation-")) route.presentation = state.activePresentation?.id || "";
+  if (state.view === "mindmap-editor") route.map = state.activeMindMap?.id || "";
+  if (state.view === "mindmaps" || state.view === "mindmap-editor") {
+    route.scope = state.mindMapScope?.type || "";
+    route.scopeId = state.mindMapScope?.record?.id || "";
+  }
+  if (state.view === "videos") {
+    route.scope = state.videoScope?.type || "";
+    route.scopeId = state.videoScope?.record?.id || "";
+  }
+  return route;
+}
+
+function syncRoute() {
+  if (!state.user || !state.currentProfile) return;
+  writeRoute(routeForState(), { replace: restoringRoute });
+}
+
+async function restoreLessonRoute(route, targetView) {
+  const profile = state.currentProfile;
+  const [disciplines, schedules, chronograms, lessons] = await Promise.all([
+    getDisciplines(profile.id), getSchedules(profile.id), getChronogram(profile.id), getLessons(profile.id),
+  ]);
+  state.disciplines = disciplines;
+  state.schedules = schedules;
+  state.chronograms = chronograms;
+  state.lessons = lessons;
+  const lesson = lessons.find((item) => item.id === route.lesson) || null;
+  const chronogram = chronograms.find((item) => item.id === (route.chronogram || lesson?.cronograma)) || null;
+  const discipline = disciplines.find((item) => item.id === (lesson?.disciplina || chronogram?.disciplina || route.discipline)) || null;
+  const occurrence = occurrenceAt(discipline, schedules, chronogram?.data_hora || route.at);
+  if ((targetView === "lesson-detail" || targetView === "lesson-materials" || targetView === "lesson-tasks") && !lesson) {
+    state.view = "lessons";
+    return renderLessons();
+  }
+  if ((targetView === "lesson-form" || targetView === "lesson-chronogram") && !occurrence) {
+    state.view = "lessons";
+    return renderLessons();
+  }
+  state.returnView = "lessons";
+  state.activeLesson = lesson;
+  state.lessonChronogram = chronogram;
+  state.lessonOccurrence = occurrence;
+  state.view = targetView;
+  if (targetView === "lesson-detail") return renderLessonDetail();
+  if (targetView === "lesson-materials") return renderLessonMaterials();
+  if (targetView === "lesson-tasks") return renderLessonTasks();
+  if (targetView === "lesson-form") return renderLessonForm();
+  return renderLessonChronogram();
+}
+
+async function restoreExamRoute(route, targetView) {
+  const profile = state.currentProfile;
+  const [disciplines, exams] = await Promise.all([getDisciplines(profile.id), getExams(profile.id)]);
+  const exam = exams.find((item) => item.id === route.exam);
+  if (!exam) {
+    state.view = "exams";
+    return renderExams();
+  }
+  const [topics, contents] = await Promise.all([
+    getExamTopics(profile.id, exam.id), getContentsByDiscipline(profile.id, exam.disciplina),
+  ]);
+  state.disciplines = disciplines;
+  state.exams = exams;
+  state.examTopics = topics;
+  state.activeExam = exam;
+  state.activeExamTopic = topics.find((item) => item.id === route.topic) || null;
+  state.activeExamContents = contents;
+  state.view = targetView;
+  if (targetView === "exam-topic" && !state.activeExamTopic) {
+    state.view = "exam-detail";
+    return renderExamDetail();
+  }
+  if (targetView === "exam-materials") return renderExamMaterials();
+  if (targetView === "exam-topic") return renderExamTopic();
+  return renderExamDetail();
+}
+
+async function restorePresentationRoute(route, targetView) {
+  const profile = state.currentProfile;
+  const [disciplines, presentations] = await Promise.all([getDisciplines(profile.id), getPresentations(profile.id)]);
+  const presentation = presentations.find((item) => item.id === route.presentation);
+  if (!presentation) {
+    state.view = "presentations";
+    return renderPresentations();
+  }
+  state.disciplines = disciplines;
+  state.presentations = presentations;
+  state.activePresentation = presentation;
+  state.activePresentationContents = await getContentsByDiscipline(profile.id, presentation.disciplina);
+  state.view = targetView;
+  return targetView === "presentation-materials" ? renderPresentationMaterials() : renderPresentationDetail();
+}
+
+async function restoreMindMapRoute(route) {
+  await loadMindMapData();
+  const map = state.mindMaps.find((item) => item.id === route.map);
+  if (!map) {
+    state.view = "mindmaps";
+    state.mindMapScope = routeScope(route.scope, route.scopeId);
+    return renderMindMaps(state.mindMapScope);
+  }
+  state.activeMindMap = map;
+  state.mindMapScope = routeScope(route.scope, route.scopeId) || scopeFromAssociation(map);
+  state.view = "mindmap-editor";
+  return renderMindMapEditor();
+}
+
+async function restoreRoute(route = readRoute()) {
+  if (!state.currentProfile) return showOnboarding();
+  const sequence = ++routeRestoreSequence;
+  restoringRoute = true;
+  try {
+    const requestedProfile = state.profiles.find((profile) => profile.id === route.profile);
+    if (requestedProfile && requestedProfile.id !== state.currentProfile.id) {
+      state.currentProfile = requestedProfile;
+      resetProfileScopedState();
+      storeProfile(requestedProfile);
+    }
+    const targetView = routeViews.has(route.view) ? route.view : "dashboard";
+    if (targetView.startsWith("lesson-")) return await restoreLessonRoute(route, targetView);
+    if (targetView.startsWith("exam-")) return await restoreExamRoute(route, targetView);
+    if (targetView.startsWith("presentation-")) return await restorePresentationRoute(route, targetView);
+    if (targetView === "mindmap-editor") return await restoreMindMapRoute(route);
+    if (targetView === "mindmaps") return await renderMindMaps(routeScope(route.scope, route.scopeId));
+    if (targetView === "videos") return await renderVideos(routeScope(route.scope, route.scopeId));
+    state.view = targetView;
+    state.scheduleEditing = route.edit === "1";
+    state.chronogramDisciplineId = targetView === "chronogram" ? route.discipline : null;
+    state.taskDisciplineFilter = targetView === "tasks" ? route.discipline : "";
+    state.fileDisciplineFilter = targetView === "files" ? route.discipline : "";
+    state.fileSearch = targetView === "files" ? route.q : "";
+    state.lessonWeekOffset = targetView === "lessons" && Number.isFinite(Number(route.week)) ? Number(route.week) : 0;
+    return await renderCurrent();
+  } catch (error) {
+    console.error("Não foi possível restaurar a rota", error);
+    showToast("Não foi possível abrir este endereço. Você foi levado ao dashboard.", "error");
+    state.view = "dashboard";
+    return renderDashboard();
+  } finally {
+    if (sequence === routeRestoreSequence) restoringRoute = false;
+  }
 }
 
 function renderAuthScreen() {
@@ -2783,6 +3038,7 @@ async function renderVideos(scope = state.videoScope) {
 
 function renderWithinLayout(content) {
   renderLayout(root, { ...state, content });
+  syncRoute();
   bindLayout(root, {
     onMenuGroupToggle: (group, isExpanded) => {
       const groups = {
@@ -2981,5 +3237,9 @@ async function boot() {
     showToast(error.message || "Não foi possível iniciar o AKADEMO.", "error");
   }
 }
+
+window.addEventListener("popstate", () => {
+  if (state.user && state.currentProfile) restoreRoute(readRoute());
+});
 
 boot();
