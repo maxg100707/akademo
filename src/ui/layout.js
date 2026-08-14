@@ -20,6 +20,7 @@ const organizationModules = [
 
 const contentModules = [
   { view: "mindmaps", iconName: "mindMap", label: "Mapas mentais", isActive: (currentView) => currentView === "mindmaps" || currentView === "mindmap-editor" },
+  { view: "notes", iconName: "note", label: "Anotações", isActive: (currentView) => currentView === "notes" },
   { view: "videos", iconName: "video", label: "Vídeos", isActive: (currentView) => currentView === "videos" },
 ];
 
@@ -42,6 +43,7 @@ const moduleContexts = {
   exams: { iconName: "exam", title: "Provas", description: "Planeje suas avaliações e materiais de revisão." },
   presentations: { iconName: "presentation", title: "Apresentações", description: "Prepare orientações, materiais e referências." },
   mindmaps: { iconName: "mindMap", title: "Mapas mentais", description: "Conecte ideias e desenvolva seus estudos visualmente." },
+  notes: { iconName: "note", title: "Anotações", description: "Registre ideias, resumos e explicações em páginas organizadas." },
   videos: { iconName: "video", title: "Vídeos", description: "Assista e organize suas aulas e explicações em vídeo." },
 };
 
@@ -50,6 +52,7 @@ function contextForView(view) {
   if (view?.startsWith("exam-")) return moduleContexts.exams;
   if (view?.startsWith("presentation-")) return moduleContexts.presentations;
   if (view === "mindmap-editor") return moduleContexts.mindmaps;
+  if (view === "notes") return moduleContexts.notes;
   if (view === "videos") return moduleContexts.videos;
   return moduleContexts[view] || moduleContexts.dashboard;
 }

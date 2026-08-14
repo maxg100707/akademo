@@ -98,6 +98,12 @@ import {
   getVideoUrl,
   getVideos,
 } from "./services/videos.js";
+import {
+  createNote,
+  deleteNote,
+  getNotes,
+  updateNote,
+} from "./services/notes.js";
 import { defaultSettings, getSettings, normalizePalette, saveSettings } from "./services/settings.js";
 import {
   applyPendingAvatar,
@@ -197,6 +203,12 @@ import {
   openVideoPlayer,
   videosView,
 } from "./ui/videos-view.js";
+import {
+  bindNotesCatalog,
+  notesView,
+  openNoteEditor,
+  openNoteViewer,
+} from "./ui/notes-view.js";
 import { showToast, unsavedModal } from "./ui/components.js";
 import {
   getStoredProfile,
@@ -241,6 +253,8 @@ const state = {
   mindMapScope: null,
   videos: [],
   videoScope: null,
+  notes: [],
+  noteScope: null,
   profileContents: [],
   settings: defaultSettings(),
   settingsSaved: defaultSettings(),
@@ -389,7 +403,7 @@ function selectStoredProfile(route = {}) {
 
 const routeViews = new Set([
   "dashboard", "personal", "settings", "settings-user", "settings-dashboard", "settings-personalization", "profiles", "teachers", "contacts", "disciplines", "schedules",
-  "chronogram", "tasks", "files", "mindmaps", "mindmap-editor", "videos",
+  "chronogram", "tasks", "files", "mindmaps", "mindmap-editor", "videos", "notes",
   "exams", "exam-detail", "exam-topics", "exam-topic", "exam-materials", "exam-tasks", "presentations",
   "presentation-detail", "presentation-materials", "presentation-tasks", "lessons", "lesson-chronogram",
   "lesson-form", "lesson-detail", "lesson-materials", "lesson-tasks",
@@ -408,6 +422,7 @@ function resetProfileScopedState() {
   state.presentations = [];
   state.mindMaps = [];
   state.videos = [];
+  state.notes = [];
   state.profileContents = [];
   state.settings = defaultSettings();
   state.settingsSaved = cloneSettings(state.settings);
@@ -429,6 +444,7 @@ function resetProfileScopedState() {
   state.activeMindMap = null;
   state.mindMapScope = null;
   state.videoScope = null;
+  state.noteScope = null;
   state.taskDisciplineFilter = "";
   state.fileDisciplineFilter = "";
   state.fileSearch = "";
@@ -509,6 +525,10 @@ function routeForState() {
   if (state.view === "videos") {
     route.scope = state.videoScope?.type || "";
     route.scopeId = state.videoScope?.record?.id || "";
+  }
+  if (state.view === "notes") {
+    route.scope = state.noteScope?.type || "";
+    route.scopeId = state.noteScope?.record?.id || "";
   }
   return route;
 }
@@ -612,6 +632,11 @@ async function restoreMindMapRoute(route) {
   return renderMindMapEditor();
 }
 
+async function restoreNotesRoute(route) {
+  await loadNoteData();
+  return renderNotes(routeScope(route.scope, route.scopeId));
+}
+
 async function restoreRoute(route = readRoute()) {
   if (!state.currentProfile) return showOnboarding();
   const sequence = ++routeRestoreSequence;
@@ -630,6 +655,7 @@ async function restoreRoute(route = readRoute()) {
     if (targetView === "mindmap-editor") return await restoreMindMapRoute(route);
     if (targetView === "mindmaps") return await renderMindMaps(routeScope(route.scope, route.scopeId));
     if (targetView === "videos") return await renderVideos(routeScope(route.scope, route.scopeId));
+    if (targetView === "notes") return await restoreNotesRoute(route);
     state.view = targetView;
     state.scheduleEditing = route.edit === "1";
     state.chronogramDisciplineId = targetView === "chronogram" ? route.discipline : null;
@@ -664,6 +690,12 @@ function renderAuthScreen() {
   state.exams = [];
   state.examTopics = [];
   state.presentations = [];
+  state.mindMaps = [];
+  state.videos = [];
+  state.notes = [];
+  state.mindMapScope = null;
+  state.videoScope = null;
+  state.noteScope = null;
   state.scheduleEditing = false;
   state.chronogramDisciplineId = null;
   state.lessonWeekOffset = 0;
@@ -726,6 +758,7 @@ function renderCurrent() {
   if (state.view === "mindmaps") return renderMindMaps();
   if (state.view === "mindmap-editor") return renderMindMapEditor();
   if (state.view === "videos") return renderVideos();
+  if (state.view === "notes") return renderNotes();
   if (state.view === "exams") return renderExams();
   if (state.view === "exam-detail") return renderExamDetail();
   if (state.view === "exam-topics") return renderExamTopics();
@@ -1242,6 +1275,8 @@ function renderProfiles() {
       state.chronograms = [];
       state.lessons = [];
       state.tasks = [];
+      state.notes = [];
+      state.noteScope = null;
       state.scheduleEditing = false;
       state.chronogramDisciplineId = null;
       state.lessonWeekOffset = 0;
@@ -1289,6 +1324,8 @@ function renderProfiles() {
           state.chronograms = [];
           state.lessons = [];
           state.tasks = [];
+          state.notes = [];
+          state.noteScope = null;
           state.scheduleEditing = false;
           state.chronogramDisciplineId = null;
           state.lessonWeekOffset = 0;
@@ -2378,6 +2415,7 @@ function renderExamDetail() {
     onBack: examBack,
     onOpenTopics: () => renderExamTopics(),
     onOpenMindMaps: () => renderMindMaps(scopeForMindMaps("exam", exam)),
+    onOpenNotes: () => renderNotes(scopeForNotes("exam", exam)),
     onOpenVideos: () => renderVideos(scopeForVideos("exam", exam)),
     onOpenMaterials: () => renderExamMaterials(),
   });
@@ -2813,6 +2851,8 @@ function renderPresentationDetail() {
     onOpenMaterials: () => renderPresentationMaterials(),
     onOpenMindMaps: () =>
       renderMindMaps(scopeForMindMaps("presentation", presentation)),
+    onOpenNotes: () =>
+      renderNotes(scopeForNotes("presentation", presentation)),
     onOpenVideos: () =>
       renderVideos(scopeForVideos("presentation", presentation)),
     onEditLinks: () =>
@@ -3205,6 +3245,7 @@ function renderLessonDetail() {
   bindLessonDetail(root, {
     onBack: lessonBack,
     onOpenMindMaps: () => renderMindMaps(scopeForMindMaps("lesson", lesson)),
+    onOpenNotes: () => renderNotes(scopeForNotes("lesson", lesson)),
     onOpenMaterials: () =>
       renderLessonMaterials().catch((error) =>
         showToast(
@@ -3495,6 +3536,131 @@ function scopeForVideos(type, record) {
   };
 }
 
+function noteReferences() {
+  return {
+    disciplines: state.disciplines,
+    lessons: state.lessons,
+    exams: state.exams,
+    presentations: state.presentations,
+  };
+}
+
+function scopeForNotes(type, record) {
+  return {
+    type,
+    field: type === "lesson" ? "aula" : type === "exam" ? "prova" : "apresentacao",
+    record,
+    disciplineId: record.disciplina,
+  };
+}
+
+async function loadNoteData() {
+  const profile = state.currentProfile;
+  if (!profile) return;
+  const [notes, disciplines, lessons, exams, presentations] = await Promise.all([
+    getNotes(profile.id),
+    getDisciplines(profile.id),
+    getLessons(profile.id),
+    getExams(profile.id),
+    getPresentations(profile.id),
+  ]);
+  if (state.currentProfile?.id !== profile.id) return;
+  state.notes = notes;
+  state.disciplines = disciplines;
+  state.lessons = lessons;
+  state.exams = exams;
+  state.presentations = presentations;
+}
+
+function notesBack() {
+  const scope = state.noteScope;
+  state.noteScope = null;
+  if (scope?.type === "lesson") {
+    return restoreLessonRoute({
+      lesson: scope.record.id,
+      chronogram: scope.record.cronograma || "",
+      discipline: scope.record.disciplina || "",
+    }, "lesson-detail");
+  }
+  if (scope?.type === "exam") return restoreExamRoute({ exam: scope.record.id }, "exam-detail");
+  if (scope?.type === "presentation") return restorePresentationRoute({ presentation: scope.record.id }, "presentation-detail");
+  state.view = state.returnView || "dashboard";
+  return renderCurrent();
+}
+
+function replaceNote(updated) {
+  state.notes = state.notes.map((item) => item.id === updated.id ? updated : item);
+}
+
+function editNote(note) {
+  openNoteEditor(note, {
+    onSave: async (documentData) => {
+      const updated = await updateNote(
+        note.id,
+        state.user,
+        state.currentProfile,
+        note,
+        { note: documentData },
+      );
+      replaceNote(updated);
+      showToast("Anotação salva.");
+      return updated;
+    },
+    onDelete: async () => {
+      await deleteNote(note.id, state.currentProfile.id);
+      state.notes = state.notes.filter((item) => item.id !== note.id);
+      showToast("Anotação apagada.");
+    },
+    onClosed: (updated, meta) => {
+      if (updated || meta?.deleted) renderNotes(state.noteScope);
+    },
+  });
+}
+
+function viewNote(note) {
+  openNoteViewer(note, {
+    onEdit: () => editNote(note),
+    onDelete: async () => {
+      await deleteNote(note.id, state.currentProfile.id);
+      state.notes = state.notes.filter((item) => item.id !== note.id);
+      showToast("Anotação apagada.");
+      renderNotes(state.noteScope);
+    },
+  });
+}
+
+async function renderNotes(scope = state.noteScope) {
+  const profile = state.currentProfile;
+  if (!profile) return showOnboarding();
+  state.view = "notes";
+  state.noteScope = scope || null;
+  try {
+    await loadNoteData();
+    if (state.view !== "notes" || state.currentProfile?.id !== profile.id) return;
+    renderWithinLayout(notesView({
+      notes: state.notes,
+      references: noteReferences(),
+      scope: state.noteScope,
+    }));
+    bindNotesCatalog(root, {
+      notes: state.notes,
+      references: noteReferences(),
+      scope: state.noteScope,
+      onBack: notesBack,
+      onCreate: async (values) => {
+        const note = await createNote(state.user, profile, values);
+        state.notes = [note, ...state.notes];
+        window.setTimeout(() => editNote(note), 0);
+        return note;
+      },
+      onOpen: viewNote,
+    });
+  } catch (error) {
+    showToast(error.message || "Não foi possível carregar as anotações.", "error");
+    notesBack();
+  }
+}
+
 async function loadVideoData() {
   const profile = state.currentProfile;
   if (!profile) return;
@@ -3655,6 +3821,10 @@ function renderWithinLayout(content) {
         state.returnView = state.view;
         state.videoScope = null;
       }
+      if (view === "notes") {
+        state.returnView = state.view;
+        state.noteScope = null;
+      }
       state.view = view;
       renderCurrent();
     },
@@ -3700,6 +3870,8 @@ function renderWithinLayout(content) {
       state.mindMapScope = null;
       state.videos = [];
       state.videoScope = null;
+      state.notes = [];
+      state.noteScope = null;
       state.scheduleEditing = false;
       state.chronogramDisciplineId = null;
       state.lessonWeekOffset = 0;

@@ -39,6 +39,7 @@ const MODULE_IDS = new Set([
   "presentations",
   "files",
   "mindmaps",
+  "notes",
   "videos",
   "disciplines",
   "teachers",

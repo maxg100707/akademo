@@ -19,6 +19,7 @@ supabase/schedules-migration.sql   migração de horários (após disciplinas)
 supabase/profile-dates-migration.sql período de início e fim dos perfis
 supabase/chronogram-migration.sql  migração do cronograma (após horários e datas)
 supabase/lessons-migration.sql     migração de aulas e conteúdos (após cronograma)
+supabase/notes-migration.sql anotações paginadas privadas (após aulas, provas e apresentações)
 supabase/functions/        Edge Function segura para buckets e avatar Google
 ```
 
