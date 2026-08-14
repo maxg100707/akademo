@@ -185,3 +185,96 @@ body[data-theme="dark"][data-palette="flames"] {
   --shadow: 0 10px 28px rgba(67, 29, 23, .3);
   --shadow-high: 0 20px 46px rgba(56, 24, 19, .38);
 }
+
+/* Temática Cosmic: azuis e roxos com superfícies bem separadas e contraste estável. */
+body[data-palette="cosmic"] {
+  --page: #e4e8f5;
+  --surface: #aab5ec;
+  --surface-alt: #8494da;
+  --surface-muted: #b9c3ef;
+  --surface-contrast: #cbd3f7;
+  --surface-deep: #363571;
+  --menu-surface: #d4d9e8;
+  --menu-hover: #c3cae0;
+  --text: #171a3b;
+  --text-soft: #313760;
+  --text-faint: #4b527b;
+  --icon: #171a3b;
+  --icon-muted: #313760;
+  --line: #5f6fc6;
+
+  --green: #675bd0;
+  --green-accent: #e4dfff;
+  --green-dark: #323277;
+  --green-deep: #242454;
+  --green-forest: #343274;
+  --green-strong: #4b45a6;
+  --green-soft: #8796e9;
+  --green-pale: #aeb9ef;
+  --green-mint: #749ce7;
+  --green-mint-pale: #abc4f0;
+  --green-jade: #526ec9;
+  --green-jade-pale: #99afea;
+  --green-teal: #715bc7;
+  --green-teal-pale: #b99eea;
+  --green-olive: #6974c5;
+  --green-olive-pale: #b3baed;
+
+  --warm: #a96d43;
+  --danger: #ae526c;
+  --on-green: #f8f7ff;
+  --on-strong: #f8f8ff;
+  --sidebar: #46409d;
+  --sidebar-hover: #554eb5;
+  --sidebar-text: #f8f7ff;
+  --sidebar-muted: #e0ddff;
+  --focus-ring: rgba(103, 91, 208, .42);
+  --shadow: 0 8px 24px rgba(48, 50, 116, .17);
+  --shadow-high: 0 18px 42px rgba(35, 37, 88, .24);
+}
+
+body[data-theme="dark"][data-palette="cosmic"] {
+  --page: #24283a;
+  --surface: #3b4471;
+  --surface-alt: #4b58a2;
+  --surface-muted: #303963;
+  --surface-contrast: #5549ab;
+  --surface-deep: #1d224d;
+  --menu-surface: #2d3348;
+  --menu-hover: #3b435d;
+  --text: #f4f4ff;
+  --text-soft: #dce0fb;
+  --text-faint: #c8cdef;
+  --icon: #f4f4ff;
+  --icon-muted: #dce0fb;
+  --line: #7b89df;
+
+  --green: #9a86ff;
+  --green-accent: #e9e4ff;
+  --green-dark: #e5e0ff;
+  --green-deep: #f4f2ff;
+  --green-forest: #30387c;
+  --green-strong: #5e53bb;
+  --green-soft: #5866b8;
+  --green-pale: #465095;
+  --green-mint: #9cb9ff;
+  --green-mint-pale: #435990;
+  --green-jade: #8e9df2;
+  --green-jade-pale: #4e60a6;
+  --green-teal: #b596ed;
+  --green-teal-pale: #654b9b;
+  --green-olive: #a6aef2;
+  --green-olive-pale: #5b639d;
+
+  --warm: #e0a36e;
+  --danger: #ee879f;
+  --on-green: #17152f;
+  --on-strong: #f8f7ff;
+  --sidebar: #2d367f;
+  --sidebar-hover: #3b4890;
+  --sidebar-text: #f8f7ff;
+  --sidebar-muted: #dedcff;
+  --focus-ring: rgba(154, 134, 255, .45);
+  --shadow: 0 10px 28px rgba(12, 16, 48, .34);
+  --shadow-high: 0 20px 46px rgba(9, 12, 38, .46);
+}

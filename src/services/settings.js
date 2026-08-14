@@ -29,7 +29,7 @@ export const DASHBOARD_WIDGETS = [
 ];
 
 const WIDGET_IDS = new Set(DASHBOARD_WIDGETS.map((widget) => widget.id));
-const PALETTE_IDS = new Set(["forest", "flames"]);
+const PALETTE_IDS = new Set(["forest", "flames", "cosmic"]);
 const MODULE_IDS = new Set([
   "schedules",
   "lessons",

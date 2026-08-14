@@ -23,7 +23,7 @@ const categories = [
     title: "Personalização",
     description: "Escolha a temática e as cores do seu espaço.",
     iconName: "sparkles",
-    terms: "personalizacao personalização aparencia aparência tema tematica temática cores paleta palheta floresta chamas verde vermelho laranja",
+    terms: "personalizacao personalização aparencia aparência tema tematica temática cores paleta palheta floresta chamas cosmic cósmica verde vermelho laranja azul roxo violeta",
   },
 ];
 
@@ -40,6 +40,7 @@ const settingsSearchEntries = [
   { kind: "Categoria", target: "personalization", title: "Personalização", description: "Altere a temática de cores do AKADEMO.", terms: "personalizacao personalização aparencia aparência cores paleta palheta tema tematica temática" },
   { kind: "Temática", target: "personalization", title: "Floresta", description: "A paleta verde original do AKADEMO.", terms: "floresta verde tema tematica temática paleta cores padrao padrão" },
   { kind: "Temática", target: "personalization", title: "Chamas", description: "Tons equilibrados de vermelho e laranja.", terms: "chamas vermelho laranja quente tema tematica temática paleta cores" },
+  { kind: "Temática", target: "personalization", title: "Cosmic", description: "Azuis profundos e roxos luminosos com alto contraste.", terms: "cosmic cósmica azul azul escuro roxo roxo escuro violeta indigo índigo tema tematica temática paleta cores" },
 ];
 
 const favoriteModules = [
@@ -175,6 +176,7 @@ export function personalizationView({ settings }) {
         <div class="palette-choice-grid" role="radiogroup" aria-label="Escolher temática do sistema">
           ${paletteChoice({ id: "forest", name: "Floresta", description: "A identidade verde original do AKADEMO.", selected: palette === "forest", swatches: ["#006333", "#00bb5b", "#4bd39b", "#9ed33e"] })}
           ${paletteChoice({ id: "flames", name: "Chamas", description: "Vermelho e laranja equilibrados e confortáveis.", selected: palette === "flames", swatches: ["#7d2f21", "#c95638", "#d98245", "#b5672a"] })}
+          ${paletteChoice({ id: "cosmic", name: "Cosmic", description: "Azul profundo e roxo com uma atmosfera cósmica e legível.", selected: palette === "cosmic", swatches: ["#252852", "#3f4f9c", "#6859cb", "#a694ee"] })}
         </div>
       </section>
       <div class="settings-save-bar"><span>${icon("info", 16)} A temática será aplicada em todo o seu espaço.</span><button class="button button--primary" type="submit">${icon("save", 17)} Salvar personalização</button></div>

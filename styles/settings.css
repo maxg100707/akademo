@@ -235,7 +235,7 @@
 /* Personalização: opções visuais, acessíveis e legíveis em qualquer tema. */
 .personalization-settings-page { max-width: 980px; }
 .personalization-section { max-width: 860px; }
-.palette-choice-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; }
+.palette-choice-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 13px; }
 .palette-choice { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 13px; min-height: 168px; padding: 14px; color: var(--text); border: 1px solid color-mix(in srgb, var(--line) 78%, transparent); border-radius: 16px; background: color-mix(in srgb, var(--surface) 72%, var(--surface-muted)); cursor: pointer; transition: transform .16s ease, border-color .16s ease, background .16s ease, box-shadow .16s ease; }
 .palette-choice:hover { border-color: var(--green-jade); background: color-mix(in srgb, var(--surface) 82%, var(--green-jade-pale)); transform: translateY(-2px); }
 .palette-choice:focus-within { outline: 3px solid color-mix(in srgb, var(--green-jade) 45%, transparent); outline-offset: 3px; }
@@ -362,3 +362,79 @@ body[data-palette="flames"] .dashboard-favorite-link:nth-child(2n) { color: var(
 body[data-theme="dark"] .dashboard-favorite-link,
 body[data-theme="dark"] .dashboard-favorite-link:nth-child(2n),
 body[data-theme="dark"] .dashboard-mini-schedule__day > strong { color: var(--on-strong); }
+
+/* Cosmic: os controles de leitura ficam propositalmente mais claros que as ações. */
+body[data-palette="cosmic"]:not([data-theme="dark"]) .field__control,
+body[data-palette="cosmic"]:not([data-theme="dark"]) .field__textarea,
+body[data-palette="cosmic"]:not([data-theme="dark"]) .videos-search .field__control {
+  color: var(--text) !important;
+  border-color: var(--line) !important;
+  background-color: var(--surface-contrast) !important;
+}
+
+body[data-palette="cosmic"]:not([data-theme="dark"]) .field__control input,
+body[data-palette="cosmic"]:not([data-theme="dark"]) .field__control select,
+body[data-palette="cosmic"]:not([data-theme="dark"]) .field__textarea,
+body[data-palette="cosmic"]:not([data-theme="dark"]) .field__control input::placeholder,
+body[data-palette="cosmic"]:not([data-theme="dark"]) .field__textarea::placeholder {
+  color: var(--text) !important;
+  opacity: .82;
+}
+
+body[data-palette="cosmic"]:not([data-theme="dark"]) .dashboard-favorite-link,
+body[data-palette="cosmic"]:not([data-theme="dark"]) .dashboard-favorite-link:nth-child(2n),
+body[data-palette="cosmic"]:not([data-theme="dark"]) .dashboard-mini-schedule__day > strong {
+  color: var(--green-deep);
+}
+
+body[data-palette="cosmic"]:not([data-theme="dark"]) .palette-choice__check {
+  color: var(--on-strong);
+  background-color: var(--green-strong);
+}
+
+body[data-theme="dark"][data-palette="cosmic"] .dashboard-calendar__legend span:nth-child(3),
+body[data-theme="dark"][data-palette="cosmic"] .dashboard-calendar__legend span:nth-child(3) svg {
+  color: var(--on-strong);
+}
+
+/* Cartões profundos precisam sempre de tipografia clara, inclusive no modo claro. */
+body[data-palette="cosmic"] .schedule-block,
+body[data-palette="cosmic"] .schedule-block--1,
+body[data-palette="cosmic"] .schedule-block--2,
+body[data-palette="cosmic"] .schedule-block--3,
+body[data-palette="cosmic"] .exam-card,
+body[data-palette="cosmic"] .presentation-card {
+  color: var(--on-strong) !important;
+  border-color: var(--green-accent) !important;
+  background-color: var(--surface-deep) !important;
+}
+
+body[data-palette="cosmic"] .schedule-block strong,
+body[data-palette="cosmic"] .schedule-block small,
+body[data-palette="cosmic"] .exam-card strong,
+body[data-palette="cosmic"] .presentation-card strong,
+body[data-palette="cosmic"] .exam-card > div,
+body[data-palette="cosmic"] .presentation-card > div {
+  color: var(--on-strong) !important;
+}
+
+body[data-palette="cosmic"] .schedule-block em,
+body[data-palette="cosmic"] .exam-card small,
+body[data-palette="cosmic"] .exam-card p,
+body[data-palette="cosmic"] .presentation-card small,
+body[data-palette="cosmic"] .presentation-card p {
+  color: var(--green-accent) !important;
+}
+
+body[data-palette="cosmic"] .exam-card > span,
+body[data-palette="cosmic"] .presentation-card > span {
+  color: var(--on-strong) !important;
+  border-color: var(--green-accent) !important;
+  background-color: var(--green-strong) !important;
+}
+
+body[data-palette="cosmic"] .exam-card:hover,
+body[data-palette="cosmic"] .presentation-card:hover {
+  border-color: var(--green-mint) !important;
+  background-color: color-mix(in srgb, var(--surface-deep) 81%, var(--green)) !important;
+}
