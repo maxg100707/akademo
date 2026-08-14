@@ -3,11 +3,11 @@ import { escapeHtml } from "../utils/formatters.js";
 import { completePhone, COUNTRY_CODES, digitsOnly, formatPhoneNumber, splitPhone } from "../utils/phone.js";
 import { closeModal, setButtonLoading, showToast } from "./components.js";
 
-const emptyTeacher = () => ({ name: "", email: "", countryCode: "55", phone: "" });
+const emptyTeacher = () => ({ name: "", email: "", countryCode: "55", phone: "", observations: "" });
 function teacherValues(teacher) {
   if (!teacher) return emptyTeacher();
   const phone = splitPhone(teacher.telefone_professor);
-  return { name: teacher.nome_professor || "", email: teacher.email_professor || "", countryCode: phone.countryCode, phone: phone.number };
+  return { name: teacher.nome_professor || "", email: teacher.email_professor || "", countryCode: phone.countryCode, phone: phone.number, observations: teacher.obs || "" };
 }
 
 function teacherFields(values) {
@@ -16,6 +16,7 @@ function teacherFields(values) {
     <label class="field"><span>E-mail <em>opcional</em></span><span class="field__control">${icon("mail", 17)}<input name="email" type="email" maxlength="254" value="${escapeHtml(values.email)}" placeholder="ana@instituicao.edu" /></span></label>
     <div class="teacher-phone-fields"><label class="field"><span>Código do país</span><span class="field__control">${icon("phone", 17)}<select name="countryCode" aria-label="Código do país">${COUNTRY_CODES.map((country) => `<option value="${country.code}" ${country.code === values.countryCode ? "selected" : ""}>${escapeHtml(country.label)}</option>`).join("")}</select></span></label>
     <label class="field"><span>Telefone <em>opcional</em></span><span class="field__control">${icon("phone", 17)}<input name="phone" type="tel" inputmode="tel" maxlength="18" value="${escapeHtml(formatPhoneNumber(values.phone, values.countryCode))}" placeholder="Número sem o código" /></span></label></div>
+    <label class="field"><span>Observações <em>opcional</em></span><span class="field__control field__control--textarea">${icon("file", 17)}<textarea name="observations" maxlength="1200" placeholder="Anotações importantes sobre este professor">${escapeHtml(values.observations || "")}</textarea></span></label>
   </div>`;
 }
 

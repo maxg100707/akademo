@@ -13,6 +13,7 @@ src/utils/                 ícones e funções auxiliares
 styles/                    CSS separado por responsabilidade
 supabase/schema.sql        tabelas, triggers e RLS completos (instalação nova)
 supabase/teachers-migration.sql    migração de professores (instalações existentes)
+supabase/contacts-migration.sql    central de contatos e observações de professores
 supabase/disciplines-migration.sql migração de disciplinas (após professores)
 supabase/schedules-migration.sql   migração de horários (após disciplinas)
 supabase/profile-dates-migration.sql período de início e fim dos perfis
@@ -37,7 +38,7 @@ supabase/functions/        Edge Function segura para buckets e avatar Google
 
 ### Atualização para instalações existentes
 
-Se o projeto já está em uso, execute as migrações que ainda não foram aplicadas nesta ordem: `supabase/teachers-migration.sql`, `supabase/disciplines-migration.sql`, `supabase/schedules-migration.sql`, `supabase/profile-dates-migration.sql`, `supabase/chronogram-migration.sql` e `supabase/lessons-migration.sql`. Depois publique novamente a Edge Function `provision-user-storage`, pois ela passa a aceitar materiais de aula de até 20 MB.
+Se o projeto já está em uso, execute as migrações que ainda não foram aplicadas na ordem indicada pelos arquivos. Para habilitar a Central de contatos, rode também `supabase/contacts-migration.sql` depois de `supabase/teachers-migration.sql`. Ela cria a tabela protegida `contatos`, adiciona observações aos professores e preserva a sincronização de e-mail de todos os módulos. Depois publique novamente a Edge Function `provision-user-storage`, pois ela passa a aceitar materiais de aula de até 20 MB.
 
 ### Google OAuth: URLs que não podem ser confundidas
 

@@ -21,6 +21,12 @@ import {
   updateTeacher,
 } from "./services/teachers.js";
 import {
+  createContact,
+  deleteContact,
+  getContacts,
+  updateContact,
+} from "./services/contacts.js";
+import {
   createDiscipline,
   deleteDiscipline,
   getDisciplines,
@@ -121,6 +127,12 @@ import {
   teachersView,
 } from "./ui/teachers-view.js";
 import {
+  bindContacts,
+  contactRecords,
+  openContactsSetup,
+  contactsView,
+} from "./ui/contacts-view.js";
+import {
   bindDisciplines,
   disciplinesView,
   openDisciplineSetup,
@@ -203,6 +215,7 @@ const state = {
   profiles: [],
   currentProfile: null,
   teachers: [],
+  contacts: [],
   disciplines: [],
   schedules: [],
   chronograms: [],
@@ -296,6 +309,7 @@ async function hydrate(user) {
     );
     state.profiles = await getProfiles(user.id);
     state.teachers = [];
+    state.contacts = [];
     state.disciplines = [];
     state.schedules = [];
     state.chronograms = [];
@@ -374,7 +388,7 @@ function selectStoredProfile(route = {}) {
 }
 
 const routeViews = new Set([
-  "dashboard", "personal", "settings", "settings-user", "settings-dashboard", "settings-personalization", "profiles", "teachers", "disciplines", "schedules",
+  "dashboard", "personal", "settings", "settings-user", "settings-dashboard", "settings-personalization", "profiles", "teachers", "contacts", "disciplines", "schedules",
   "chronogram", "tasks", "files", "mindmaps", "mindmap-editor", "videos",
   "exams", "exam-detail", "exam-topics", "exam-topic", "exam-materials", "exam-tasks", "presentations",
   "presentation-detail", "presentation-materials", "presentation-tasks", "lessons", "lesson-chronogram",
@@ -383,6 +397,7 @@ const routeViews = new Set([
 
 function resetProfileScopedState() {
   state.teachers = [];
+  state.contacts = [];
   state.disciplines = [];
   state.schedules = [];
   state.chronograms = [];
@@ -640,6 +655,7 @@ function renderAuthScreen() {
   state.profiles = [];
   state.currentProfile = null;
   state.teachers = [];
+  state.contacts = [];
   state.disciplines = [];
   state.schedules = [];
   state.chronograms = [];
@@ -684,7 +700,7 @@ function showOnboarding() {
       state.profiles = [profile];
       state.currentProfile = profile;
       storeProfile(profile);
-      showTeacherSetup(profile);
+      showContactsSetup(profile);
       state.view = "dashboard";
       renderCurrent();
       showToast("Seu perfil de estudo está pronto!");
@@ -701,6 +717,7 @@ function renderCurrent() {
   if (state.view === "personal") return renderPersonal();
   if (state.view === "profiles") return renderProfiles();
   if (state.view === "teachers") return renderTeachers();
+  if (state.view === "contacts") return renderContacts();
   if (state.view === "disciplines") return renderDisciplines();
   if (state.view === "schedules") return renderSchedules();
   if (state.view === "chronogram") return renderChronogram();
@@ -1219,6 +1236,7 @@ function renderProfiles() {
       state.currentProfile = profile;
       storeProfile(profile);
       state.teachers = [];
+      state.contacts = [];
       state.disciplines = [];
       state.schedules = [];
       state.chronograms = [];
@@ -1237,7 +1255,7 @@ function renderProfiles() {
       showToast("Novo perfil criado.");
       return profile;
     },
-    onCreated: (profile) => showTeacherSetup(profile),
+    onCreated: (profile) => showContactsSetup(profile),
     onUpdate: async (id, values) => {
       const updated = await updateStudyProfile(id, values);
       state.profiles = state.profiles.map((profile) =>
@@ -1265,6 +1283,7 @@ function renderProfiles() {
         if (state.currentProfile?.id === profile.id) {
           state.currentProfile = state.profiles[0];
           state.teachers = [];
+          state.contacts = [];
           state.disciplines = [];
           state.schedules = [];
           state.chronograms = [];
@@ -1339,6 +1358,106 @@ function showTeacherSetup(profile) {
         count
           ? "Professores cadastrados com sucesso."
           : "Você poderá cadastrar professores mais tarde.",
+      );
+      showDisciplineSetup(profile);
+    },
+  });
+}
+
+function removeTeacherFromLocalState(teacherId) {
+  const removedDisciplineIds = state.disciplines
+    .filter((discipline) => discipline.professor_id === teacherId)
+    .map((discipline) => discipline.id);
+  state.teachers = state.teachers.filter((teacher) => teacher.id !== teacherId);
+  state.disciplines = state.disciplines.filter(
+    (discipline) => discipline.professor_id !== teacherId,
+  );
+  state.schedules = state.schedules.filter(
+    (schedule) => !removedDisciplineIds.includes(schedule.disciplina),
+  );
+  state.chronograms = state.chronograms.filter(
+    (entry) => !removedDisciplineIds.includes(entry.disciplina),
+  );
+  state.lessons = state.lessons.filter(
+    (lesson) => !removedDisciplineIds.includes(lesson.disciplina),
+  );
+  state.tasks = state.tasks.filter(
+    (task) => !removedDisciplineIds.includes(task.disciplina),
+  );
+}
+
+async function linkTeacherToDiscipline(profile, teacher, disciplineId) {
+  if (!disciplineId) return;
+  const discipline = state.disciplines.find((item) => item.id === disciplineId);
+  if (!discipline || discipline.professor_id === teacher.id) return;
+  const updated = await updateDiscipline(discipline.id, profile.id, {
+    name: discipline.nome_disciplina,
+    summary: discipline.resumo_disciplina || "",
+    teacherId: teacher.id,
+  });
+  state.disciplines = state.disciplines.map((item) =>
+    item.id === updated.id ? updated : item,
+  );
+}
+
+function asContactRecord(source, item) {
+  return contactRecords(
+    source === "contact" ? [item] : [],
+    source === "teacher" ? [item] : [],
+    state.disciplines,
+  )[0];
+}
+
+async function saveContactRecord(profile, record, values) {
+  const wantsTeacher = values.type === "teacher";
+  if (wantsTeacher) {
+    const teacher = record?.source === "teacher"
+      ? await updateTeacher(record.id, profile.id, values)
+      : await createTeacher(state.user, profile, values);
+    if (record?.source === "contact") {
+      await deleteContact(record.id, profile.id);
+      state.contacts = state.contacts.filter((item) => item.id !== record.id);
+    }
+    state.teachers = record?.source === "teacher"
+      ? state.teachers.map((item) => item.id === teacher.id ? teacher : item)
+      : [...state.teachers, teacher];
+    await linkTeacherToDiscipline(profile, teacher, values.disciplineId);
+    return asContactRecord("teacher", teacher);
+  }
+  if (record?.source === "teacher") {
+    throw new Error("Professores vinculados devem permanecer como professores para preservar as disciplinas.");
+  }
+  const contact = record
+    ? await updateContact(record.id, profile.id, values)
+    : await createContact(state.user, profile, values);
+  state.contacts = record
+    ? state.contacts.map((item) => item.id === contact.id ? contact : item)
+    : [...state.contacts, contact];
+  return asContactRecord("contact", contact);
+}
+
+async function deleteContactRecord(profile, record) {
+  if (record.source === "teacher") {
+    await deleteTeacher(record.id, profile.id);
+    removeTeacherFromLocalState(record.id);
+    return;
+  }
+  await deleteContact(record.id, profile.id);
+  state.contacts = state.contacts.filter((item) => item.id !== record.id);
+}
+
+function showContactsSetup(profile) {
+  openContactsSetup({
+    profile,
+    disciplines: state.disciplines,
+    onCreate: (values) => saveContactRecord(profile, null, values),
+    onUpdate: (record, values) => saveContactRecord(profile, record, values),
+    onDelete: (record) => deleteContactRecord(profile, record),
+    onFinish: (count) => {
+      showToast(
+        count
+          ? "Contatos cadastrados com sucesso."
+          : "Você poderá cadastrar contatos mais tarde.",
       );
       showDisciplineSetup(profile);
     },
@@ -1427,6 +1546,49 @@ function mountTeachers() {
       mountTeachers();
       showToast("Professor removido.");
     },
+  });
+}
+
+async function renderContacts() {
+  const profile = state.currentProfile;
+  if (!profile) return showOnboarding();
+  state.view = "contacts";
+  try {
+    const [contacts, teachers, disciplines] = await Promise.all([
+      getContacts(profile.id),
+      getTeachers(profile.id),
+      getDisciplines(profile.id),
+    ]);
+    if (state.view !== "contacts" || state.currentProfile?.id !== profile.id) return;
+    state.contacts = contacts;
+    state.teachers = teachers;
+    state.disciplines = disciplines;
+    mountContacts();
+  } catch (error) {
+    showToast(error.message || "Não foi possível carregar os contatos.", "error");
+    state.view = state.returnView;
+    renderCurrent();
+  }
+}
+
+function mountContacts() {
+  const records = contactRecords(state.contacts, state.teachers, state.disciplines);
+  renderWithinLayout(contactsView({ records, disciplines: state.disciplines }));
+  bindContacts(root, {
+    records,
+    disciplines: state.disciplines,
+    onBack: () => {
+      state.view = state.returnView;
+      renderCurrent();
+    },
+    onSave: async (record, values, meta = {}) => {
+      if (meta.refresh) {
+        mountContacts();
+        return null;
+      }
+      return saveContactRecord(state.currentProfile, record, values);
+    },
+    onDelete: (record) => deleteContactRecord(state.currentProfile, record),
   });
 }
 
@@ -3524,6 +3686,7 @@ function renderWithinLayout(content) {
         (profile) => profile.id === id,
       );
       state.teachers = [];
+      state.contacts = [];
       state.disciplines = [];
       state.schedules = [];
       state.chronograms = [];

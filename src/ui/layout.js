@@ -5,7 +5,7 @@ import { avatar } from "./components.js";
 const basicRegistrationModules = [
   { view: "profiles", iconName: "graduation", label: "Perfis de estudo", isActive: (currentView) => currentView === "profiles" },
   { view: "disciplines", iconName: "book", label: "Disciplinas", isActive: (currentView) => currentView === "disciplines" },
-  { view: "teachers", iconName: "users", label: "Professores", isActive: (currentView) => currentView === "teachers" },
+  { view: "contacts", iconName: "users", label: "Contatos", isActive: (currentView) => currentView === "contacts" },
 ];
 
 const organizationModules = [
@@ -32,6 +32,7 @@ const moduleContexts = {
   profiles: { iconName: "graduation", title: "Perfis de estudo", description: "Organize cada etapa da sua jornada acadêmica." },
   personal: { iconName: "info", title: "Informações pessoais", description: "Mantenha os dados da sua conta atualizados." },
   disciplines: { iconName: "book", title: "Disciplinas", description: "Organize as disciplinas do seu perfil de estudo." },
+  contacts: { iconName: "users", title: "Contatos", description: "Reúna professores e pessoas importantes para sua rotina." },
   teachers: { iconName: "users", title: "Professores", description: "Centralize os contatos do seu corpo docente." },
   schedules: { iconName: "calendar", title: "Horários", description: "Visualize e organize as aulas da sua semana." },
   chronogram: { iconName: "file", title: "Cronograma", description: "Planeje os temas e situações de cada aula." },

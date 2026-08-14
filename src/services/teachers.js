@@ -11,6 +11,7 @@ function teacherPayload(user, profile, values) {
     nome_professor: values.name.trim(),
     email_professor: normalizeOptional(values.email),
     telefone_professor: normalizePhone(values.phone),
+    obs: normalizeOptional(values.observations),
   };
 }
 
@@ -41,6 +42,7 @@ export async function updateTeacher(id, profileId, values) {
       nome_professor: values.name.trim(),
       email_professor: normalizeOptional(values.email),
       telefone_professor: normalizePhone(values.phone),
+      obs: normalizeOptional(values.observations),
     })
     .eq("id", id)
     .eq("perfil", profileId)
