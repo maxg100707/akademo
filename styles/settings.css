@@ -438,3 +438,46 @@ body[data-palette="cosmic"] .presentation-card:hover {
   border-color: var(--green-mint) !important;
   background-color: color-mix(in srgb, var(--surface-deep) 81%, var(--green)) !important;
 }
+
+/* Listas e grades usam uma única superfície: diferenças de cor ficam reservadas a estados reais. */
+.settings-category-card:nth-child(2n) > span,
+.dashboard-widget-setting:nth-child(2n) .dashboard-widget-setting__icon,
+.settings-search-result:nth-child(even) > span {
+  color: var(--green-deep);
+  background: var(--green-jade-pale);
+}
+
+.dashboard-favorite-link:nth-child(2n):not(:hover) {
+  color: var(--on-green);
+  border-color: var(--green-accent);
+  background: var(--surface-contrast);
+}
+
+body[data-palette="cosmic"]:not([data-theme="dark"]) .dashboard-favorite-link:nth-child(2n):not(:hover) {
+  color: var(--green-deep);
+}
+
+.dashboard-mini-schedule__class:nth-child(2n) {
+  color: var(--green-deep);
+  border-color: color-mix(in srgb, var(--green-jade) 38%, transparent);
+  background: var(--green-jade-pale);
+}
+
+.dashboard-calendar__event:nth-child(even):not(:hover) {
+  background-color: var(--surface-contrast) !important;
+}
+
+:is(.profiles-list, .teachers-list, .disciplines-list, .tasks-list, .lesson-content-list, .chronogram-timeline) > :nth-child(even):not(:hover),
+.exam-setup-topics > article:nth-child(even):not(:hover) {
+  background: var(--surface-alt);
+}
+
+.teacher-card:nth-child(3n + 2) .teacher-card__badge,
+.teacher-card:nth-child(3n) .teacher-card__badge,
+.discipline-card:nth-child(3n + 2) .discipline-card__badge,
+.discipline-card:nth-child(3n) .discipline-card__badge,
+.study-profile-card:nth-child(3n + 2) .study-profile-card__badge,
+.study-profile-card:nth-child(3n) .study-profile-card__badge {
+  color: var(--green-accent);
+  background: var(--surface-deep);
+}
