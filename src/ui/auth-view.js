@@ -16,7 +16,7 @@ const authArt = `
 
 export function renderAuth(root, { mode = "login", onLogin, onRegister, onGoogle }) {
   const registering = mode === "register";
-  root.innerHTML = `<main class="auth-page">${authArt}
+  root.innerHTML = `<main class="auth-page auth-page--${registering ? "register" : "login"}">${authArt}
     <section class="auth-panel">
       <div class="auth-panel__inner">
         <a class="mobile-brand" href="#" aria-label="AKADEMO"><img class="brand-icon" src="icon.png" alt=""/> AKADEMO</a>
