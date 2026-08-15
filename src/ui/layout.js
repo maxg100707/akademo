@@ -29,6 +29,7 @@ const contentModules = [
 
 const reviewModules = [
   { view: "summaries", iconName: "note", label: "Resumos", isActive: (currentView) => currentView === "summaries" },
+  { view: "flashcards", iconName: "flashcards", label: "Flashcards", isActive: (currentView) => currentView === "flashcards" },
 ];
 
 const moduleContexts = {
@@ -52,6 +53,7 @@ const moduleContexts = {
   mindmaps: { iconName: "mindMap", title: "Mapas mentais", description: "Conecte ideias e desenvolva seus estudos visualmente." },
   notes: { iconName: "note", title: "Anotações", description: "Registre ideias, resumos e explicações em páginas organizadas." },
   summaries: { iconName: "note", title: "Resumos", description: "Escreva e organize resumos de estudo sobre suas disciplinas." },
+  flashcards: { iconName: "flashcards", title: "Flashcards", description: "Revise conceitos com cards curtos, objetivos e aleatórios." },
   glossary: { iconName: "glossary", title: "Glossário", description: "Reúna termos, definições e exemplos para revisar com facilidade." },
   videos: { iconName: "video", title: "Vídeos", description: "Assista e organize suas aulas e explicações em vídeo." },
   bibliography: { iconName: "book", title: "Bibliografia", description: "Consulte e organize as referências e materiais de apoio de estudo." },
@@ -64,6 +66,7 @@ function contextForView(view) {
   if (view === "mindmap-editor") return moduleContexts.mindmaps;
   if (view === "notes") return moduleContexts.notes;
   if (view === "summaries") return moduleContexts.summaries;
+  if (view === "flashcards") return moduleContexts.flashcards;
   if (view === "glossary") return moduleContexts.glossary;
   if (view === "videos") return moduleContexts.videos;
   if (view === "bibliography") return moduleContexts.bibliography;

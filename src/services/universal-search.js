@@ -17,6 +17,7 @@ const TYPE_LABELS = {
   note: "Anotação",
   summaries: "Resumo",
   glossary: "Termo do glossário",
+  flashcards: "Conjunto de flashcards",
   video: "Vídeo",
   bibliography: "Bibliografia",
 };
@@ -38,6 +39,7 @@ const MODULES = [
   ["mindmaps", "Mapas mentais", "Crie mapas mentais visuais para relacionar ideias.", "mindMap"],
   ["notes", "Anotações", "Escreva e consulte páginas de anotações organizadas.", "note"],
   ["summaries", "Resumos", "Escreva e consulte páginas de resumos de estudo sobre suas disciplinas.", "note"],
+  ["flashcards", "Flashcards", "Crie conjuntos de cards para revisar conceitos de estudo.", "flashcards"],
   ["glossary", "Glossário", "Guarde termos, definições e exemplos importantes.", "glossary"],
   ["videos", "Vídeos", "Salve e assista vídeos de estudo e explicações.", "video"],
   ["bibliography", "Bibliografia", "Consulte referências, livros, artigos e materiais de estudo.", "book"],
@@ -146,6 +148,7 @@ export function buildUniversalSearchIndex(data = {}) {
   const notes = data.notes || [];
   const summaries = data.summaries || [];
   const glossaryTerms = data.glossaryTerms || [];
+  const flashcardCollections = data.flashcardCollections || [];
   const videos = data.videos || [];
   const bibliography = data.bibliography || [];
   const examTopics = data.examTopics || [];
@@ -372,6 +375,28 @@ export function buildUniversalSearchIndex(data = {}) {
       iconName: "glossary",
       route: scopeRoute("glossary", term),
       data: term,
+    }));
+  });
+
+  flashcardCollections.forEach((collection) => {
+    const context = activityLabel(collection, refs);
+    // Deliberately omit `cards`: front and back are private review prompts and are not universal-search content.
+    indexed.push(entry({
+      type: "flashcards",
+      title: collection.tema_colecao || "Conjunto de flashcards",
+      subtitle: context || collection.descricao || "Flashcards do perfil ativo",
+      iconName: "flashcards",
+      route: scopeRoute("flashcards", collection),
+      data: {
+        id: collection.id,
+        tema_colecao: collection.tema_colecao,
+        descricao: collection.descricao,
+        disciplina: collection.disciplina,
+        aula: collection.aula,
+        prova: collection.prova,
+        apresentacao: collection.apresentacao,
+      },
+      extra: `${Array.isArray(collection.cards) ? collection.cards.length : 0} cards ${context}`,
     }));
   });
 
