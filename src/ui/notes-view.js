@@ -920,7 +920,9 @@ export function openNoteEditor(note, { onSave, onDelete, onClosed } = {}) {
     page.spellcheck = true;
     page.dataset.notePage = `page_${globalThis.crypto?.randomUUID?.() || `${Date.now()}_${number}`}`;
     page.innerHTML = `<p><br></p><small contenteditable="false" class="note-page__number">Página ${number}</small>`;
-    pages.append(page);
+    // O botão é um controle persistente do canvas e acompanha sempre o fim
+    // do documento, sem ficar entre duas páginas.
+    pages.querySelector("[data-add-note-page]")?.insertAdjacentElement("beforebegin", page) || pages.append(page);
     requestAnimationFrame(() => pages.scrollTo({ top: pages.scrollHeight, behavior: "smooth" }));
     page.focus();
     dirty = true;
