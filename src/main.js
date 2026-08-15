@@ -111,6 +111,7 @@ import {
   updateGlossaryTerm,
 } from "./services/glossary.js";
 import { defaultSettings, getSettings, normalizePalette, saveSettings } from "./services/settings.js";
+import { buildUniversalSearchIndex, searchUniversalIndex } from "./services/universal-search.js";
 import {
   applyPendingAvatar,
   ensureUserRecord,
@@ -290,6 +291,10 @@ let hydrationInProgressFor = null;
 let googleAvatarSyncFor = null;
 let restoringRoute = false;
 let routeRestoreSequence = 0;
+let universalSearchIndex = [];
+let universalSearchProfileId = null;
+let universalSearchLoadedAt = 0;
+let universalSearchLoading = null;
 
 function cloneSettings(settings) {
   return JSON.parse(JSON.stringify(settings || defaultSettings()));
@@ -424,6 +429,7 @@ const routeViews = new Set([
 ]);
 
 function resetProfileScopedState() {
+  invalidateUniversalSearchIndex();
   state.teachers = [];
   state.contacts = [];
   state.disciplines = [];
@@ -479,6 +485,113 @@ function scopeFromAssociation(record) {
   if (record?.prova) return routeScope("exam", record.prova);
   if (record?.apresentacao) return routeScope("presentation", record.apresentacao);
   return null;
+}
+
+function invalidateUniversalSearchIndex() {
+  universalSearchIndex = [];
+  universalSearchProfileId = null;
+  universalSearchLoadedAt = 0;
+  universalSearchLoading = null;
+}
+
+async function loadUniversalSearchIndex() {
+  const profile = state.currentProfile;
+  if (!profile || !state.user) return [];
+  const cacheIsFresh = universalSearchProfileId === profile.id
+    && universalSearchIndex.length
+    && Date.now() - universalSearchLoadedAt < 8000;
+  if (cacheIsFresh) return universalSearchIndex;
+  if (universalSearchLoading) return universalSearchLoading;
+
+  const safely = async (promise, fallback = []) => {
+    try {
+      return await promise;
+    } catch (error) {
+      console.warn("Uma parte do índice de busca não pôde ser carregada.", error);
+      return fallback;
+    }
+  };
+  universalSearchLoading = (async () => {
+    const [teachers, contacts, disciplines, schedules, chronograms, lessons, tasks, exams, presentations, mindMaps, videos, notes, glossaryTerms, contents, settings] = await Promise.all([
+      safely(getTeachers(profile.id)),
+      safely(getContacts(profile.id)),
+      safely(getDisciplines(profile.id)),
+      safely(getSchedules(profile.id)),
+      safely(getChronogram(profile.id)),
+      safely(getLessons(profile.id)),
+      safely(getTasks(profile.id)),
+      safely(getExams(profile.id)),
+      safely(getPresentations(profile.id)),
+      safely(getMindMaps(profile.id)),
+      safely(getVideos(profile.id)),
+      safely(getNotes(profile.id)),
+      safely(getGlossaryTerms(profile.id)),
+      safely(getProfileContents(profile.id)),
+      safely(getSettings(state.user, profile.id), state.settings || defaultSettings()),
+    ]);
+    const topicLists = await Promise.all(exams.map((exam) => safely(getExamTopics(profile.id, exam.id))));
+    if (state.currentProfile?.id !== profile.id) return [];
+    universalSearchIndex = buildUniversalSearchIndex({
+      record: state.record,
+      profiles: state.profiles,
+      settings,
+      teachers,
+      contacts,
+      disciplines,
+      schedules,
+      chronograms,
+      lessons,
+      tasks,
+      exams,
+      examTopics: topicLists.flat(),
+      presentations,
+      mindMaps,
+      videos,
+      notes,
+      glossaryTerms,
+      contents,
+    });
+    universalSearchProfileId = profile.id;
+    universalSearchLoadedAt = Date.now();
+    return universalSearchIndex;
+  })();
+
+  try {
+    return await universalSearchLoading;
+  } finally {
+    universalSearchLoading = null;
+  }
+}
+
+async function selectUniversalSearchResult(result) {
+  if (!result?.route) return;
+  if (isSettingsEditorView() && !(await finalizeSettingsChanges())) return;
+  state.returnView = state.view;
+  await restoreRoute({
+    ...result.route,
+    profile: state.currentProfile?.id || "",
+  });
+  if (result.type === "note") {
+    const note = state.notes.find((item) => String(item.id) === String(result.recordId));
+    if (note) window.setTimeout(() => viewNote(note), 0);
+  }
+  if (result.type === "glossary") {
+    const term = state.glossaryTerms.find((item) => String(item.id) === String(result.recordId));
+    if (term) window.setTimeout(() => viewGlossaryTerm(term), 0);
+  }
+  if (result.type === "video") {
+    const video = state.videos.find((item) => String(item.id) === String(result.recordId));
+    if (!video) return;
+    try {
+      openVideoPlayer({
+        video,
+        source: await getVideoUrl(state.user, video),
+        references: videoReferences(),
+      });
+    } catch (error) {
+      showToast(error.message || "Não foi possível abrir o vídeo.", "error");
+    }
+  }
 }
 
 function occurrenceAt(discipline, schedules, dateValue) {
@@ -701,6 +814,9 @@ async function restoreRoute(route = readRoute()) {
 }
 
 function renderAuthScreen() {
+  invalidateUniversalSearchIndex();
+  root.universalSearchCleanup?.forEach((cleanup) => cleanup());
+  root.universalSearchCleanup = [];
   state.user = null;
   state.record = null;
   state.photoUrl = null;
@@ -3918,6 +4034,7 @@ async function renderVideos(scope = state.videoScope) {
 }
 
 function renderWithinLayout(content) {
+  invalidateUniversalSearchIndex();
   const routeKey = JSON.stringify(routeForState());
   const shouldResetScroll = routeKey !== lastRenderedRouteKey;
   lastRenderedRouteKey = routeKey;
@@ -3934,6 +4051,8 @@ function renderWithinLayout(content) {
     requestAnimationFrame(resetScroll);
   }
   bindLayout(root, {
+    onUniversalSearchQuery: async (query) => searchUniversalIndex(await loadUniversalSearchIndex(), query),
+    onUniversalSearchSelect: selectUniversalSearchResult,
     onMenuGroupToggle: (group, isExpanded) => {
       const groups = {
         basic: ["basicRegistrationExpanded", "akademo.sidebar.basic-registration-expanded"],

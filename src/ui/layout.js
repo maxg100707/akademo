@@ -1,6 +1,7 @@
 import { icon } from "../utils/icons.js";
 import { escapeHtml } from "../utils/formatters.js";
 import { avatar } from "./components.js";
+import { bindUniversalSearch, universalSearchHeader } from "./universal-search-view.js";
 
 const basicRegistrationModules = [
   { view: "profiles", iconName: "graduation", label: "Perfis de estudo", isActive: (currentView) => currentView === "profiles" },
@@ -99,18 +100,21 @@ export function renderLayout(root, { record, photoUrl, profiles, currentProfile,
       <div class="sidebar__bottom"><button class="mobile-close-menu" data-mobile-close>${icon("close", 18)}<span>Fechar menu</span></button><div class="sidebar__tip">${icon("sparkles", 18)}<span>Faça hoje valer a pena.</span></div></div>
     </aside>
     <div class="mobile-menu-overlay" data-mobile-close></div>
-    <main class="main-area"><header class="mobile-topbar"><button class="mobile-menu-button" data-mobile-open aria-label="Abrir menu">${icon("bars", 20)}</button><a href="#" class="mobile-brand"><img class="brand-icon" src="icon.png" alt=""/> AKADEMO</a></header>${content}</main>
+    <main class="main-area"><header class="mobile-topbar"><button class="mobile-menu-button" data-mobile-open aria-label="Abrir menu">${icon("bars", 20)}</button>${universalSearchHeader({ variant: "mobile" })}<a href="#" class="mobile-brand"><img class="brand-icon" src="icon.png" alt=""/> AKADEMO</a></header>${content}</main>
   </div>`;
   root.querySelector(".mobile-brand")?.insertAdjacentHTML("afterend", moduleContext(currentContext, "mobile-module-context"));
   root.querySelector(".main-area").insertAdjacentHTML("afterbegin", `
     <header class="desktop-topbar">
       <div class="desktop-header-content">
       ${moduleContext(currentContext, "desktop-module-context")}
+      ${universalSearchHeader({ variant: "desktop" })}
       </div>
     </header>`);
 }
 
 export function bindLayout(root, actions) {
+  root.universalSearchCleanup?.forEach((cleanup) => cleanup());
+  root.universalSearchCleanup = [];
   root.querySelectorAll("[data-mobile-open]").forEach((button) => button.addEventListener("click", () => root.querySelector(".app-shell").classList.add("mobile-menu-open")));
   root.querySelectorAll("[data-mobile-close]").forEach((button) => button.addEventListener("click", () => root.querySelector(".app-shell").classList.remove("mobile-menu-open")));
   const profileWrapper = root.querySelector(".sidebar__profile-wrap");
@@ -161,6 +165,10 @@ export function bindLayout(root, actions) {
   }));
   root.querySelectorAll("[data-nav]").forEach((button) => button.addEventListener("click", () => actions.onNavigate(button.dataset.nav)));
   root.querySelectorAll("[data-profile-select]").forEach((select) => select.addEventListener("change", (event) => actions.onProfileChange(event.target.value)));
+  bindUniversalSearch(root, {
+    onQuery: actions.onUniversalSearchQuery,
+    onSelect: actions.onUniversalSearchSelect,
+  });
   if (root.profileOutsideClickHandler) document.removeEventListener("click", root.profileOutsideClickHandler);
   root.profileOutsideClickHandler = (event) => {
     if (profileWrapper && !profileWrapper.contains(event.target)) closeProfileMenu();

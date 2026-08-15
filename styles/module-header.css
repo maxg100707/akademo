@@ -145,7 +145,7 @@
   .mobile-module-context {
     position: absolute;
     left: 56px;
-    right: 64px;
+    right: calc(50% + 25px);
     width: auto;
   }
 
