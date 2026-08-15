@@ -15,6 +15,7 @@ const TYPE_LABELS = {
   presentation: "Apresentação",
   mindMap: "Mapa mental",
   note: "Anotação",
+  summaries: "Resumo",
   glossary: "Termo do glossário",
   video: "Vídeo",
   bibliography: "Bibliografia",
@@ -36,6 +37,7 @@ const MODULES = [
   ["chronogram", "Cronograma", "Planeje temas, feriados, provas e apresentações de cada aula.", "file"],
   ["mindmaps", "Mapas mentais", "Crie mapas mentais visuais para relacionar ideias.", "mindMap"],
   ["notes", "Anotações", "Escreva e consulte páginas de anotações organizadas.", "note"],
+  ["summaries", "Resumos", "Escreva e consulte páginas de resumos de estudo sobre suas disciplinas.", "note"],
   ["glossary", "Glossário", "Guarde termos, definições e exemplos importantes.", "glossary"],
   ["videos", "Vídeos", "Salve e assista vídeos de estudo e explicações.", "video"],
   ["bibliography", "Bibliografia", "Consulte referências, livros, artigos e materiais de estudo.", "book"],
@@ -142,6 +144,7 @@ export function buildUniversalSearchIndex(data = {}) {
   const contents = data.contents || [];
   const mindMaps = data.mindMaps || [];
   const notes = data.notes || [];
+  const summaries = data.summaries || [];
   const glossaryTerms = data.glossaryTerms || [];
   const videos = data.videos || [];
   const bibliography = data.bibliography || [];
@@ -345,6 +348,18 @@ export function buildUniversalSearchIndex(data = {}) {
       iconName: "note",
       route: scopeRoute("notes", note),
       data: note,
+    }));
+  });
+
+  summaries.forEach((summary) => {
+    const context = activityLabel(summary, refs);
+    indexed.push(entry({
+      type: "summaries",
+      title: summary.titulo || "Resumo",
+      subtitle: context || "Resumo do perfil ativo",
+      iconName: "note",
+      route: scopeRoute("summaries", summary),
+      data: summary,
     }));
   });
 

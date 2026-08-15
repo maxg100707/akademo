@@ -54,6 +54,7 @@ const favoriteModules = [
   ["files", "Arquivos", "folder"],
   ["mindmaps", "Mapas mentais", "mindMap"],
   ["notes", "Anotações", "note"],
+  ["summaries", "Resumos", "note"],
   ["glossary", "Glossário", "glossary"],
   ["videos", "Vídeos", "video"],
   ["bibliography", "Bibliografia", "book"],

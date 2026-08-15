@@ -112,6 +112,12 @@ import {
   updateNote,
 } from "./services/notes.js";
 import {
+  createSummary,
+  deleteSummary,
+  getSummaries,
+  updateSummary,
+} from "./services/resumos.js";
+import {
   createGlossaryTerm,
   deleteGlossaryTerm,
   getGlossaryTerms,
@@ -231,6 +237,13 @@ import {
   openNoteViewer,
 } from "./ui/notes-view.js";
 import {
+  bindSummariesCatalog,
+  openSummaryCreate,
+  openSummaryEditor,
+  openSummaryViewer,
+  summariesView,
+} from "./ui/resumos-view.js";
+import {
   bindGlossaryCatalog,
   glossaryView,
   openGlossaryForm,
@@ -284,6 +297,9 @@ const state = {
   bibliographyScope: null,
   notes: [],
   noteScope: null,
+  summaries: [],
+  summaryScope: null,
+  activeSummaryContents: [],
   glossaryTerms: [],
   glossaryScope: null,
   profileContents: [],
@@ -300,6 +316,7 @@ const state = {
   basicRegistrationExpanded: localStorage.getItem("akademo.sidebar.basic-registration-expanded") === "true",
   organizationExpanded: localStorage.getItem("akademo.sidebar.organization-expanded") === "true",
   contentExpanded: localStorage.getItem("akademo.sidebar.content-expanded") === "true",
+  reviewExpanded: localStorage.getItem("akademo.sidebar.review-expanded") === "true",
   theme: localStorage.getItem(APP_STORAGE_KEYS.theme) || "light",
   palette: localStorage.getItem(APP_STORAGE_KEYS.palette) || "forest",
 };
@@ -438,7 +455,7 @@ function selectStoredProfile(route = {}) {
 
 const routeViews = new Set([
   "dashboard", "personal", "settings", "settings-user", "settings-dashboard", "settings-personalization", "profiles", "teachers", "contacts", "disciplines", "schedules",
-  "chronogram", "tasks", "files", "mindmaps", "mindmap-editor", "videos", "bibliography", "notes", "glossary",
+  "chronogram", "tasks", "files", "mindmaps", "mindmap-editor", "videos", "bibliography", "notes", "summaries", "glossary",
   "exams", "exam-detail", "exam-topics", "exam-topic", "exam-materials", "exam-tasks", "presentations",
   "presentation-detail", "presentation-materials", "presentation-tasks", "lessons", "lesson-chronogram",
   "lesson-form", "lesson-detail", "lesson-materials", "lesson-tasks",
@@ -459,6 +476,8 @@ function resetProfileScopedState() {
   state.mindMaps = [];
   state.videos = [];
   state.notes = [];
+  state.summaries = [];
+  state.summaryScope = null;
   state.glossaryTerms = [];
   state.profileContents = [];
   state.settings = defaultSettings();
@@ -528,7 +547,7 @@ async function loadUniversalSearchIndex() {
     }
   };
   universalSearchLoading = (async () => {
-    const [teachers, contacts, disciplines, schedules, chronograms, lessons, tasks, exams, presentations, mindMaps, videos, bibliography, notes, glossaryTerms, contents, settings] = await Promise.all([
+    const [teachers, contacts, disciplines, schedules, chronograms, lessons, tasks, exams, presentations, mindMaps, videos, bibliography, notes, summaries, glossaryTerms, contents, settings] = await Promise.all([
       safely(getTeachers(profile.id)),
       safely(getContacts(profile.id)),
       safely(getDisciplines(profile.id)),
@@ -542,6 +561,7 @@ async function loadUniversalSearchIndex() {
       safely(getVideos(profile.id)),
       safely(getBibliography(profile.id)),
       safely(getNotes(profile.id)),
+      safely(getSummaries(profile.id)),
       safely(getGlossaryTerms(profile.id)),
       safely(getProfileContents(profile.id)),
       safely(getSettings(state.user, profile.id), state.settings || defaultSettings()),
@@ -566,6 +586,7 @@ async function loadUniversalSearchIndex() {
       videos,
       bibliography,
       notes,
+      summaries,
       glossaryTerms,
       contents,
     });
@@ -613,6 +634,10 @@ async function selectUniversalSearchResult(result) {
   if (result.type === "bibliography") {
     const bib = state.bibliography.find((item) => String(item.id) === String(result.recordId));
     if (bib) window.setTimeout(() => viewBibliographyDetail(bib), 0);
+  }
+  if (result.type === "summaries") {
+    const summary = state.summaries.find((item) => String(item.id) === String(result.recordId));
+    if (summary) window.setTimeout(() => viewSummary(summary), 0);
   }
 }
 
@@ -792,6 +817,11 @@ async function restoreNotesRoute(route) {
   return renderNotes(routeScope(route.scope, route.scopeId));
 }
 
+async function restoreSummariesRoute(route) {
+  await loadSummaryData();
+  return renderSummaries(routeScope(route.scope, route.scopeId));
+}
+
 async function restoreGlossaryRoute(route) {
   await loadGlossaryData();
   return renderGlossary(routeScope(route.scope, route.scopeId));
@@ -817,6 +847,7 @@ async function restoreRoute(route = readRoute()) {
     if (targetView === "videos") return await renderVideos(routeScope(route.scope, route.scopeId));
     if (targetView === "bibliography") return await renderBibliography(routeScope(route.scope, route.scopeId));
     if (targetView === "notes") return await restoreNotesRoute(route);
+    if (targetView === "summaries") return await restoreSummariesRoute(route);
     if (targetView === "glossary") return await restoreGlossaryRoute(route);
     state.view = targetView;
     state.scheduleEditing = route.edit === "1";
@@ -927,6 +958,7 @@ function renderCurrent() {
   if (state.view === "videos") return renderVideos();
   if (state.view === "bibliography") return renderBibliography();
   if (state.view === "notes") return renderNotes();
+  if (state.view === "summaries") return renderSummaries();
   if (state.view === "glossary") return renderGlossary();
   if (state.view === "exams") return renderExams();
   if (state.view === "exam-detail") return renderExamDetail();
@@ -1056,6 +1088,7 @@ async function openDashboardQuickAction(actionId) {
     );
     if (actionId === "create-mindmap") return await openInModule(renderMindMaps, "[data-create-mindmap]");
     if (actionId === "create-note") return await openInModule(renderNotes, "[data-create-note]");
+    if (actionId === "create-summary") return await openInModule(renderSummaries, "[data-create-summary]");
     if (actionId === "create-glossary") return await openInModule(renderGlossary, "[data-create-glossary-term]");
     if (actionId === "create-video") return await openInModule(renderVideos, "[data-add-video]");
     if (actionId === "create-bibliography") return await openInModule(renderBibliography, "[data-add-bibliography]");
@@ -2726,6 +2759,7 @@ function renderExamDetail() {
     onOpenTopics: () => renderExamTopics(),
     onOpenMindMaps: () => renderMindMaps(scopeForMindMaps("exam", exam)),
     onOpenNotes: () => renderNotes(scopeForNotes("exam", exam)),
+    onOpenSummaries: () => renderSummaries(scopeForSummaries("exam", exam)),
     onOpenVideos: () => renderVideos(scopeForVideos("exam", exam)),
     onOpenMaterials: () => renderExamMaterials(),
     onOpenBibliography: () => renderBibliography(scopeForBibliography("exam", exam)),
@@ -3169,6 +3203,8 @@ function renderPresentationDetail() {
       renderMindMaps(scopeForMindMaps("presentation", presentation)),
     onOpenNotes: () =>
       renderNotes(scopeForNotes("presentation", presentation)),
+    onOpenSummaries: () =>
+      renderSummaries(scopeForSummaries("presentation", presentation)),
     onOpenVideos: () =>
       renderVideos(scopeForVideos("presentation", presentation)),
     onOpenBibliography: () =>
@@ -3577,6 +3613,15 @@ function renderLessonDetail() {
   root
     .querySelector("[data-open-lesson-bibliography]")
     ?.addEventListener("click", () => renderBibliography(scopeForBibliography("lesson", lesson)));
+  root
+    .querySelector(".lesson-tools-grid")
+    ?.insertAdjacentHTML(
+      "beforeend",
+      `<button class="lesson-tool-card lesson-tool-card--summaries" data-open-lesson-summaries><span>${icon("note", 24)}</span><div><small>REVISÃO</small><strong>Resumos</strong><p>Reúna e organize os resumos de estudo desta aula.</p></div><em>Abrir ${icon("arrowRight", 17)}</em></button>`,
+    );
+  root
+    .querySelector("[data-open-lesson-summaries]")
+    ?.addEventListener("click", () => renderSummaries(scopeForSummaries("lesson", lesson)));
   bindLessonDetail(root, {
     onBack: lessonBack,
     onOpenMindMaps: () => renderMindMaps(scopeForMindMaps("lesson", lesson)),
@@ -3996,6 +4041,131 @@ async function renderNotes(scope = state.noteScope) {
   }
 }
 
+function summaryReferences() {
+  return {
+    disciplines: state.disciplines,
+    lessons: state.lessons,
+    exams: state.exams,
+    presentations: state.presentations,
+  };
+}
+
+function scopeForSummaries(type, record) {
+  return {
+    type,
+    field: type === "lesson" ? "aula" : type === "exam" ? "prova" : "apresentacao",
+    record,
+    disciplineId: record.disciplina,
+  };
+}
+
+async function loadSummaryData() {
+  const profile = state.currentProfile;
+  if (!profile) return;
+  const [summaries, disciplines, lessons, exams, presentations] = await Promise.all([
+    getSummaries(profile.id),
+    getDisciplines(profile.id),
+    getLessons(profile.id),
+    getExams(profile.id),
+    getPresentations(profile.id),
+  ]);
+  if (state.currentProfile?.id !== profile.id) return;
+  state.summaries = summaries;
+  state.disciplines = disciplines;
+  state.lessons = lessons;
+  state.exams = exams;
+  state.presentations = presentations;
+}
+
+function summariesBack() {
+  const scope = state.summaryScope;
+  state.summaryScope = null;
+  if (scope?.type === "lesson") {
+    return restoreLessonRoute({
+      lesson: scope.record.id,
+      chronogram: scope.record.cronograma || "",
+      discipline: scope.record.disciplina || "",
+    }, "lesson-detail");
+  }
+  if (scope?.type === "exam") return restoreExamRoute({ exam: scope.record.id }, "exam-detail");
+  if (scope?.type === "presentation") return restorePresentationRoute({ presentation: scope.record.id }, "presentation-detail");
+  state.view = state.returnView || "dashboard";
+  return renderCurrent();
+}
+
+function replaceSummary(updated) {
+  state.summaries = state.summaries.map((item) => item.id === updated.id ? updated : item);
+}
+
+function editSummary(summary) {
+  openSummaryEditor(summary, {
+    onSave: async (documentData) => {
+      const updated = await updateSummary(
+        summary.id,
+        state.user,
+        state.currentProfile,
+        summary,
+        { resumo: documentData },
+      );
+      replaceSummary(updated);
+      showToast("Resumo salvo.");
+      return updated;
+    },
+    onDelete: async () => {
+      await deleteSummary(summary.id, state.currentProfile.id);
+      state.summaries = state.summaries.filter((item) => item.id !== summary.id);
+      showToast("Resumo apagado.");
+    },
+    onClosed: (updated, meta) => {
+      if (updated || meta?.deleted) renderSummaries(state.summaryScope);
+    },
+  });
+}
+
+function viewSummary(summary) {
+  openSummaryViewer(summary, {
+    onEdit: () => editSummary(summary),
+    onDelete: async () => {
+      await deleteSummary(summary.id, state.currentProfile.id);
+      state.summaries = state.summaries.filter((item) => item.id !== summary.id);
+      showToast("Resumo apagado.");
+      renderSummaries(state.summaryScope);
+    },
+  });
+}
+
+async function renderSummaries(scope = state.summaryScope) {
+  const profile = state.currentProfile;
+  if (!profile) return showOnboarding();
+  state.view = "summaries";
+  state.summaryScope = scope || null;
+  try {
+    await loadSummaryData();
+    if (state.view !== "summaries" || state.currentProfile?.id !== profile.id) return;
+    renderWithinLayout(summariesView({
+      summaries: state.summaries,
+      references: summaryReferences(),
+      scope: state.summaryScope,
+    }));
+    bindSummariesCatalog(root, {
+      summaries: state.summaries,
+      references: summaryReferences(),
+      scope: state.summaryScope,
+      onBack: summariesBack,
+      onCreate: async (values) => {
+        const summary = await createSummary(state.user, profile, values);
+        state.summaries = [summary, ...state.summaries];
+        window.setTimeout(() => editSummary(summary), 0);
+        return summary;
+      },
+      onOpen: viewSummary,
+    });
+  } catch (error) {
+    showToast(error.message || "Não foi possível carregar os resumos.", "error");
+    summariesBack();
+  }
+}
+
 function glossaryReferences() {
   return {
     disciplines: state.disciplines,
@@ -4391,6 +4561,7 @@ function renderWithinLayout(content) {
         basic: ["basicRegistrationExpanded", "akademo.sidebar.basic-registration-expanded"],
         organization: ["organizationExpanded", "akademo.sidebar.organization-expanded"],
         content: ["contentExpanded", "akademo.sidebar.content-expanded"],
+        review: ["reviewExpanded", "akademo.sidebar.review-expanded"],
       };
       if (!groups[group]) return;
       Object.entries(groups).forEach(([key, [stateKey, storageKey]]) => {
@@ -4446,6 +4617,10 @@ function renderWithinLayout(content) {
         state.returnView = state.view;
         state.noteScope = null;
       }
+      if (view === "summaries") {
+        state.returnView = state.view;
+        state.summaryScope = null;
+      }
       if (view === "glossary") {
         state.returnView = state.view;
         state.glossaryScope = null;
@@ -4497,6 +4672,8 @@ function renderWithinLayout(content) {
       state.videoScope = null;
       state.notes = [];
       state.noteScope = null;
+      state.summaries = [];
+      state.summaryScope = null;
       state.glossaryTerms = [];
       state.glossaryScope = null;
       state.scheduleEditing = false;
