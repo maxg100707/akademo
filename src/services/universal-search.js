@@ -112,6 +112,8 @@ function entry({ type, title, subtitle = "", iconName, route, data, extra = "" }
     route,
     haystack: normalizeSearch(allText),
     titleSearch: normalizeSearch(`${title} ${typeLabel}`),
+    primarySearch: normalizeSearch(title),
+    secondarySearch: normalizeSearch([typeLabel, subtitle, extra, textFromValue(data)].join(" ")),
   };
 }
 
@@ -385,17 +387,57 @@ export function searchUniversalIndex(index, query, limit = 28) {
     return [...new Set(variants.filter(Boolean))];
   };
 
+  const isCompleteWord = (haystack, needle) => {
+    if (!haystack || !needle) return false;
+    const escaped = needle.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+    const regex = new RegExp(`(?:^|[^a-z0-9])${escaped}(?:$|[^a-z0-9])`, 'i');
+    return regex.test(haystack);
+  };
+
+  const isContained = (haystack, needle) => {
+    if (!haystack || !needle) return false;
+    return haystack.includes(needle);
+  };
+
+  const getTermMatchValue = (item, term) => {
+    const variants = variantsFor(term);
+    let bestVal = 0;
+    for (const variant of variants) {
+      let val = 0;
+      if (isCompleteWord(item.primarySearch, variant)) {
+        val = 4;
+      } else if (isCompleteWord(item.secondarySearch, variant)) {
+        val = 3;
+      } else if (isContained(item.primarySearch, variant)) {
+        val = 2;
+      } else if (isContained(item.secondarySearch, variant)) {
+        val = 1;
+      }
+      if (val > bestVal) {
+        bestVal = val;
+      }
+    }
+    return bestVal;
+  };
+
   return index
-    .filter((item) => terms.every((term) => variantsFor(term).some((variant) => item.haystack.includes(variant))))
     .map((item) => {
+      const termVals = terms.map(term => getTermMatchValue(item, term));
+      const minVal = Math.min(...termVals);
+
+      if (minVal === 0) return null;
+
       const title = item.titleSearch;
-      const score = terms.reduce((total, term) => total
+      const subScore = terms.reduce((total, term) => total
         + (title === term ? 180 : 0)
         + (title.startsWith(term) ? 70 : 0)
         + (title.includes(term) ? 30 : 0)
         + (item.haystack.indexOf(term) >= 0 ? Math.max(0, 12 - item.haystack.indexOf(term) / 180) : 0), 0);
+
+      const score = minVal * 100000 + subScore;
       return { ...item, score };
     })
+    .filter(Boolean)
     .sort((first, second) => second.score - first.score || first.title.localeCompare(second.title, "pt-BR"))
     .slice(0, limit);
 }
