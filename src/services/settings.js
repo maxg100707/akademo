@@ -47,6 +47,7 @@ export const DASHBOARD_QUICK_ACTIONS = [
   { id: "create-bibliography", label: "Registrar bibliografia", iconName: "book" },
   { id: "cycle-palette", label: "Mudar temática", iconName: "sparkles" },
   { id: "create-contact", label: "Novo contato", iconName: "users" },
+  { id: "play-calculations", label: "Jogar Cálculos", iconName: "calculator" },
 ];
 
 const WIDGET_IDS = new Set(DASHBOARD_WIDGETS.map((widget) => widget.id));
@@ -64,6 +65,7 @@ const MODULE_IDS = new Set([
   "notes",
   "summaries",
   "flashcards",
+  "calculations",
   "glossary",
   "videos",
   "bibliography",

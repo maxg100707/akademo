@@ -32,6 +32,10 @@ const reviewModules = [
   { view: "flashcards", iconName: "flashcards", label: "Flashcards", isActive: (currentView) => currentView === "flashcards" },
 ];
 
+const gamesModules = [
+  { view: "calculations", iconName: "calculator", label: "Cálculos", isActive: (currentView) => currentView === "calculations" },
+];
+
 const moduleContexts = {
   "settings-personalization": { iconName: "sparkles", title: "Configurações", description: "Tema e aparência do sistema." },
   settings: { iconName: "settings", title: "Configurações", description: "Ajuste o AKADEMO para a sua rotina." },
@@ -54,6 +58,7 @@ const moduleContexts = {
   notes: { iconName: "note", title: "Anotações", description: "Registre ideias, resumos e explicações em páginas organizadas." },
   summaries: { iconName: "note", title: "Resumos", description: "Escreva e organize resumos de estudo sobre suas disciplinas." },
   flashcards: { iconName: "flashcards", title: "Flashcards", description: "Revise conceitos com cards curtos, objetivos e aleatórios." },
+  calculations: { iconName: "calculator", title: "Cálculos", description: "Treine raciocínio matemático com desafios personalizados." },
   glossary: { iconName: "glossary", title: "Glossário", description: "Reúna termos, definições e exemplos para revisar com facilidade." },
   videos: { iconName: "video", title: "Vídeos", description: "Assista e organize suas aulas e explicações em vídeo." },
   bibliography: { iconName: "book", title: "Bibliografia", description: "Consulte e organize as referências e materiais de apoio de estudo." },
@@ -67,6 +72,7 @@ function contextForView(view) {
   if (view === "notes") return moduleContexts.notes;
   if (view === "summaries") return moduleContexts.summaries;
   if (view === "flashcards") return moduleContexts.flashcards;
+  if (view === "calculations") return moduleContexts.calculations;
   if (view === "glossary") return moduleContexts.glossary;
   if (view === "videos") return moduleContexts.videos;
   if (view === "bibliography") return moduleContexts.bibliography;
@@ -92,7 +98,7 @@ function profileMenuSelector(profiles, currentProfile) {
   return `<label class="profile-popover__profile-select"><span>${icon("graduation", 16)}<small>PERFIL ATIVO</small></span><select data-profile-select aria-label="Selecionar perfil de estudo" ${profiles.length < 2 ? "disabled" : ""}>${profiles.map((profile) => `<option value="${profile.id}" ${profile.id === currentProfile?.id ? "selected" : ""}>${escapeHtml(profileLabel(profile))}</option>`).join("")}</select></label>`;
 }
 
-export function renderLayout(root, { record, photoUrl, profiles, currentProfile, view, content, theme, basicRegistrationExpanded = false, organizationExpanded = false, contentExpanded = false, reviewExpanded = false }) {
+export function renderLayout(root, { record, photoUrl, profiles, currentProfile, view, content, theme, basicRegistrationExpanded = false, organizationExpanded = false, contentExpanded = false, reviewExpanded = false, gamesExpanded = false }) {
   const course = escapeHtml(currentProfile?.curso || "Perfil de estudo");
   const currentContext = contextForView(view);
   root.innerHTML = `<div class="app-shell" data-theme="${theme}">
@@ -108,7 +114,7 @@ export function renderLayout(root, { record, photoUrl, profiles, currentProfile,
           <button class="profile-popover__logout" data-logout>${icon("logout", 18)}<span>Sair da conta</span></button>
         </div>
       </div>
-      <nav class="sidebar-nav"><span class="sidebar-nav__label">MENU</span><button class="nav-item ${view === "dashboard" ? "is-active" : ""}" data-nav="dashboard">${icon("dashboard", 20)}<span>Dashboard</span></button>${navigationGroup({ view, key: "basic", label: "Cadastros B&aacute;sicos", iconName: "idCard", modules: basicRegistrationModules, isExpanded: basicRegistrationExpanded })}${navigationGroup({ view, key: "organization", label: "Organiza&ccedil;&atilde;o B&aacute;sica", iconName: "organize", modules: organizationModules, isExpanded: organizationExpanded })}${navigationGroup({ view, key: "content", label: "Conte&uacute;dos", iconName: "collection", modules: contentModules, isExpanded: contentExpanded })}${navigationGroup({ view, key: "review", label: "Revisão", iconName: "sparkles", modules: reviewModules, isExpanded: reviewExpanded })}</nav>
+      <nav class="sidebar-nav"><span class="sidebar-nav__label">MENU</span><button class="nav-item ${view === "dashboard" ? "is-active" : ""}" data-nav="dashboard">${icon("dashboard", 20)}<span>Dashboard</span></button>${navigationGroup({ view, key: "basic", label: "Cadastros B&aacute;sicos", iconName: "idCard", modules: basicRegistrationModules, isExpanded: basicRegistrationExpanded })}${navigationGroup({ view, key: "organization", label: "Organiza&ccedil;&atilde;o B&aacute;sica", iconName: "organize", modules: organizationModules, isExpanded: organizationExpanded })}${navigationGroup({ view, key: "content", label: "Conte&uacute;dos", iconName: "collection", modules: contentModules, isExpanded: contentExpanded })}${navigationGroup({ view, key: "review", label: "Revisão", iconName: "sparkles", modules: reviewModules, isExpanded: reviewExpanded })}${navigationGroup({ view, key: "games", label: "Jogos", iconName: "gamepad", modules: gamesModules, isExpanded: gamesExpanded })}</nav>
       <div class="sidebar__bottom"><button class="mobile-close-menu" data-mobile-close>${icon("close", 18)}<span>Fechar menu</span></button><div class="sidebar__tip">${icon("sparkles", 18)}<span>Faça hoje valer a pena.</span></div></div>
     </aside>
     <div class="mobile-menu-overlay" data-mobile-close></div>

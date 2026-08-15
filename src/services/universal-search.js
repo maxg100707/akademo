@@ -40,6 +40,7 @@ const MODULES = [
   ["notes", "Anotações", "Escreva e consulte páginas de anotações organizadas.", "note"],
   ["summaries", "Resumos", "Escreva e consulte páginas de resumos de estudo sobre suas disciplinas.", "note"],
   ["flashcards", "Flashcards", "Crie conjuntos de cards para revisar conceitos de estudo.", "flashcards"],
+  ["calculations", "Cálculos", "Jogue desafios matemáticos e acompanhe seus resultados.", "calculator"],
   ["glossary", "Glossário", "Guarde termos, definições e exemplos importantes.", "glossary"],
   ["videos", "Vídeos", "Salve e assista vídeos de estudo e explicações.", "video"],
   ["bibliography", "Bibliografia", "Consulte referências, livros, artigos e materiais de estudo.", "book"],

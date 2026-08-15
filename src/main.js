@@ -129,6 +129,12 @@ import {
   getFlashcardCollections,
   updateFlashcardCollection,
 } from "./services/flashcards.js";
+import {
+  appendCalculationGame,
+  defaultGameData,
+  getGameData,
+  saveGameData,
+} from "./services/games.js";
 import { defaultSettings, getSettings, normalizePalette, saveSettings } from "./services/settings.js";
 import { buildUniversalSearchIndex, searchUniversalIndex } from "./services/universal-search.js";
 import {
@@ -261,6 +267,7 @@ import {
   openFlashcardsEditor,
   openFlashcardsViewer,
 } from "./ui/flashcards-view.js";
+import { bindCalculations, calculationsView } from "./ui/calculations-view.js";
 import { closeModal, confirmModal, showToast, unsavedModal } from "./ui/components.js";
 import {
   getStoredProfile,
@@ -316,6 +323,7 @@ const state = {
   glossaryScope: null,
   flashcardCollections: [],
   flashcardsScope: null,
+  gameData: defaultGameData(),
   profileContents: [],
   settings: defaultSettings(),
   settingsSaved: defaultSettings(),
@@ -331,6 +339,7 @@ const state = {
   organizationExpanded: localStorage.getItem("akademo.sidebar.organization-expanded") === "true",
   contentExpanded: localStorage.getItem("akademo.sidebar.content-expanded") === "true",
   reviewExpanded: localStorage.getItem("akademo.sidebar.review-expanded") === "true",
+  gamesExpanded: localStorage.getItem("akademo.sidebar.games-expanded") === "true",
   theme: localStorage.getItem(APP_STORAGE_KEYS.theme) || "light",
   palette: localStorage.getItem(APP_STORAGE_KEYS.palette) || "forest",
 };
@@ -398,6 +407,7 @@ async function hydrate(user) {
     state.exams = [];
     state.examTopics = [];
     state.presentations = [];
+    state.gameData = defaultGameData();
     state.scheduleEditing = false;
     state.chronogramDisciplineId = null;
     state.lessonWeekOffset = 0;
@@ -469,7 +479,7 @@ function selectStoredProfile(route = {}) {
 
 const routeViews = new Set([
   "dashboard", "personal", "settings", "settings-user", "settings-dashboard", "settings-personalization", "profiles", "teachers", "contacts", "disciplines", "schedules",
-  "chronogram", "tasks", "files", "mindmaps", "mindmap-editor", "videos", "bibliography", "notes", "summaries", "glossary", "flashcards",
+  "chronogram", "tasks", "files", "mindmaps", "mindmap-editor", "videos", "bibliography", "notes", "summaries", "glossary", "flashcards", "calculations",
   "exams", "exam-detail", "exam-topics", "exam-topic", "exam-materials", "exam-tasks", "presentations",
   "presentation-detail", "presentation-materials", "presentation-tasks", "lessons", "lesson-chronogram",
   "lesson-form", "lesson-detail", "lesson-materials", "lesson-tasks",
@@ -494,6 +504,7 @@ function resetProfileScopedState() {
   state.summaryScope = null;
   state.glossaryTerms = [];
   state.flashcardCollections = [];
+  state.gameData = defaultGameData();
   state.profileContents = [];
   state.settings = defaultSettings();
   state.settingsSaved = cloneSettings(state.settings);
@@ -923,6 +934,7 @@ function renderAuthScreen() {
   state.notes = [];
   state.glossaryTerms = [];
   state.flashcardCollections = [];
+  state.gameData = defaultGameData();
   state.mindMapScope = null;
   state.videoScope = null;
   state.noteScope = null;
@@ -995,6 +1007,7 @@ function renderCurrent() {
   if (state.view === "summaries") return renderSummaries();
   if (state.view === "glossary") return renderGlossary();
   if (state.view === "flashcards") return renderFlashcards();
+  if (state.view === "calculations") return renderCalculations();
   if (state.view === "exams") return renderExams();
   if (state.view === "exam-detail") return renderExamDetail();
   if (state.view === "exam-topics") return renderExamTopics();
@@ -1128,6 +1141,7 @@ async function openDashboardQuickAction(actionId) {
     if (actionId === "create-video") return await openInModule(renderVideos, "[data-add-video]");
     if (actionId === "create-bibliography") return await openInModule(renderBibliography, "[data-add-bibliography]");
     if (actionId === "create-contact") return await openInModule(renderContacts, "[data-add-contact]");
+    if (actionId === "play-calculations") return await openInModule(renderCalculations, "[data-start-calculations]");
     if (actionId === "cycle-palette") {
       const paletteOrder = ["forest", "flames", "cosmic"];
       const current = normalizePalette(state.settings?.appearance?.palette);
@@ -1651,6 +1665,7 @@ function renderProfiles() {
       state.glossaryScope = null;
       state.flashcardCollections = [];
       state.flashcardsScope = null;
+      state.gameData = defaultGameData();
       state.scheduleEditing = false;
       state.chronogramDisciplineId = null;
       state.lessonWeekOffset = 0;
@@ -1704,6 +1719,7 @@ function renderProfiles() {
           state.glossaryScope = null;
           state.flashcardCollections = [];
           state.flashcardsScope = null;
+          state.gameData = defaultGameData();
           state.scheduleEditing = false;
           state.chronogramDisciplineId = null;
           state.lessonWeekOffset = 0;
@@ -4344,6 +4360,32 @@ async function renderFlashcards(scope = state.flashcardsScope) {
   }
 }
 
+async function renderCalculations() {
+  const profile = state.currentProfile;
+  if (!profile) return showOnboarding();
+  state.view = "calculations";
+  try {
+    state.gameData = await getGameData(profile.id);
+    if (state.view !== "calculations" || state.currentProfile?.id !== profile.id) return;
+    renderWithinLayout(calculationsView({ data: state.gameData }));
+    bindCalculations(root, {
+      onStart: async (result) => {
+        const nextData = appendCalculationGame(state.gameData, result);
+        state.gameData = await saveGameData(state.user, profile, nextData);
+        invalidateUniversalSearchIndex();
+        renderCalculations();
+      },
+    });
+  } catch (error) {
+    showToast(error.message || "Não foi possível carregar os dados do jogo.", "error");
+    state.gameData = defaultGameData();
+    renderWithinLayout(calculationsView({ data: state.gameData }));
+    bindCalculations(root, {
+      onStart: () => showToast("Execute a migration de Jogos antes de iniciar uma partida.", "error"),
+    });
+  }
+}
+
 function glossaryReferences() {
   return {
     disciplines: state.disciplines,
@@ -4740,6 +4782,7 @@ function renderWithinLayout(content) {
         organization: ["organizationExpanded", "akademo.sidebar.organization-expanded"],
         content: ["contentExpanded", "akademo.sidebar.content-expanded"],
         review: ["reviewExpanded", "akademo.sidebar.review-expanded"],
+        games: ["gamesExpanded", "akademo.sidebar.games-expanded"],
       };
       if (!groups[group]) return;
       Object.entries(groups).forEach(([key, [stateKey, storageKey]]) => {
@@ -4860,6 +4903,7 @@ function renderWithinLayout(content) {
       state.glossaryScope = null;
       state.flashcardCollections = [];
       state.flashcardsScope = null;
+      state.gameData = defaultGameData();
       state.scheduleEditing = false;
       state.chronogramDisciplineId = null;
       state.lessonWeekOffset = 0;
