@@ -24,6 +24,7 @@ const contentModules = [
   { view: "notes", iconName: "note", label: "Anotações", isActive: (currentView) => currentView === "notes" },
   { view: "glossary", iconName: "glossary", label: "Glossário", isActive: (currentView) => currentView === "glossary" },
   { view: "videos", iconName: "video", label: "Vídeos", isActive: (currentView) => currentView === "videos" },
+  { view: "bibliography", iconName: "book", label: "Bibliografia", isActive: (currentView) => currentView === "bibliography" },
 ];
 
 const moduleContexts = {
@@ -48,6 +49,7 @@ const moduleContexts = {
   notes: { iconName: "note", title: "Anotações", description: "Registre ideias, resumos e explicações em páginas organizadas." },
   glossary: { iconName: "glossary", title: "Glossário", description: "Reúna termos, definições e exemplos para revisar com facilidade." },
   videos: { iconName: "video", title: "Vídeos", description: "Assista e organize suas aulas e explicações em vídeo." },
+  bibliography: { iconName: "book", title: "Bibliografia", description: "Consulte e organize as referências e materiais de apoio de estudo." },
 };
 
 function contextForView(view) {
@@ -58,6 +60,7 @@ function contextForView(view) {
   if (view === "notes") return moduleContexts.notes;
   if (view === "glossary") return moduleContexts.glossary;
   if (view === "videos") return moduleContexts.videos;
+  if (view === "bibliography") return moduleContexts.bibliography;
   return moduleContexts[view] || moduleContexts.dashboard;
 }
 

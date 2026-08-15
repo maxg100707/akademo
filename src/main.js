@@ -99,6 +99,13 @@ import {
   getVideos,
 } from "./services/videos.js";
 import {
+  createBibliography,
+  deleteBibliography,
+  getBibliography,
+  getBibliographyUrl,
+  updateBibliography,
+} from "./services/bibliografia.js";
+import {
   createNote,
   deleteNote,
   getNotes,
@@ -212,6 +219,12 @@ import {
   videosView,
 } from "./ui/videos-view.js";
 import {
+  bindBibliographyCatalog,
+  bibliographyView,
+  openBibliographyCreate,
+  openBibliographyDetail,
+} from "./ui/bibliography-view.js";
+import {
   bindNotesCatalog,
   notesView,
   openNoteEditor,
@@ -223,7 +236,7 @@ import {
   openGlossaryForm,
   openGlossaryViewer,
 } from "./ui/glossary-view.js";
-import { showToast, unsavedModal } from "./ui/components.js";
+import { closeModal, confirmModal, showToast, unsavedModal } from "./ui/components.js";
 import {
   getStoredProfile,
   removeStoredProfile,
@@ -267,6 +280,8 @@ const state = {
   mindMapScope: null,
   videos: [],
   videoScope: null,
+  bibliography: [],
+  bibliographyScope: null,
   notes: [],
   noteScope: null,
   glossaryTerms: [],
@@ -423,7 +438,7 @@ function selectStoredProfile(route = {}) {
 
 const routeViews = new Set([
   "dashboard", "personal", "settings", "settings-user", "settings-dashboard", "settings-personalization", "profiles", "teachers", "contacts", "disciplines", "schedules",
-  "chronogram", "tasks", "files", "mindmaps", "mindmap-editor", "videos", "notes", "glossary",
+  "chronogram", "tasks", "files", "mindmaps", "mindmap-editor", "videos", "bibliography", "notes", "glossary",
   "exams", "exam-detail", "exam-topics", "exam-topic", "exam-materials", "exam-tasks", "presentations",
   "presentation-detail", "presentation-materials", "presentation-tasks", "lessons", "lesson-chronogram",
   "lesson-form", "lesson-detail", "lesson-materials", "lesson-tasks",
@@ -513,7 +528,7 @@ async function loadUniversalSearchIndex() {
     }
   };
   universalSearchLoading = (async () => {
-    const [teachers, contacts, disciplines, schedules, chronograms, lessons, tasks, exams, presentations, mindMaps, videos, notes, glossaryTerms, contents, settings] = await Promise.all([
+    const [teachers, contacts, disciplines, schedules, chronograms, lessons, tasks, exams, presentations, mindMaps, videos, bibliography, notes, glossaryTerms, contents, settings] = await Promise.all([
       safely(getTeachers(profile.id)),
       safely(getContacts(profile.id)),
       safely(getDisciplines(profile.id)),
@@ -525,6 +540,7 @@ async function loadUniversalSearchIndex() {
       safely(getPresentations(profile.id)),
       safely(getMindMaps(profile.id)),
       safely(getVideos(profile.id)),
+      safely(getBibliography(profile.id)),
       safely(getNotes(profile.id)),
       safely(getGlossaryTerms(profile.id)),
       safely(getProfileContents(profile.id)),
@@ -548,6 +564,7 @@ async function loadUniversalSearchIndex() {
       presentations,
       mindMaps,
       videos,
+      bibliography,
       notes,
       glossaryTerms,
       contents,
@@ -592,6 +609,10 @@ async function selectUniversalSearchResult(result) {
     } catch (error) {
       showToast(error.message || "Não foi possível abrir o vídeo.", "error");
     }
+  }
+  if (result.type === "bibliography") {
+    const bib = state.bibliography.find((item) => String(item.id) === String(result.recordId));
+    if (bib) window.setTimeout(() => viewBibliographyDetail(bib), 0);
   }
 }
 
@@ -794,6 +815,7 @@ async function restoreRoute(route = readRoute()) {
     if (targetView === "mindmap-editor") return await restoreMindMapRoute(route);
     if (targetView === "mindmaps") return await renderMindMaps(routeScope(route.scope, route.scopeId));
     if (targetView === "videos") return await renderVideos(routeScope(route.scope, route.scopeId));
+    if (targetView === "bibliography") return await renderBibliography(routeScope(route.scope, route.scopeId));
     if (targetView === "notes") return await restoreNotesRoute(route);
     if (targetView === "glossary") return await restoreGlossaryRoute(route);
     state.view = targetView;
@@ -903,6 +925,7 @@ function renderCurrent() {
   if (state.view === "mindmaps") return renderMindMaps();
   if (state.view === "mindmap-editor") return renderMindMapEditor();
   if (state.view === "videos") return renderVideos();
+  if (state.view === "bibliography") return renderBibliography();
   if (state.view === "notes") return renderNotes();
   if (state.view === "glossary") return renderGlossary();
   if (state.view === "exams") return renderExams();
@@ -1035,6 +1058,7 @@ async function openDashboardQuickAction(actionId) {
     if (actionId === "create-note") return await openInModule(renderNotes, "[data-create-note]");
     if (actionId === "create-glossary") return await openInModule(renderGlossary, "[data-create-glossary-term]");
     if (actionId === "create-video") return await openInModule(renderVideos, "[data-add-video]");
+    if (actionId === "create-bibliography") return await openInModule(renderBibliography, "[data-add-bibliography]");
     if (actionId === "create-contact") return await openInModule(renderContacts, "[data-add-contact]");
     if (actionId === "cycle-palette") {
       const paletteOrder = ["forest", "flames", "cosmic"];
@@ -2704,6 +2728,7 @@ function renderExamDetail() {
     onOpenNotes: () => renderNotes(scopeForNotes("exam", exam)),
     onOpenVideos: () => renderVideos(scopeForVideos("exam", exam)),
     onOpenMaterials: () => renderExamMaterials(),
+    onOpenBibliography: () => renderBibliography(scopeForBibliography("exam", exam)),
   });
   root.querySelector("[data-open-exam-tasks]")?.addEventListener("click", () => renderExamTasks().catch((error) => showToast(error.message || "Não foi possível abrir as tarefas.", "error")));
   root.querySelector("[data-open-exam-glossary]")?.addEventListener("click", () => renderGlossary(scopeForGlossary("exam", exam)));
@@ -3146,6 +3171,8 @@ function renderPresentationDetail() {
       renderNotes(scopeForNotes("presentation", presentation)),
     onOpenVideos: () =>
       renderVideos(scopeForVideos("presentation", presentation)),
+    onOpenBibliography: () =>
+      renderBibliography(scopeForBibliography("presentation", presentation)),
     onEditLinks: () =>
       configurePresentation(presentation, "links").catch((error) =>
         showToast(error.message || "Não foi possível editar os links.", "error"),
@@ -3541,6 +3568,15 @@ function renderLessonDetail() {
       `<button class="lesson-tool-card lesson-tool-card--glossary" data-open-lesson-glossary><span>${icon("glossary", 24)}</span><div><small>CONCEITOS</small><strong>Glossário</strong><p>Reúna os termos e definições explicados nesta aula.</p></div><em>Abrir ${icon("arrowRight", 17)}</em></button>`,
     );
   root.querySelector("[data-open-lesson-glossary]")?.addEventListener("click", () => renderGlossary(scopeForGlossary("lesson", lesson)));
+  root
+    .querySelector(".lesson-tools-grid")
+    ?.insertAdjacentHTML(
+      "beforeend",
+      `<button class="lesson-tool-card lesson-tool-card--bibliography" data-open-lesson-bibliography><span>${icon("book", 24)}</span><div><small>REFERÊNCIAS</small><strong>Bibliografia</strong><p>Reúna os livros, artigos e materiais de apoio desta aula.</p></div><em>Abrir ${icon("arrowRight", 17)}</em></button>`,
+    );
+  root
+    .querySelector("[data-open-lesson-bibliography]")
+    ?.addEventListener("click", () => renderBibliography(scopeForBibliography("lesson", lesson)));
   bindLessonDetail(root, {
     onBack: lessonBack,
     onOpenMindMaps: () => renderMindMaps(scopeForMindMaps("lesson", lesson)),
@@ -4164,6 +4200,170 @@ async function renderVideos(scope = state.videoScope) {
     showToast(error.message || "Não foi possível carregar os vídeos.", "error");
     videosBack();
   }
+}
+
+function bibliographyReferences() {
+  return {
+    disciplines: state.disciplines,
+    lessons: state.lessons,
+    exams: state.exams,
+    presentations: state.presentations,
+  };
+}
+
+function scopeForBibliography(type, record) {
+  return {
+    type,
+    field:
+      type === "lesson"
+        ? "aula"
+        : type === "exam"
+          ? "prova"
+          : "apresentacao",
+    record,
+    disciplineId: record.disciplina,
+  };
+}
+
+async function loadBibliographyData() {
+  const profile = state.currentProfile;
+  if (!profile) return;
+  const [bibliography, disciplines, lessons, exams, presentations] = await Promise.all([
+    getBibliography(profile.id),
+    getDisciplines(profile.id),
+    getLessons(profile.id),
+    getExams(profile.id),
+    getPresentations(profile.id),
+  ]);
+  if (state.currentProfile?.id !== profile.id) return;
+  state.bibliography = bibliography;
+  state.disciplines = disciplines;
+  state.lessons = lessons;
+  state.exams = exams;
+  state.presentations = presentations;
+}
+
+function bibliographyBack() {
+  const scope = state.bibliographyScope;
+  state.bibliographyScope = null;
+  if (scope?.type === "lesson") return renderLessonDetail();
+  if (scope?.type === "exam") return renderExamDetail();
+  if (scope?.type === "presentation") return renderPresentationDetail();
+  state.view = state.returnView || "dashboard";
+  renderCurrent();
+}
+
+function mountBibliography() {
+  renderWithinLayout(
+    bibliographyView({
+      bibliography: state.bibliography,
+      references: bibliographyReferences(),
+      scope: state.bibliographyScope,
+    }),
+  );
+  bindBibliographyCatalog(root, {
+    bibliography: state.bibliography,
+    references: bibliographyReferences(),
+    scope: state.bibliographyScope,
+    onBack: bibliographyBack,
+    onCreate: async (values) => {
+      const bib = await createBibliography(state.user, state.currentProfile, values);
+      state.bibliography = [bib, ...state.bibliography];
+      mountBibliography();
+      showToast("Referência bibliográfica salva.");
+      return bib;
+    },
+    onUpdate: async (id, values) => {
+      const bib = await updateBibliography(id, state.user, state.currentProfile, values);
+      state.bibliography = state.bibliography.map((item) => item.id === id ? bib : item);
+      mountBibliography();
+      showToast("Referência bibliográfica atualizada.");
+      return bib;
+    },
+    onDelete: async (bib) => {
+      try {
+        await deleteBibliography(state.user, bib);
+        state.bibliography = state.bibliography.filter((item) => item.id !== bib.id);
+        mountBibliography();
+        showToast("Referência apagada.");
+      } catch (error) {
+        showToast(error.message || "Não foi possível apagar a referência.", "error");
+      }
+    },
+    onOpenLink: async (bib) => {
+      try {
+        const url = await getBibliographyUrl(state.user, bib);
+        window.open(url, "_blank", "noopener,noreferrer");
+      } catch (error) {
+        showToast(error.message || "Não foi possível abrir o conteúdo.", "error");
+      }
+    },
+  });
+}
+
+async function renderBibliography(scope = state.bibliographyScope) {
+  const profile = state.currentProfile;
+  if (!profile) return showOnboarding();
+  state.view = "bibliography";
+  state.bibliographyScope = scope || null;
+  try {
+    await loadBibliographyData();
+    if (state.view !== "bibliography" || state.currentProfile?.id !== profile.id) return;
+    mountBibliography();
+  } catch (error) {
+    showToast(error.message || "Não foi possível carregar a bibliografia.", "error");
+    bibliographyBack();
+  }
+}
+
+function viewBibliographyDetail(bib) {
+  openBibliographyDetail({
+    record: bib,
+    references: bibliographyReferences(),
+    onOpenLink: async (record) => {
+      try {
+        const url = await getBibliographyUrl(state.user, record);
+        window.open(url, "_blank", "noopener,noreferrer");
+      } catch (error) {
+        showToast(error.message || "Não foi possível abrir o conteúdo.", "error");
+      }
+    },
+    onEdit: (record) => {
+      openBibliographyCreate({
+        references: bibliographyReferences(),
+        scope: state.bibliographyScope,
+        record,
+        onCreateOrUpdate: async (values) => {
+          const updated = await updateBibliography(record.id, state.user, state.currentProfile, values);
+          state.bibliography = state.bibliography.map((item) => item.id === record.id ? updated : item);
+          mountBibliography();
+          showToast("Referência bibliográfica atualizada.");
+          viewBibliographyDetail(updated);
+        }
+      });
+    },
+    onDelete: async (record) => {
+      const question = record.arquivo 
+        ? `“${record.titulo}” e seu arquivo privado associado serão removidos definitivamente.`
+        : `“${record.titulo}” será removido da sua lista de referências.`;
+      if (await confirmModal({
+        title: "Remover esta bibliografia?",
+        message: question,
+        confirmLabel: "Apagar bibliografia",
+        tone: "danger"
+      })) {
+        closeModal();
+        try {
+          await deleteBibliography(state.user, record);
+          state.bibliography = state.bibliography.filter((item) => item.id !== record.id);
+          mountBibliography();
+          showToast("Referência apagada.");
+        } catch (error) {
+          showToast(error.message || "Não foi possível apagar a referência.", "error");
+        }
+      }
+    }
+  });
 }
 
 function renderWithinLayout(content) {

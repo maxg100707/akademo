@@ -17,6 +17,7 @@ const TYPE_LABELS = {
   note: "Anotação",
   glossary: "Termo do glossário",
   video: "Vídeo",
+  bibliography: "Bibliografia",
 };
 
 const WEEKDAYS = ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"];
@@ -37,6 +38,7 @@ const MODULES = [
   ["notes", "Anotações", "Escreva e consulte páginas de anotações organizadas.", "note"],
   ["glossary", "Glossário", "Guarde termos, definições e exemplos importantes.", "glossary"],
   ["videos", "Vídeos", "Salve e assista vídeos de estudo e explicações.", "video"],
+  ["bibliography", "Bibliografia", "Consulte referências, livros, artigos e materiais de estudo.", "book"],
   ["settings", "Configurações", "Ajuste usuário, dashboard, aparência e tema do AKADEMO.", "settings"],
 ];
 
@@ -142,6 +144,7 @@ export function buildUniversalSearchIndex(data = {}) {
   const notes = data.notes || [];
   const glossaryTerms = data.glossaryTerms || [];
   const videos = data.videos || [];
+  const bibliography = data.bibliography || [];
   const examTopics = data.examTopics || [];
   const indexed = [];
 
@@ -366,6 +369,18 @@ export function buildUniversalSearchIndex(data = {}) {
       iconName: "video",
       route: scopeRoute("videos", video),
       data: video,
+    }));
+  });
+
+  bibliography.forEach((bib) => {
+    const context = activityLabel(bib, refs);
+    indexed.push(entry({
+      type: "bibliography",
+      title: bib.titulo || "Bibliografia",
+      subtitle: [bib.tipo, bib.autor, context].filter(Boolean).join(" · "),
+      iconName: "book",
+      route: scopeRoute("bibliography", bib),
+      data: bib,
     }));
   });
 

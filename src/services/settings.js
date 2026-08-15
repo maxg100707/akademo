@@ -43,6 +43,7 @@ export const DASHBOARD_QUICK_ACTIONS = [
   { id: "create-note", label: "Criar anotação", iconName: "note" },
   { id: "create-glossary", label: "Registrar termo", iconName: "glossary" },
   { id: "create-video", label: "Registrar vídeo", iconName: "video" },
+  { id: "create-bibliography", label: "Registrar bibliografia", iconName: "book" },
   { id: "cycle-palette", label: "Mudar temática", iconName: "sparkles" },
   { id: "create-contact", label: "Novo contato", iconName: "users" },
 ];
@@ -62,6 +63,7 @@ const MODULE_IDS = new Set([
   "notes",
   "glossary",
   "videos",
+  "bibliography",
   "disciplines",
   "teachers",
   "profiles",
