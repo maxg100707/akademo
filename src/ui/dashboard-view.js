@@ -71,7 +71,7 @@ function dashboardCalendar({ tasks, exams, presentations, disciplines, chronogra
 }
 
 const FAVORITE_MODULES = {
-  schedules: { label: "Horários", iconName: "calendar" }, lessons: { label: "Aulas", iconName: "book" }, chronogram: { label: "Cronograma", iconName: "file" }, tasks: { label: "Tarefas", iconName: "check" }, exams: { label: "Provas", iconName: "exam" }, presentations: { label: "Apresentações", iconName: "presentation" }, files: { label: "Arquivos", iconName: "folder" }, mindmaps: { label: "Mapas mentais", iconName: "mindMap" }, notes: { label: "Anotações", iconName: "note" }, videos: { label: "Vídeos", iconName: "video" }, disciplines: { label: "Disciplinas", iconName: "book" }, teachers: { label: "Professores", iconName: "users" }, profiles: { label: "Perfis de estudo", iconName: "graduation" },
+  schedules: { label: "Horários", iconName: "calendar" }, lessons: { label: "Aulas", iconName: "book" }, chronogram: { label: "Cronograma", iconName: "file" }, tasks: { label: "Tarefas", iconName: "check" }, exams: { label: "Provas", iconName: "exam" }, presentations: { label: "Apresentações", iconName: "presentation" }, files: { label: "Arquivos", iconName: "folder" }, mindmaps: { label: "Mapas mentais", iconName: "mindMap" }, notes: { label: "Anotações", iconName: "note" }, glossary: { label: "Glossário", iconName: "glossary" }, videos: { label: "Vídeos", iconName: "video" }, disciplines: { label: "Disciplinas", iconName: "book" }, teachers: { label: "Professores", iconName: "users" }, profiles: { label: "Perfis de estudo", iconName: "graduation" },
 };
 
 const WEEKDAY_SHORT = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"];

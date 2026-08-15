@@ -104,6 +104,12 @@ import {
   getNotes,
   updateNote,
 } from "./services/notes.js";
+import {
+  createGlossaryTerm,
+  deleteGlossaryTerm,
+  getGlossaryTerms,
+  updateGlossaryTerm,
+} from "./services/glossary.js";
 import { defaultSettings, getSettings, normalizePalette, saveSettings } from "./services/settings.js";
 import {
   applyPendingAvatar,
@@ -209,6 +215,12 @@ import {
   openNoteEditor,
   openNoteViewer,
 } from "./ui/notes-view.js";
+import {
+  bindGlossaryCatalog,
+  glossaryView,
+  openGlossaryForm,
+  openGlossaryViewer,
+} from "./ui/glossary-view.js";
 import { showToast, unsavedModal } from "./ui/components.js";
 import {
   getStoredProfile,
@@ -255,6 +267,8 @@ const state = {
   videoScope: null,
   notes: [],
   noteScope: null,
+  glossaryTerms: [],
+  glossaryScope: null,
   profileContents: [],
   settings: defaultSettings(),
   settingsSaved: defaultSettings(),
@@ -403,7 +417,7 @@ function selectStoredProfile(route = {}) {
 
 const routeViews = new Set([
   "dashboard", "personal", "settings", "settings-user", "settings-dashboard", "settings-personalization", "profiles", "teachers", "contacts", "disciplines", "schedules",
-  "chronogram", "tasks", "files", "mindmaps", "mindmap-editor", "videos", "notes",
+  "chronogram", "tasks", "files", "mindmaps", "mindmap-editor", "videos", "notes", "glossary",
   "exams", "exam-detail", "exam-topics", "exam-topic", "exam-materials", "exam-tasks", "presentations",
   "presentation-detail", "presentation-materials", "presentation-tasks", "lessons", "lesson-chronogram",
   "lesson-form", "lesson-detail", "lesson-materials", "lesson-tasks",
@@ -423,6 +437,7 @@ function resetProfileScopedState() {
   state.mindMaps = [];
   state.videos = [];
   state.notes = [];
+  state.glossaryTerms = [];
   state.profileContents = [];
   state.settings = defaultSettings();
   state.settingsSaved = cloneSettings(state.settings);
@@ -445,6 +460,7 @@ function resetProfileScopedState() {
   state.mindMapScope = null;
   state.videoScope = null;
   state.noteScope = null;
+  state.glossaryScope = null;
   state.taskDisciplineFilter = "";
   state.fileDisciplineFilter = "";
   state.fileSearch = "";
@@ -529,6 +545,10 @@ function routeForState() {
   if (state.view === "notes") {
     route.scope = state.noteScope?.type || "";
     route.scopeId = state.noteScope?.record?.id || "";
+  }
+  if (state.view === "glossary") {
+    route.scope = state.glossaryScope?.type || "";
+    route.scopeId = state.glossaryScope?.record?.id || "";
   }
   return route;
 }
@@ -637,6 +657,11 @@ async function restoreNotesRoute(route) {
   return renderNotes(routeScope(route.scope, route.scopeId));
 }
 
+async function restoreGlossaryRoute(route) {
+  await loadGlossaryData();
+  return renderGlossary(routeScope(route.scope, route.scopeId));
+}
+
 async function restoreRoute(route = readRoute()) {
   if (!state.currentProfile) return showOnboarding();
   const sequence = ++routeRestoreSequence;
@@ -656,6 +681,7 @@ async function restoreRoute(route = readRoute()) {
     if (targetView === "mindmaps") return await renderMindMaps(routeScope(route.scope, route.scopeId));
     if (targetView === "videos") return await renderVideos(routeScope(route.scope, route.scopeId));
     if (targetView === "notes") return await restoreNotesRoute(route);
+    if (targetView === "glossary") return await restoreGlossaryRoute(route);
     state.view = targetView;
     state.scheduleEditing = route.edit === "1";
     state.chronogramDisciplineId = targetView === "chronogram" ? route.discipline : null;
@@ -693,9 +719,11 @@ function renderAuthScreen() {
   state.mindMaps = [];
   state.videos = [];
   state.notes = [];
+  state.glossaryTerms = [];
   state.mindMapScope = null;
   state.videoScope = null;
   state.noteScope = null;
+  state.glossaryScope = null;
   state.scheduleEditing = false;
   state.chronogramDisciplineId = null;
   state.lessonWeekOffset = 0;
@@ -759,6 +787,7 @@ function renderCurrent() {
   if (state.view === "mindmap-editor") return renderMindMapEditor();
   if (state.view === "videos") return renderVideos();
   if (state.view === "notes") return renderNotes();
+  if (state.view === "glossary") return renderGlossary();
   if (state.view === "exams") return renderExams();
   if (state.view === "exam-detail") return renderExamDetail();
   if (state.view === "exam-topics") return renderExamTopics();
@@ -1277,6 +1306,8 @@ function renderProfiles() {
       state.tasks = [];
       state.notes = [];
       state.noteScope = null;
+      state.glossaryTerms = [];
+      state.glossaryScope = null;
       state.scheduleEditing = false;
       state.chronogramDisciplineId = null;
       state.lessonWeekOffset = 0;
@@ -1326,6 +1357,8 @@ function renderProfiles() {
           state.tasks = [];
           state.notes = [];
           state.noteScope = null;
+          state.glossaryTerms = [];
+          state.glossaryScope = null;
           state.scheduleEditing = false;
           state.chronogramDisciplineId = null;
           state.lessonWeekOffset = 0;
@@ -2411,6 +2444,10 @@ function renderExamDetail() {
     "beforeend",
     `<button class="lesson-tool-card lesson-tool-card--tasks" data-open-exam-tasks><span>${icon("check", 24)}</span><div><small>ORGANIZAÇÃO</small><strong>Tarefas</strong><p>Entregas e pendências para preparar esta prova.</p></div><em>Abrir ${icon("arrowRight", 17)}</em></button>`,
   );
+  root.querySelector(".exam-detail-page .lesson-tools-grid")?.insertAdjacentHTML(
+    "beforeend",
+    `<button class="lesson-tool-card lesson-tool-card--glossary" data-open-exam-glossary><span>${icon("glossary", 24)}</span><div><small>CONCEITOS</small><strong>Glossário</strong><p>Consulte definições e exemplos importantes para esta prova.</p></div><em>Abrir ${icon("arrowRight", 17)}</em></button>`,
+  );
   bindExamDetail(root, {
     onBack: examBack,
     onOpenTopics: () => renderExamTopics(),
@@ -2420,6 +2457,7 @@ function renderExamDetail() {
     onOpenMaterials: () => renderExamMaterials(),
   });
   root.querySelector("[data-open-exam-tasks]")?.addEventListener("click", () => renderExamTasks().catch((error) => showToast(error.message || "Não foi possível abrir as tarefas.", "error")));
+  root.querySelector("[data-open-exam-glossary]")?.addEventListener("click", () => renderGlossary(scopeForGlossary("exam", exam)));
 }
 
 function renderExamTopics() {
@@ -2844,6 +2882,10 @@ function renderPresentationDetail() {
     "beforeend",
     `<button class="lesson-tool-card lesson-tool-card--tasks" data-open-presentation-tasks><span>${icon("check", 24)}</span><div><small>ORGANIZAÇÃO</small><strong>Tarefas</strong><p>Organize entregas e próximos passos desta apresentação.</p></div><em>Abrir ${icon("arrowRight", 17)}</em></button>`,
   );
+  root.querySelector(".presentation-detail-page .lesson-tools-grid")?.insertAdjacentHTML(
+    "beforeend",
+    `<button class="lesson-tool-card lesson-tool-card--glossary" data-open-presentation-glossary><span>${icon("glossary", 24)}</span><div><small>CONCEITOS</small><strong>Glossário</strong><p>Guarde termos e definições para a sua apresentação.</p></div><em>Abrir ${icon("arrowRight", 17)}</em></button>`,
+  );
   bindPresentationDetail(root, {
     presentation,
     contents: state.activePresentationContents,
@@ -2905,6 +2947,7 @@ function renderPresentationDetail() {
       showToast("Arquivo enviado e associado à apresentação.");
     },
   });
+  root.querySelector("[data-open-presentation-glossary]")?.addEventListener("click", () => renderGlossary(scopeForGlossary("presentation", presentation)));
 }
 
 function renderPresentationMaterials() {
@@ -3242,6 +3285,13 @@ function renderLessonDetail() {
   root
     .querySelector("[data-open-lesson-videos]")
     ?.addEventListener("click", () => renderVideos(scopeForVideos("lesson", lesson)));
+  root
+    .querySelector(".lesson-tools-grid")
+    ?.insertAdjacentHTML(
+      "beforeend",
+      `<button class="lesson-tool-card lesson-tool-card--glossary" data-open-lesson-glossary><span>${icon("glossary", 24)}</span><div><small>CONCEITOS</small><strong>Glossário</strong><p>Reúna os termos e definições explicados nesta aula.</p></div><em>Abrir ${icon("arrowRight", 17)}</em></button>`,
+    );
+  root.querySelector("[data-open-lesson-glossary]")?.addEventListener("click", () => renderGlossary(scopeForGlossary("lesson", lesson)));
   bindLessonDetail(root, {
     onBack: lessonBack,
     onOpenMindMaps: () => renderMindMaps(scopeForMindMaps("lesson", lesson)),
@@ -3661,6 +3711,125 @@ async function renderNotes(scope = state.noteScope) {
   }
 }
 
+function glossaryReferences() {
+  return {
+    disciplines: state.disciplines,
+    lessons: state.lessons,
+    exams: state.exams,
+    presentations: state.presentations,
+  };
+}
+
+function scopeForGlossary(type, record) {
+  return {
+    type,
+    field: type === "lesson" ? "aula" : type === "exam" ? "prova" : "apresentacao",
+    record,
+    disciplineId: record.disciplina,
+  };
+}
+
+async function loadGlossaryData() {
+  const profile = state.currentProfile;
+  if (!profile) return;
+  const [terms, disciplines, lessons, exams, presentations] = await Promise.all([
+    getGlossaryTerms(profile.id),
+    getDisciplines(profile.id),
+    getLessons(profile.id),
+    getExams(profile.id),
+    getPresentations(profile.id),
+  ]);
+  if (state.currentProfile?.id !== profile.id) return;
+  state.glossaryTerms = terms;
+  state.disciplines = disciplines;
+  state.lessons = lessons;
+  state.exams = exams;
+  state.presentations = presentations;
+}
+
+function glossaryBack() {
+  const scope = state.glossaryScope;
+  state.glossaryScope = null;
+  if (scope?.type === "lesson") {
+    return restoreLessonRoute({
+      lesson: scope.record.id,
+      chronogram: scope.record.cronograma || "",
+      discipline: scope.record.disciplina || "",
+    }, "lesson-detail");
+  }
+  if (scope?.type === "exam") return restoreExamRoute({ exam: scope.record.id }, "exam-detail");
+  if (scope?.type === "presentation") return restorePresentationRoute({ presentation: scope.record.id }, "presentation-detail");
+  state.view = state.returnView || "dashboard";
+  return renderCurrent();
+}
+
+function replaceGlossaryTerm(updated) {
+  state.glossaryTerms = state.glossaryTerms.map((item) => String(item.id) === String(updated.id) ? updated : item);
+}
+
+function editGlossaryTerm(term) {
+  openGlossaryForm({
+    term,
+    references: glossaryReferences(),
+    scope: state.glossaryScope,
+    onSave: async (values) => {
+      const updated = await updateGlossaryTerm(term.id, state.user, state.currentProfile, term, values);
+      replaceGlossaryTerm(updated);
+      showToast("Termo atualizado.");
+      return updated;
+    },
+    onClosed: (meta) => {
+      if (meta?.saved) renderGlossary(state.glossaryScope);
+    },
+  });
+}
+
+function viewGlossaryTerm(term) {
+  openGlossaryViewer(term, {
+    references: glossaryReferences(),
+    onEdit: () => editGlossaryTerm(term),
+    onDelete: async () => {
+      await deleteGlossaryTerm(term.id, state.currentProfile.id);
+      state.glossaryTerms = state.glossaryTerms.filter((item) => String(item.id) !== String(term.id));
+      showToast("Termo apagado.");
+      renderGlossary(state.glossaryScope);
+    },
+  });
+}
+
+async function renderGlossary(scope = state.glossaryScope) {
+  const profile = state.currentProfile;
+  if (!profile) return showOnboarding();
+  state.view = "glossary";
+  state.glossaryScope = scope || null;
+  try {
+    await loadGlossaryData();
+    if (state.view !== "glossary" || state.currentProfile?.id !== profile.id) return;
+    renderWithinLayout(glossaryView({
+      terms: state.glossaryTerms,
+      references: glossaryReferences(),
+      scope: state.glossaryScope,
+    }));
+    bindGlossaryCatalog(root, {
+      terms: state.glossaryTerms,
+      references: glossaryReferences(),
+      scope: state.glossaryScope,
+      onBack: glossaryBack,
+      onCreate: async (values) => {
+        const term = await createGlossaryTerm(state.user, profile, values);
+        state.glossaryTerms = [...state.glossaryTerms, term].sort((first, second) => String(first.termo).localeCompare(String(second.termo), "pt-BR"));
+        window.setTimeout(() => renderGlossary(state.glossaryScope), 0);
+        showToast("Termo adicionado ao glossário.");
+        return term;
+      },
+      onOpen: viewGlossaryTerm,
+    });
+  } catch (error) {
+    showToast(error.message || "Não foi possível carregar o glossário.", "error");
+    glossaryBack();
+  }
+}
+
 async function loadVideoData() {
   const profile = state.currentProfile;
   if (!profile) return;
@@ -3825,6 +3994,10 @@ function renderWithinLayout(content) {
         state.returnView = state.view;
         state.noteScope = null;
       }
+      if (view === "glossary") {
+        state.returnView = state.view;
+        state.glossaryScope = null;
+      }
       state.view = view;
       renderCurrent();
     },
@@ -3872,6 +4045,8 @@ function renderWithinLayout(content) {
       state.videoScope = null;
       state.notes = [];
       state.noteScope = null;
+      state.glossaryTerms = [];
+      state.glossaryScope = null;
       state.scheduleEditing = false;
       state.chronogramDisciplineId = null;
       state.lessonWeekOffset = 0;
