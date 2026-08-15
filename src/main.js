@@ -163,6 +163,7 @@ import {
   lessonFormView,
   lessonMaterialsView,
   lessonsWeekView,
+  openQuickLessonCreate,
   openLessonSummaryEditor,
   openLessonTopicEditor,
 } from "./ui/lessons-view.js";
@@ -933,6 +934,135 @@ function renderDashboard() {
     loadDashboardData(state.currentProfile);
 }
 
+function quickLessonOccurrence(values) {
+  const discipline = state.disciplines.find((item) => item.id === values.disciplineId);
+  const selected = getLessonOccurrences(
+    state.currentProfile,
+    values.disciplineId,
+    state.schedules,
+  ).find((item) => item.value === values.occurrenceValue);
+  if (!discipline || !selected?.schedule) {
+    throw new Error("A ocorrência selecionada não está mais disponível.");
+  }
+  return {
+    ...selected,
+    key: `${selected.schedule.id}:${selected.startsAt.toISOString()}`,
+    discipline,
+  };
+}
+
+async function openDashboardQuickLesson() {
+  const profile = state.currentProfile;
+  if (!profile) return;
+  const [disciplines, schedules, chronograms, lessons] = await Promise.all([
+    getDisciplines(profile.id),
+    getSchedules(profile.id),
+    getChronogram(profile.id),
+    getLessons(profile.id),
+  ]);
+  if (state.currentProfile?.id !== profile.id) return;
+  state.disciplines = disciplines;
+  state.schedules = schedules;
+  state.chronograms = chronograms;
+  state.lessons = lessons;
+  openQuickLessonCreate({
+    disciplines,
+    schedules,
+    chronograms,
+    profile,
+    onContinue: async (values) => {
+      const occurrence = quickLessonOccurrence(values);
+      state.returnView = "dashboard";
+      state.lessonOccurrence = occurrence;
+      let chronogram = findChronogramEntry(
+        state.chronograms,
+        occurrence.discipline.id,
+        occurrence.startsAt,
+      );
+      if (chronogram && !chronogram.prova) {
+        throw new Error("Já existe um cronograma para esta ocorrência.");
+      }
+      if (!chronogram) {
+        chronogram = await createChronogramEntry(state.user, profile, {
+          disciplineId: occurrence.discipline.id,
+          dateTime: occurrence.startsAt.toISOString(),
+          topic: String(values.topic || "").trim(),
+          kind: values.kind || "normal",
+        });
+        state.chronograms = [...state.chronograms, chronogram].sort(
+          (first, second) => new Date(first.data_hora) - new Date(second.data_hora),
+        );
+      }
+      if (chronogram.feriado) {
+        state.lessonOccurrence = null;
+        state.lessonChronogram = null;
+        showToast("Esta data está marcada como feriado. Nenhuma aula será criada.");
+        renderDashboard();
+        return;
+      }
+      await openLessonOccurrence(occurrence, "dashboard");
+    },
+  });
+}
+
+async function openDashboardQuickAction(actionId) {
+  if (!state.currentProfile) return;
+  const openInModule = async (render, selector, unavailableMessage) => {
+    await render();
+    const trigger = root.querySelector(selector);
+    if (!trigger || trigger.disabled) {
+      if (unavailableMessage) showToast(unavailableMessage, "error");
+      return;
+    }
+    trigger.click();
+  };
+  state.returnView = "dashboard";
+  try {
+    if (actionId === "create-lesson") return await openDashboardQuickLesson();
+    if (actionId === "add-file") return await openInModule(renderFiles, "[data-add-profile-file]");
+    if (actionId === "add-task") return await openInModule(renderTasks, "[data-add-task]");
+    if (actionId === "create-exam") return await openInModule(
+      renderExams,
+      "[data-add-exam]",
+      "Cadastre uma disciplina e um horário antes de criar uma prova.",
+    );
+    if (actionId === "create-presentation") return await openInModule(
+      renderPresentations,
+      "[data-add-presentation]",
+      "Cadastre uma disciplina e um horário antes de criar uma apresentação.",
+    );
+    if (actionId === "create-mindmap") return await openInModule(renderMindMaps, "[data-create-mindmap]");
+    if (actionId === "create-note") return await openInModule(renderNotes, "[data-create-note]");
+    if (actionId === "create-glossary") return await openInModule(renderGlossary, "[data-create-glossary-term]");
+    if (actionId === "create-video") return await openInModule(renderVideos, "[data-add-video]");
+    if (actionId === "create-contact") return await openInModule(renderContacts, "[data-add-contact]");
+    if (actionId === "cycle-palette") {
+      const paletteOrder = ["forest", "flames", "cosmic"];
+      const current = normalizePalette(state.settings?.appearance?.palette);
+      const nextPalette = paletteOrder[(paletteOrder.indexOf(current) + 1) % paletteOrder.length];
+      const previous = cloneSettings(state.settings);
+      const next = cloneSettings(state.settings);
+      next.appearance.palette = nextPalette;
+      state.settings = next;
+      applyPalette(nextPalette);
+      try {
+        state.settings = await saveSettings(state.user, state.currentProfile, next);
+        state.settingsSaved = cloneSettings(state.settings);
+        state.settingsDirty = false;
+        state.settingsLoadedProfileId = state.currentProfile.id;
+        mountDashboard();
+        showToast(`Temática ${nextPalette === "forest" ? "Floresta" : nextPalette === "flames" ? "Chamas" : "Cosmic"} aplicada.`);
+      } catch (error) {
+        state.settings = previous;
+        applyPalette(previous.appearance.palette);
+        showToast(error.message || "Não foi possível mudar a temática agora.", "error");
+      }
+    }
+  } catch (error) {
+    showToast(error.message || "Não foi possível abrir esta ação rápida.", "error");
+  }
+}
+
 function mountDashboard() {
   const nextClass = getNextClass(
     state.schedules,
@@ -1082,6 +1212,9 @@ function mountDashboard() {
     state.returnView = "dashboard";
     state.view = view;
     renderCurrent();
+  }));
+  root.querySelectorAll("[data-dashboard-quick-action]").forEach((button) => button.addEventListener("click", () => {
+    openDashboardQuickAction(button.dataset.dashboardQuickAction);
   }));
   root.querySelectorAll("[data-open-dashboard-lesson]").forEach((button) => button.addEventListener("click", async () => {
     const lesson = state.lessons.find((item) => item.id === button.dataset.openDashboardLesson);

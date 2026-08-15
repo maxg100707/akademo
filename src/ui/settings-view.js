@@ -1,4 +1,4 @@
-import { DASHBOARD_WIDGETS, normalizeSettings } from "../services/settings.js";
+import { DASHBOARD_QUICK_ACTIONS, DASHBOARD_WIDGETS, normalizeSettings } from "../services/settings.js";
 import { icon } from "../utils/icons.js";
 import { escapeHtml } from "../utils/formatters.js";
 import { closeModal, setButtonLoading, showToast } from "./components.js";
@@ -36,6 +36,7 @@ const settingsSearchEntries = [
   { kind: "Widget", target: "dashboard", title: "Favoritos", description: "Fixe até quatro módulos no Dashboard.", terms: "favoritos favoritos fixar modulo modulos módulo módulos atalhos acesso rapido rápido" },
   { kind: "Widget", target: "dashboard", title: "Miniatura de horários", description: "Mostre uma versão compacta da grade semanal.", terms: "horario horarios horário horários grade semanal semana aulas" },
   { kind: "Widget", target: "dashboard", title: "Últimas aulas", description: "Abra os quatro registros de aula mais recentes.", terms: "ultimas últimas aulas recentes registros estudo resumo" },
+  { kind: "Widget", target: "dashboard", title: "Ações rápidas", description: "Escolha até seis atalhos para criar e organizar conteúdos.", terms: "acoes ações rapidas rápidas atalhos cadastrar aula arquivo tarefa prova apresentacao apresentação mapa anotacao anotação termo video contato tematica temática" },
   { kind: "Configuração", target: "dashboard", title: "Ordem dos widgets", description: "Organize a posição dos widgets do Dashboard.", terms: "ordem ordenar posicao posição mover setas widgets grade" },
   { kind: "Categoria", target: "personalization", title: "Personalização", description: "Altere a temática de cores do AKADEMO.", terms: "personalizacao personalização aparencia aparência cores paleta palheta tema tematica temática" },
   { kind: "Temática", target: "personalization", title: "Floresta", description: "A paleta verde original do AKADEMO.", terms: "floresta verde tema tematica temática paleta cores padrao padrão" },
@@ -98,10 +99,16 @@ function dashboardWidgetCard(widget, index, widgets) {
   const enabledPosition = enabledWidgets.findIndex((item) => item.id === widget.id);
   const canMoveUp = enabled && enabledPosition > 0;
   const canMoveDown = enabled && enabledPosition < enabledWidgets.length - 1;
+  const iconName = widget.id === "next-class" ? "calendar" : widget.id === "academic-calendar" ? "organize" : widget.id === "favorites" ? "sparkles" : widget.id === "schedules" ? "calendar" : widget.id === "quick-actions" ? "plus" : "book";
+  const configure = widget.id === "favorites" && enabled
+    ? `<button class="icon-button dashboard-widget-setting__configure" type="button" data-configure-dashboard-favorites aria-label="Configurar módulos favoritos">${icon("settings", 16)}</button>`
+    : widget.id === "quick-actions" && enabled
+      ? `<button class="icon-button dashboard-widget-setting__configure" type="button" data-configure-dashboard-quick-actions aria-label="Configurar ações rápidas">${icon("settings", 16)}</button>`
+      : "";
   return `<article class="dashboard-widget-setting ${enabled ? "is-enabled" : ""}">
-    <span class="dashboard-widget-setting__icon">${icon(widget.id === "next-class" ? "calendar" : widget.id === "academic-calendar" ? "organize" : widget.id === "favorites" ? "sparkles" : widget.id === "schedules" ? "calendar" : "book", 20)}</span>
+    <span class="dashboard-widget-setting__icon">${icon(iconName, 20)}</span>
     <div class="dashboard-widget-setting__copy"><strong>${escapeHtml(metadata?.label || "Widget")}</strong><p>${escapeHtml(metadata?.description || "")}</p></div>
-    <div class="dashboard-widget-setting__actions"><label class="switch" title="${enabled ? "Desativar" : "Ativar"}"><input type="checkbox" data-dashboard-widget-toggle="${escapeHtml(widget.id)}" ${enabled ? "checked" : ""}/><i></i></label>${widget.id === "favorites" && enabled ? `<button class="icon-button dashboard-widget-setting__configure" type="button" data-configure-dashboard-favorites aria-label="Configurar módulos favoritos">${icon("settings", 16)}</button>` : ""}<div class="dashboard-widget-setting__order"><button class="icon-button" type="button" data-dashboard-widget-move="up" data-dashboard-widget-id="${escapeHtml(widget.id)}" aria-label="Mover para cima" ${canMoveUp ? "" : "disabled"}>${icon("arrowLeft", 15)}</button><button class="icon-button" type="button" data-dashboard-widget-move="down" data-dashboard-widget-id="${escapeHtml(widget.id)}" aria-label="Mover para baixo" ${canMoveDown ? "" : "disabled"}>${icon("arrowRight", 15)}</button></div></div>
+    <div class="dashboard-widget-setting__actions"><label class="switch" title="${enabled ? "Desativar" : "Ativar"}"><input type="checkbox" data-dashboard-widget-toggle="${escapeHtml(widget.id)}" ${enabled ? "checked" : ""}/><i></i></label>${configure}<div class="dashboard-widget-setting__order"><button class="icon-button" type="button" data-dashboard-widget-move="up" data-dashboard-widget-id="${escapeHtml(widget.id)}" aria-label="Mover para cima" ${canMoveUp ? "" : "disabled"}>${icon("arrowLeft", 15)}</button><button class="icon-button" type="button" data-dashboard-widget-move="down" data-dashboard-widget-id="${escapeHtml(widget.id)}" aria-label="Mover para baixo" ${canMoveDown ? "" : "disabled"}>${icon("arrowRight", 15)}</button></div></div>
   </article>`;
 }
 
@@ -141,6 +148,43 @@ function openFavoriteEditor(selected, onApply) {
     refresh();
   }));
   modalRoot.querySelector("[data-favorite-editor-form]")?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    onApply(selectedIds());
+    close();
+  });
+}
+
+function quickActionsEditorModal(selected) {
+  return `<div class="modal-backdrop" data-quick-actions-editor-backdrop><section class="modal modal--favorites-editor" role="dialog" aria-modal="true" aria-labelledby="quick-actions-editor-title"><form class="favorites-editor" data-quick-actions-editor-form><div class="favorites-editor__head"><div><span class="eyebrow">DASHBOARD</span><h2 id="quick-actions-editor-title">Ações rápidas</h2><p>Escolha até seis ações para manter os seus fluxos mais usados sempre por perto.</p></div><button class="icon-button" type="button" data-close-quick-actions-editor aria-label="Fechar">${icon("close", 19)}</button></div><div class="favorites-editor__grid">${DASHBOARD_QUICK_ACTIONS.map((action) => `<label class="favorites-editor__option ${selected.includes(action.id) ? "is-selected" : ""}"><input type="checkbox" value="${escapeHtml(action.id)}" ${selected.includes(action.id) ? "checked" : ""}/><span>${icon(action.iconName, 17)}</span><strong>${escapeHtml(action.label)}</strong></label>`).join("")}</div><div class="favorites-editor__actions"><small data-quick-action-count>${selected.length}/6 selecionadas</small><span></span><button class="button button--ghost" type="button" data-close-quick-actions-editor>Cancelar</button><button class="button button--primary" type="submit">${icon("check", 16)} Aplicar ações</button></div></form></section></div>`;
+}
+
+function openQuickActionsEditor(selected, onApply) {
+  const modalRoot = document.querySelector("#modal-root");
+  modalRoot.innerHTML = quickActionsEditorModal(selected);
+  const close = () => {
+    document.removeEventListener("keydown", onKeydown);
+    closeModal();
+  };
+  const selectedIds = () => [...modalRoot.querySelectorAll('input[type="checkbox"]:checked')].map((input) => input.value);
+  const refresh = () => {
+    const ids = selectedIds();
+    modalRoot.querySelector("[data-quick-action-count]").textContent = `${ids.length}/6 selecionadas`;
+    modalRoot.querySelectorAll(".favorites-editor__option").forEach((option) => option.classList.toggle("is-selected", option.querySelector("input").checked));
+  };
+  const onKeydown = (event) => { if (event.key === "Escape") close(); };
+  document.addEventListener("keydown", onKeydown);
+  modalRoot.querySelectorAll("[data-close-quick-actions-editor]").forEach((button) => button.addEventListener("click", close));
+  modalRoot.querySelector("[data-quick-actions-editor-backdrop]")?.addEventListener("click", (event) => {
+    if (event.target === event.currentTarget) close();
+  });
+  modalRoot.querySelectorAll('input[type="checkbox"]').forEach((input) => input.addEventListener("change", () => {
+    if (selectedIds().length > 6) {
+      input.checked = false;
+      showToast("Escolha no máximo seis ações rápidas.", "error");
+    }
+    refresh();
+  }));
+  modalRoot.querySelector("[data-quick-actions-editor-form]")?.addEventListener("submit", (event) => {
     event.preventDefault();
     onApply(selectedIds());
     close();
@@ -252,6 +296,11 @@ export function bindDashboardSettings(root, { settings, onBack, onChange, onSave
   root.querySelector("[data-configure-dashboard-favorites]")?.addEventListener("click", () => {
     openFavoriteEditor(settings.dashboard?.favorites || [], (favorites) => {
       update((dashboard) => { dashboard.favorites = favorites; });
+    });
+  });
+  root.querySelector("[data-configure-dashboard-quick-actions]")?.addEventListener("click", () => {
+    openQuickActionsEditor(settings.dashboard?.quickActions || [], (quickActions) => {
+      update((dashboard) => { dashboard.quickActions = quickActions; });
     });
   });
   root.querySelectorAll("[data-dashboard-widget-move]").forEach((button) => button.addEventListener("click", () => {

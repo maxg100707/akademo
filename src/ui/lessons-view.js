@@ -1,4 +1,5 @@
 import { displayTime } from "../services/schedules.js";
+import { getLessonOccurrences } from "../services/chronogram.js";
 import { escapeHtml } from "../utils/formatters.js";
 import { icon } from "../utils/icons.js";
 import {
@@ -39,6 +40,75 @@ function typeSwitches(selected = "normal") {
         `<label class="lesson-type-switch lesson-type-switch--${type}"><input type="radio" name="kind" value="${type}" ${selected === type ? "checked" : ""}/><span>${icon(meta.icon, 16)}</span><strong>${meta.label}</strong></label>`,
     )
     .join("")}</div>`;
+}
+
+function quickLessonCreateModal({ disciplines }) {
+  const initialDiscipline = disciplines[0]?.id || "";
+  return `<div class="modal-backdrop" data-quick-lesson-backdrop><section class="modal modal--quick-lesson" role="dialog" aria-modal="true" aria-labelledby="quick-lesson-title"><form class="quick-lesson-editor" data-quick-lesson-form novalidate><div class="quick-lesson-editor__head"><div><span class="eyebrow">AÇÕES RÁPIDAS</span><h2 id="quick-lesson-title">Cadastrar aula</h2><p>Escolha uma ocorrência do seu horário. Se ela ainda não estiver no cronograma, nós a registramos agora.</p></div><button class="icon-button" type="button" data-close-quick-lesson aria-label="Fechar">${icon("close", 19)}</button></div><div class="quick-lesson-editor__fields"><label class="field"><span>Disciplina</span><span class="field__control">${icon("book", 17)}<select name="disciplineId" data-quick-lesson-discipline required>${disciplines.map((discipline) => `<option value="${escapeHtml(discipline.id)}" ${discipline.id === initialDiscipline ? "selected" : ""}>${escapeHtml(discipline.nome_disciplina)}</option>`).join("")}</select></span></label><label class="field"><span>Data e horário da aula</span><span class="field__control">${icon("calendar", 17)}<select name="occurrenceValue" data-quick-lesson-occurrence required></select></span><small class="quick-lesson-editor__schedule-hint" data-quick-lesson-occurrence-hint></small></label><label class="field"><span>Tema da aula</span><span class="field__control">${icon("book", 17)}<input name="topic" maxlength="180" placeholder="Ex.: Revisão para a prova" required autofocus /></span></label></div><div class="quick-lesson-editor__actions"><button class="button button--ghost" type="button" data-close-quick-lesson>Cancelar</button><button class="button button--primary" type="submit" data-quick-lesson-submit>${icon("arrowRight", 17)} Continuar</button></div></form></section></div>`;
+}
+
+function quickLessonLabel(occurrence) {
+  return `${dateLabel(occurrence.startsAt, { weekday: "short", day: "2-digit", month: "short", year: "numeric" })} · ${displayTime(occurrence.schedule.hora_inicio)} – ${displayTime(occurrence.schedule.hora_fim)}`;
+}
+
+function quickLessonOccurrences(profile, schedules, chronograms, disciplineId) {
+  return getLessonOccurrences(profile, disciplineId, schedules).filter((occurrence) => {
+    const entry = chronograms.find(
+      (item) => item.disciplina === disciplineId && Math.abs(new Date(item.data_hora) - occurrence.startsAt) < 60000,
+    );
+    return !entry || entry.prova;
+  });
+}
+
+export function openQuickLessonCreate({ disciplines, schedules, chronograms, profile, onContinue }) {
+  if (!disciplines.length || !schedules.length) {
+    showToast("Cadastre uma disciplina e um horário antes de registrar uma aula.", "error");
+    return;
+  }
+  const modalRoot = document.querySelector("#modal-root");
+  modalRoot.innerHTML = quickLessonCreateModal({ disciplines });
+  const form = modalRoot.querySelector("[data-quick-lesson-form]");
+  const disciplineInput = form.querySelector("[data-quick-lesson-discipline]");
+  const occurrenceInput = form.querySelector("[data-quick-lesson-occurrence]");
+  const occurrenceHint = form.querySelector("[data-quick-lesson-occurrence-hint]");
+  const submitButton = form.querySelector("[data-quick-lesson-submit]");
+  const close = () => {
+    document.removeEventListener("keydown", onKeydown);
+    closeModal();
+  };
+  const onKeydown = (event) => {
+    if (event.key === "Escape") close();
+  };
+  const refreshOccurrences = () => {
+    const available = quickLessonOccurrences(profile, schedules, chronograms, disciplineInput.value);
+    occurrenceInput.innerHTML = available.length
+      ? available.map((occurrence) => `<option value="${escapeHtml(occurrence.value)}">${escapeHtml(quickLessonLabel(occurrence))}</option>`).join("")
+      : '<option value="">Nenhuma ocorrência disponível</option>';
+    occurrenceInput.disabled = !available.length;
+    submitButton.disabled = !available.length;
+    occurrenceHint.textContent = available.length
+      ? "Aulas, apresentações e feriados já registrados não aparecem nesta lista."
+      : "Todas as ocorrências desta disciplina já foram registradas ou não há horários no período do perfil.";
+  };
+  document.addEventListener("keydown", onKeydown);
+  modalRoot.querySelectorAll("[data-close-quick-lesson]").forEach((button) => button.addEventListener("click", close));
+  modalRoot.querySelector("[data-quick-lesson-backdrop]")?.addEventListener("click", (event) => {
+    if (event.target === event.currentTarget) close();
+  });
+  disciplineInput.addEventListener("change", refreshOccurrences);
+  refreshOccurrences();
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!form.reportValidity() || occurrenceInput.disabled) return;
+    try {
+      setButtonLoading(submitButton, true);
+      await onContinue(Object.fromEntries(new FormData(form)));
+      close();
+    } catch (error) {
+      setButtonLoading(submitButton, false);
+      showToast(error.message || "Não foi possível iniciar o cadastro desta aula.", "error");
+    }
+  });
 }
 
 function weekDay(date, occurrences, chronograms, lessons) {

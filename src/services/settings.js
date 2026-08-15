@@ -26,9 +26,29 @@ export const DASHBOARD_WIDGETS = [
     label: "Últimas aulas",
     description: "Mostra as quatro aulas registradas mais recentes.",
   },
+  {
+    id: "quick-actions",
+    label: "Ações rápidas",
+    description: "Exibe até seis atalhos para iniciar tarefas frequentes.",
+  },
+];
+
+export const DASHBOARD_QUICK_ACTIONS = [
+  { id: "create-lesson", label: "Cadastrar aula", iconName: "book" },
+  { id: "add-file", label: "Adicionar arquivo", iconName: "upload" },
+  { id: "add-task", label: "Adicionar tarefa", iconName: "check" },
+  { id: "create-exam", label: "Cadastrar prova", iconName: "exam" },
+  { id: "create-presentation", label: "Cadastrar apresentação", iconName: "presentation" },
+  { id: "create-mindmap", label: "Criar mapa mental", iconName: "mindMap" },
+  { id: "create-note", label: "Criar anotação", iconName: "note" },
+  { id: "create-glossary", label: "Registrar termo", iconName: "glossary" },
+  { id: "create-video", label: "Registrar vídeo", iconName: "video" },
+  { id: "cycle-palette", label: "Mudar temática", iconName: "sparkles" },
+  { id: "create-contact", label: "Novo contato", iconName: "users" },
 ];
 
 const WIDGET_IDS = new Set(DASHBOARD_WIDGETS.map((widget) => widget.id));
+const QUICK_ACTION_IDS = new Set(DASHBOARD_QUICK_ACTIONS.map((action) => action.id));
 const PALETTE_IDS = new Set(["forest", "flames", "cosmic"]);
 const MODULE_IDS = new Set([
   "schedules",
@@ -94,6 +114,7 @@ export function defaultSettings() {
     dashboard: {
       widgets: defaultWidgets(),
       favorites: [],
+      quickActions: [],
     },
   };
 }
@@ -131,6 +152,11 @@ export function normalizeSettings(input) {
       .filter((id, index, values) => MODULE_IDS.has(id) && values.indexOf(id) === index)
       .slice(0, 4)
     : [];
+  const quickActions = Array.isArray(dashboard.quickActions)
+    ? dashboard.quickActions
+      .filter((id, index, values) => QUICK_ACTION_IDS.has(id) && values.indexOf(id) === index)
+      .slice(0, 6)
+    : [];
 
   return {
     version: 1,
@@ -140,6 +166,7 @@ export function normalizeSettings(input) {
     dashboard: {
       widgets: [...orderedKnownWidgets, ...missingWidgets],
       favorites,
+      quickActions,
     },
   };
 }

@@ -1,6 +1,7 @@
 import { icon } from "../utils/icons.js";
 import { escapeHtml, firstName } from "../utils/formatters.js";
 import { displayTime, weekdayName } from "../services/schedules.js";
+import { DASHBOARD_QUICK_ACTIONS } from "../services/settings.js";
 
 function nextClassCard(nextClass, nextClassChronogram, isLoading) {
   if (isLoading) return `<section class="next-class-card is-loading"><span class="next-class-card__icon"><span class="spinner"></span></span><div><small>PRÓXIMA AULA</small><strong>Organizando sua rotina...</strong><p>Estamos buscando os horários deste perfil.</p></div></section>`;
@@ -87,6 +88,20 @@ function favoriteWidget(favorites) {
     : `<p class="dashboard-widget__empty">Escolha até quatro módulos nas configurações do Dashboard.</p>` });
 }
 
+function quickActionsWidget(actions) {
+  const items = actions
+    .map((id) => DASHBOARD_QUICK_ACTIONS.find((action) => action.id === id))
+    .filter(Boolean);
+  return widgetPanel({
+    eyebrow: "FAÇA AGORA",
+    title: "Ações rápidas",
+    iconName: "plus",
+    content: items.length
+      ? `<div class="dashboard-quick-actions">${items.map((action) => `<button class="dashboard-quick-action" type="button" data-dashboard-quick-action="${escapeHtml(action.id)}"><span>${icon(action.iconName, 18)}</span><strong>${escapeHtml(action.label)}</strong></button>`).join("")}</div>`
+      : `<p class="dashboard-widget__empty">Configure até seis ações rápidas nas configurações do Dashboard.</p>`,
+  });
+}
+
 function scheduleWidget(schedules, disciplines) {
   const days = WEEKDAY_SHORT.map((day, index) => {
     const entries = schedules.filter((schedule) => Number(schedule.dia_semana) === index).sort((first, second) => String(first.hora_inicio).localeCompare(String(second.hora_inicio)));
@@ -127,6 +142,7 @@ function dashboardWidget(widget, data, isSoloRow = false) {
   if (widget.id === "next-class") return `<div class="dashboard-widget dashboard-widget--next${soloClass}">${nextClassCard(data.nextClass, data.nextClassChronogram, data.isNextClassLoading)}</div>`;
   if (widget.id === "academic-calendar") return `<div class="dashboard-widget dashboard-widget--calendar${soloClass}">${dashboardCalendar(data)}</div>`;
   if (widget.id === "favorites") return `<div class="dashboard-widget dashboard-widget--favorites${soloClass}">${favoriteWidget(data.settings?.dashboard?.favorites || [])}</div>`;
+  if (widget.id === "quick-actions") return `<div class="dashboard-widget dashboard-widget--quick-actions${soloClass}">${quickActionsWidget(data.settings?.dashboard?.quickActions || [])}</div>`;
   if (widget.id === "schedules") return `<div class="dashboard-widget dashboard-widget--schedules${soloClass}">${scheduleWidget(data.schedules, data.disciplines)}</div>`;
   if (widget.id === "recent-lessons") return `<div class="dashboard-widget dashboard-widget--lessons${soloClass}">${latestLessonsWidget(data.lessons, data.disciplines)}</div>`;
   return "";

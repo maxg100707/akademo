@@ -1,0 +1,22 @@
+/* Cadastro de aula iniciado pelo widget de ações rápidas. */
+.modal--quick-lesson {
+  width: min(660px, 100%);
+  max-height: calc(100dvh - 40px);
+  padding: 0;
+  overflow: auto;
+}
+
+.quick-lesson-editor { display: grid; gap: 17px; padding: clamp(22px, 4vw, 32px); }
+.quick-lesson-editor__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.quick-lesson-editor__head h2 { margin: 5px 0 6px; font: 600 23px/1.15 "Outfit", sans-serif; }
+.quick-lesson-editor__head p { max-width: 510px; margin: 0; color: var(--text-soft); font-size: 12px; line-height: 1.5; }
+.quick-lesson-editor__fields { display: grid; gap: 15px; }
+.quick-lesson-editor__schedule-hint { display: block; min-height: 15px; margin-top: 6px; color: var(--text-soft); font-size: 10px; font-weight: 700; line-height: 1.35; }
+.quick-lesson-editor__actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 6px; }
+
+@media (max-width: 760px) {
+  .modal--quick-lesson { max-height: calc(100dvh - 28px); }
+  .quick-lesson-editor { padding: 23px; }
+  .quick-lesson-editor__actions { flex-direction: column-reverse; }
+  .quick-lesson-editor__actions .button { width: 100%; }
+}
