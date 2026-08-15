@@ -56,6 +56,7 @@ const favoriteModules = [
   ["notes", "Anotações", "note"],
   ["glossary", "Glossário", "glossary"],
   ["videos", "Vídeos", "video"],
+  ["bibliography", "Bibliografia", "book"],
   ["disciplines", "Disciplinas", "book"],
   ["teachers", "Professores", "users"],
   ["profiles", "Perfis de estudo", "graduation"],
