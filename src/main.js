@@ -135,6 +135,15 @@ import {
   getGameData,
   saveGameData,
 } from "./services/games.js";
+import {
+  createQuiz,
+  deleteQuiz,
+  getMyQuizzes,
+  getPublicQuizzes,
+  getQuizResults,
+  saveQuizResult,
+  updateQuiz,
+} from "./services/quizzes.js";
 import { defaultSettings, getSettings, normalizePalette, saveSettings } from "./services/settings.js";
 import { buildUniversalSearchIndex, searchUniversalIndex } from "./services/universal-search.js";
 import {
@@ -268,6 +277,14 @@ import {
   openFlashcardsViewer,
 } from "./ui/flashcards-view.js";
 import { bindCalculations, calculationsView } from "./ui/calculations-view.js";
+import {
+  bindQuizzes,
+  openQuizDetails,
+  openQuizEditor,
+  openQuizPlay,
+  openQuizResult,
+  quizzesView,
+} from "./ui/quizzes-view.js";
 import { closeModal, confirmModal, showToast, unsavedModal } from "./ui/components.js";
 import {
   getStoredProfile,
@@ -324,6 +341,9 @@ const state = {
   flashcardCollections: [],
   flashcardsScope: null,
   gameData: defaultGameData(),
+  publicQuizzes: [],
+  myQuizzes: [],
+  quizResults: [],
   profileContents: [],
   settings: defaultSettings(),
   settingsSaved: defaultSettings(),
@@ -408,6 +428,9 @@ async function hydrate(user) {
     state.examTopics = [];
     state.presentations = [];
     state.gameData = defaultGameData();
+    state.publicQuizzes = [];
+    state.myQuizzes = [];
+    state.quizResults = [];
     state.scheduleEditing = false;
     state.chronogramDisciplineId = null;
     state.lessonWeekOffset = 0;
@@ -479,7 +502,7 @@ function selectStoredProfile(route = {}) {
 
 const routeViews = new Set([
   "dashboard", "personal", "settings", "settings-user", "settings-dashboard", "settings-personalization", "profiles", "teachers", "contacts", "disciplines", "schedules",
-  "chronogram", "tasks", "files", "mindmaps", "mindmap-editor", "videos", "bibliography", "notes", "summaries", "glossary", "flashcards", "calculations",
+  "chronogram", "tasks", "files", "mindmaps", "mindmap-editor", "videos", "bibliography", "notes", "summaries", "glossary", "flashcards", "calculations", "quizzes", "quiz-mine", "quiz-results",
   "exams", "exam-detail", "exam-topics", "exam-topic", "exam-materials", "exam-tasks", "presentations",
   "presentation-detail", "presentation-materials", "presentation-tasks", "lessons", "lesson-chronogram",
   "lesson-form", "lesson-detail", "lesson-materials", "lesson-tasks",
@@ -505,6 +528,9 @@ function resetProfileScopedState() {
   state.glossaryTerms = [];
   state.flashcardCollections = [];
   state.gameData = defaultGameData();
+  state.publicQuizzes = [];
+  state.myQuizzes = [];
+  state.quizResults = [];
   state.profileContents = [];
   state.settings = defaultSettings();
   state.settingsSaved = cloneSettings(state.settings);
@@ -1008,6 +1034,7 @@ function renderCurrent() {
   if (state.view === "glossary") return renderGlossary();
   if (state.view === "flashcards") return renderFlashcards();
   if (state.view === "calculations") return renderCalculations();
+  if (["quizzes", "quiz-mine", "quiz-results"].includes(state.view)) return renderQuizzes(state.view === "quiz-mine" ? "mine" : state.view === "quiz-results" ? "results" : "public");
   if (state.view === "exams") return renderExams();
   if (state.view === "exam-detail") return renderExamDetail();
   if (state.view === "exam-topics") return renderExamTopics();
@@ -1142,6 +1169,7 @@ async function openDashboardQuickAction(actionId) {
     if (actionId === "create-bibliography") return await openInModule(renderBibliography, "[data-add-bibliography]");
     if (actionId === "create-contact") return await openInModule(renderContacts, "[data-add-contact]");
     if (actionId === "play-calculations") return await openInModule(renderCalculations, "[data-start-calculations]");
+    if (actionId === "open-quizzes") return await renderQuizzes("public");
     if (actionId === "cycle-palette") {
       const paletteOrder = ["forest", "flames", "cosmic"];
       const current = normalizePalette(state.settings?.appearance?.palette);
@@ -4383,6 +4411,121 @@ async function renderCalculations() {
     bindCalculations(root, {
       onStart: () => showToast("Execute a migration de Jogos antes de iniciar uma partida.", "error"),
     });
+  }
+}
+
+async function loadQuizData() {
+  const [publicQuizzes, myQuizzes, quizResults] = await Promise.all([
+    getPublicQuizzes(),
+    getMyQuizzes(state.user),
+    getQuizResults(state.user),
+  ]);
+  state.publicQuizzes = publicQuizzes;
+  state.myQuizzes = myQuizzes;
+  state.quizResults = quizResults;
+}
+
+function mergeQuiz(saved) {
+  const replace = (items) => {
+    const index = items.findIndex((item) => String(item.id) === String(saved.id));
+    if (index < 0) return [saved, ...items];
+    const next = [...items];
+    next[index] = saved;
+    return next;
+  };
+  state.myQuizzes = replace(state.myQuizzes);
+  state.publicQuizzes = saved.publico ? replace(state.publicQuizzes) : state.publicQuizzes.filter((item) => String(item.id) !== String(saved.id));
+}
+
+function quizModeView(mode) {
+  return mode === "mine" ? "quiz-mine" : mode === "results" ? "quiz-results" : "quizzes";
+}
+
+function editQuiz(quiz) {
+  openQuizEditor({
+    quiz,
+    authorName: state.record?.nome || "Estudante AKADEMO",
+    onSave: async (values) => {
+      const updated = await updateQuiz(quiz.id, state.user, quiz, values);
+      mergeQuiz(updated);
+      invalidateUniversalSearchIndex();
+      showToast("Quiz atualizado.");
+      return updated;
+    },
+    onClosed: (meta) => { if (meta?.saved) renderQuizzes("mine"); },
+  });
+}
+
+function createQuizFromModule() {
+  openQuizEditor({
+    authorName: state.record?.nome || "Estudante AKADEMO",
+    onSave: async (values) => {
+      const saved = await createQuiz(state.user, values);
+      mergeQuiz(saved);
+      invalidateUniversalSearchIndex();
+      showToast("Quiz criado.");
+      return saved;
+    },
+    onClosed: (meta) => { if (meta?.saved) renderQuizzes("mine"); },
+  });
+}
+
+function viewQuiz(quiz, suppliedResult = null, mode = "public") {
+  const result = suppliedResult || state.quizResults.find((item) => String(item.quiz) === String(quiz.id)) || null;
+  if (suppliedResult && !quiz?.perguntas) return openQuizResult(quiz, suppliedResult);
+  openQuizDetails(quiz, {
+    result,
+    isOwner: String(quiz.email_user) === String(state.user?.email),
+    onEdit: () => editQuiz(quiz),
+    onDelete: async () => {
+      await deleteQuiz(quiz.id, state.user);
+      state.myQuizzes = state.myQuizzes.filter((item) => String(item.id) !== String(quiz.id));
+      state.publicQuizzes = state.publicQuizzes.filter((item) => String(item.id) !== String(quiz.id));
+      state.quizResults = state.quizResults.filter((item) => String(item.quiz) !== String(quiz.id));
+      invalidateUniversalSearchIndex();
+      showToast("Quiz apagado.");
+      renderQuizzes(mode);
+    },
+    onViewResult: (item, savedResult) => openQuizResult(item, savedResult),
+    onStart: (item) => openQuizPlay(item, {
+      onFinish: async (score) => {
+        const saved = await saveQuizResult(state.user, item, score);
+        const previous = state.quizResults.findIndex((entry) => String(entry.quiz) === String(item.id));
+        if (previous < 0) state.quizResults = [saved, ...state.quizResults];
+        else state.quizResults = state.quizResults.map((entry) => String(entry.quiz) === String(item.id) ? saved : entry);
+        invalidateUniversalSearchIndex();
+        return saved;
+      },
+      onCompleted: (saved, options = {}) => {
+        renderQuizzes(mode);
+        if (options.openResult && saved) window.setTimeout(() => openQuizResult(item, saved), 0);
+      },
+    }),
+  });
+}
+
+async function renderQuizzes(mode = "public") {
+  if (!state.currentProfile || !state.user) return showOnboarding();
+  const profileId = state.currentProfile.id;
+  state.view = quizModeView(mode);
+  try {
+    await loadQuizData();
+    if (state.currentProfile?.id !== profileId || state.view !== quizModeView(mode)) return;
+    renderWithinLayout(quizzesView({ mode, publicQuizzes: state.publicQuizzes, myQuizzes: state.myQuizzes, results: state.quizResults }));
+    bindQuizzes(root, {
+      mode,
+      publicQuizzes: state.publicQuizzes,
+      myQuizzes: state.myQuizzes,
+      results: state.quizResults,
+      onCreate: createQuizFromModule,
+      onMine: () => renderQuizzes("mine"),
+      onResults: () => renderQuizzes("results"),
+      onPublic: () => renderQuizzes("public"),
+      onOpen: (quiz, result) => result ? openQuizResult(quiz, result) : viewQuiz(quiz, null, mode),
+    });
+  } catch (error) {
+    showToast(error.message || "Não foi possível carregar os quizzes. Execute a migration de Quiz no Supabase.", "error");
+    renderWithinLayout(quizzesView({ mode, publicQuizzes: [], myQuizzes: [], results: [] }));
   }
 }
 

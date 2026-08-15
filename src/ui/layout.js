@@ -34,6 +34,7 @@ const reviewModules = [
 
 const gamesModules = [
   { view: "calculations", iconName: "calculator", label: "Cálculos", isActive: (currentView) => currentView === "calculations" },
+  { view: "quizzes", iconName: "quiz", label: "Quiz", isActive: (currentView) => ["quizzes", "quiz-mine", "quiz-results"].includes(currentView) },
 ];
 
 const moduleContexts = {
@@ -59,6 +60,7 @@ const moduleContexts = {
   summaries: { iconName: "note", title: "Resumos", description: "Escreva e organize resumos de estudo sobre suas disciplinas." },
   flashcards: { iconName: "flashcards", title: "Flashcards", description: "Revise conceitos com cards curtos, objetivos e aleatórios." },
   calculations: { iconName: "calculator", title: "Cálculos", description: "Treine raciocínio matemático com desafios personalizados." },
+  quizzes: { iconName: "quiz", title: "Quiz", description: "Crie desafios, responda quizzes públicos e acompanhe seus resultados." },
   glossary: { iconName: "glossary", title: "Glossário", description: "Reúna termos, definições e exemplos para revisar com facilidade." },
   videos: { iconName: "video", title: "Vídeos", description: "Assista e organize suas aulas e explicações em vídeo." },
   bibliography: { iconName: "book", title: "Bibliografia", description: "Consulte e organize as referências e materiais de apoio de estudo." },
@@ -73,6 +75,7 @@ function contextForView(view) {
   if (view === "summaries") return moduleContexts.summaries;
   if (view === "flashcards") return moduleContexts.flashcards;
   if (view === "calculations") return moduleContexts.calculations;
+  if (["quizzes", "quiz-mine", "quiz-results"].includes(view)) return moduleContexts.quizzes;
   if (view === "glossary") return moduleContexts.glossary;
   if (view === "videos") return moduleContexts.videos;
   if (view === "bibliography") return moduleContexts.bibliography;

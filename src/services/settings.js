@@ -48,6 +48,7 @@ export const DASHBOARD_QUICK_ACTIONS = [
   { id: "cycle-palette", label: "Mudar temática", iconName: "sparkles" },
   { id: "create-contact", label: "Novo contato", iconName: "users" },
   { id: "play-calculations", label: "Jogar Cálculos", iconName: "calculator" },
+  { id: "open-quizzes", label: "Abrir Quiz", iconName: "quiz" },
 ];
 
 const WIDGET_IDS = new Set(DASHBOARD_WIDGETS.map((widget) => widget.id));
@@ -66,6 +67,7 @@ const MODULE_IDS = new Set([
   "summaries",
   "flashcards",
   "calculations",
+  "quizzes",
   "glossary",
   "videos",
   "bibliography",

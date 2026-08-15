@@ -18,6 +18,7 @@ const TYPE_LABELS = {
   summaries: "Resumo",
   glossary: "Termo do glossário",
   flashcards: "Conjunto de flashcards",
+  quizzes: "Módulo de quiz",
   video: "Vídeo",
   bibliography: "Bibliografia",
 };
@@ -41,6 +42,7 @@ const MODULES = [
   ["summaries", "Resumos", "Escreva e consulte páginas de resumos de estudo sobre suas disciplinas.", "note"],
   ["flashcards", "Flashcards", "Crie conjuntos de cards para revisar conceitos de estudo.", "flashcards"],
   ["calculations", "Cálculos", "Jogue desafios matemáticos e acompanhe seus resultados.", "calculator"],
+  ["quizzes", "Quiz", "Crie desafios, responda quizzes públicos e acompanhe seus resultados.", "quiz"],
   ["glossary", "Glossário", "Guarde termos, definições e exemplos importantes.", "glossary"],
   ["videos", "Vídeos", "Salve e assista vídeos de estudo e explicações.", "video"],
   ["bibliography", "Bibliografia", "Consulte referências, livros, artigos e materiais de estudo.", "book"],
