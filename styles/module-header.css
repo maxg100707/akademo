@@ -1,4 +1,13 @@
 /* Contexto do módulo no cabeçalho: a página fica livre para o conteúdo útil. */
+:root {
+  --app-header-height: 79px;
+}
+
+/* A área mínima de cada módulo ocupa apenas o espaço livre abaixo do cabeçalho. */
+.page:not(.mindmap-editor-page) {
+  min-height: calc(100dvh - var(--app-header-height));
+}
+
 .desktop-header-content {
   position: relative;
   width: 100%;
@@ -50,6 +59,11 @@
 }
 
 @media (min-width: 761px) {
+  .desktop-topbar {
+    height: var(--app-header-height);
+    min-height: var(--app-header-height);
+  }
+
   .desktop-topbar { justify-content: initial; }
 
   .desktop-profile-indicator {
@@ -87,8 +101,11 @@
 }
 
 @media (max-width: 760px) {
+  :root { --app-header-height: 68px; }
+
   .mobile-topbar {
-    min-height: 68px;
+    height: var(--app-header-height);
+    min-height: var(--app-header-height);
     gap: 8px;
     padding: 0 14px;
   }
@@ -132,8 +149,8 @@
     width: auto;
   }
 
-  .main-area { padding-top: 68px; }
-  .page { min-height: calc(100vh - 68px); }
+  .main-area { padding-top: var(--app-header-height); }
+  .page:not(.mindmap-editor-page) { min-height: calc(100dvh - var(--app-header-height)); }
 
   .page:not(.chronogram-detail-page):not(.lesson-detail-page):not(.exam-detail-page):not(.presentation-detail-page):not(.mindmap-editor-page) > .page-heading--row {
     display: flex;
