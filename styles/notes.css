@@ -15,13 +15,16 @@ body.is-note-workspace-open {
 
 .notes-page {
   display: grid;
-  gap: 1rem;
+  align-content: start;
+  min-height: 0 !important;
+  gap: .6rem;
+  padding: clamp(16px, 2.2vw, 30px) clamp(16px, 3vw, 42px) !important;
 }
 
 .notes-toolbar {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(190px, .42fr) auto;
-  gap: .75rem;
+  gap: .55rem;
   align-items: end;
 }
 
@@ -41,7 +44,7 @@ body.is-note-workspace-open {
 .notes-grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: .9rem;
+  gap: .7rem;
   align-items: start;
 }
 
@@ -1132,7 +1135,11 @@ body[data-theme="dark"] .note-page__number {
 }
 
 @media (max-width: 680px) {
-  .notes-toolbar { grid-template-columns: 1fr; }
+  .notes-page {
+    gap: .5rem;
+    padding: 10px 12px 14px !important;
+  }
+  .notes-toolbar { grid-template-columns: 1fr; gap: .45rem; }
   .notes-toolbar .button { width: 100%; }
   .note-workspace__head { align-items: flex-start; }
   .note-workspace__head > div:last-child { gap: .3rem; }
