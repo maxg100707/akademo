@@ -109,14 +109,36 @@
       <div class="section-title"><span class="section-title__number">8</span><div><h2>Personalização que vira pertencimento</h2><p>A experiência deixa de parecer uma ferramenta genérica quando a pessoa escolhe o que vê e como o sistema se apresenta.</p></div></div>
       <div class="grid grid--3">
         <article class="card card--dark"><h3>Dashboard configurável</h3><p>Widgets ativáveis, ordem personalizada, favoritos e layouts que se ajustam automaticamente ao tamanho da tela.</p></article>
-        <article class="card card--dark"><h3>Temáticas visuais</h3><p><strong>Floresta</strong> preserva a identidade verde. <strong>Chamas</strong> traz vermelho e laranja equilibrados. Ambas funcionam em modo claro e escuro.</p></article>
+        <article class="card card--dark"><h3>Temáticas visuais</h3><p><strong>Floresta</strong>, <strong>Chamas</strong> e <strong>Cosmic</strong> permitem identidade visual própria. Todas funcionam em modo claro e escuro.</p></article>
         <article class="card card--dark"><h3>Responsividade nativa</h3><p>Menu, cards, grades, vídeos e horários são ajustados para desktop, tablet e celular sem reduzir o produto a uma versão limitada.</p></article>
       </div>
       <div class="grid grid--2" style="margin-top:10px"><article class="card"><h3>Para o estudante</h3><p>Mais autonomia, menos fricção e uma sensação constante de progresso. A rotina não depende de memória, improviso ou múltiplas ferramentas.</p></article><article class="card"><h3>Para a instituição, curso ou comunidade</h3><p>Uma proposta digital diferenciada para apoiar experiência acadêmica, engajamento e hábitos de estudo, com uma linguagem que o aluno realmente entende.</p></article></div>
     </section>
 
     <section class="section">
-      <div class="section-title"><span class="section-title__number">9</span><div><h2>Segurança, privacidade e arquitetura preparada para crescer</h2><p>O sistema foi concebido como SaaS moderno, com front-end modular e dados protegidos no Supabase.</p></div></div>
+      <div class="section-title"><span class="section-title__number">9</span><div><h2>Um ecossistema de aprendizagem, não apenas uma agenda</h2><p>Além de organizar compromissos, AKADEMO ajuda o estudante a transformar conteúdo em conhecimento recuperável.</p></div></div>
+      <div class="grid grid--3">
+        <article class="card card--tint"><div class="icon-chip">N</div><h3>Anotações e resumos</h3><p>Documentos em páginas A4, com edição rica, tabelas, páginas adicionais, visualização e filtros por disciplina e atividade.</p></article>
+        <article class="card card--tint"><div class="icon-chip">G</div><h3>Glossário e flashcards</h3><p>Definições, exemplos e conjuntos de cards que embaralham a revisão para estimular recuperação ativa.</p></article>
+        <article class="card card--tint"><div class="icon-chip">B</div><h3>Bibliografia e vídeos</h3><p>Links e arquivos privados de apoio, associados a uma disciplina, aula, prova ou apresentação quando necessário.</p></article>
+        <article class="card card--tint"><div class="icon-chip">C</div><h3>Central de contatos</h3><p>Professores e pessoas relevantes em um só lugar, com e-mail, WhatsApp, observações e vínculo com disciplinas.</p></article>
+        <article class="card card--tint"><div class="icon-chip">⌕</div><h3>Busca global</h3><p>Uma entrada para encontrar módulos, registros e configurações sem obrigar o usuário a lembrar onde salvou algo.</p></article>
+        <article class="card card--tint"><div class="icon-chip">A</div><h3>Ação no contexto</h3><p>O mesmo recurso pode ser criado no catálogo geral ou dentro da aula, prova e apresentação corretas.</p></article>
+      </div>
+      <div class="sales-band">O valor percebido vem da continuidade: planejar, registrar, consultar e revisar acontecem no mesmo ambiente.</div>
+    </section>
+
+    <section class="section">
+      <div class="section-title"><span class="section-title__number">10</span><div><h2>Engajamento que pratica em vez de apenas listar conteúdo</h2><p>AKADEMO introduz recursos de prática para aumentar a recorrência de uso e apoiar o estudo autônomo.</p></div></div>
+      <div class="grid grid--2">
+        <article class="card card--strong"><h3>Quizzes criados pela comunidade</h3><p>O estudante cria quizzes com 4 a 6 alternativas por pergunta, escolhe a visibilidade pública ou privada e acompanha a correção completa. Quizzes públicos ampliam o acervo compartilhável; os privados preservam exercícios de uso pessoal.</p></article>
+        <article class="card card--strong"><h3>Desafio de cálculos personalizável</h3><p>Partidas configuráveis por complexidade, modo de resposta e regras de potência, raiz, equação e fatorial. Pontuação, sequência, acertos e histórico tornam o progresso visível.</p></article>
+      </div>
+      <div class="quote" style="margin-top:11px">“A ferramenta deixa de ser o lugar onde o estudante guarda coisas e passa a ser o lugar onde ele volta para avançar.”<cite>Benefício de produto para demonstrações e pilotos</cite></div>
+    </section>
+
+    <section class="section">
+      <div class="section-title"><span class="section-title__number">11</span><div><h2>Segurança, privacidade e arquitetura preparada para crescer</h2><p>O sistema foi concebido como SaaS moderno, com front-end modular e dados protegidos no Supabase.</p></div></div>
       <div class="table-wrap comparison"><table><thead><tr><th>Princípio</th><th>Risco comum</th><th>Como AKADEMO responde</th></tr></thead><tbody><tr><td>Autenticação</td><td>Senhas ou tokens tratados de forma insegura.</td><td>Supabase Auth gerencia a sessão; senha não é salva no localStorage.</td></tr><tr><td>Separação de dados</td><td>Usuários acessarem informações de terceiros.</td><td>Políticas de RLS restringem dados e operações ao usuário autenticado.</td></tr><tr><td>Arquivos</td><td>Conteúdos pessoais expostos ou misturados.</td><td>Espaço privado por usuário, provisionado de forma segura por Edge Function.</td></tr><tr><td>Escalabilidade de produto</td><td>Interface monolítica e difícil de evoluir.</td><td>HTML, CSS e JavaScript organizados em módulos, serviços, views e estilos por responsabilidade.</td></tr></tbody></table></div>
       <div class="grid grid--2" style="margin-top:10px"><article class="card"><h3>Pronto para integrar</h3><p>O uso de Supabase centraliza autenticação, banco de dados, storage e regras de acesso, mantendo a base preparada para futuras integrações e expansão de recursos.</p></article><article class="card"><h3>Pronto para apresentar</h3><p>O produto combina fluxo funcional, interface responsiva, personalização por perfil e uma identidade visual coerente — elementos essenciais para demonstrações, pilotos e proposta comercial.</p></article></div>
     </section>
